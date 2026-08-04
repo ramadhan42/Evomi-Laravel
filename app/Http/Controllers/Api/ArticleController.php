@@ -1,0 +1,292 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Article;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
+
+class ArticleController extends Controller
+{
+    private const TYPOGRAPHY_FIELDS = [
+        'title_font_family',
+        'title_font_weight',
+        'title_font_style',
+        'title_font_size',
+        'excerpt_font_family',
+        'excerpt_font_weight',
+        'excerpt_font_style',
+        'excerpt_font_size',
+        'content_font_family',
+        'content_font_weight',
+        'content_font_style',
+        'content_font_size',
+    ];
+
+    private const TYPOGRAPHY_RULES = [
+        'title_font_family' => 'nullable|string|max:40',
+        'title_font_weight' => 'nullable|string|max:10',
+        'title_font_style' => 'nullable|in:normal,italic',
+        'title_font_size' => 'nullable|string|max:20',
+        'excerpt_font_family' => 'nullable|string|max:40',
+        'excerpt_font_weight' => 'nullable|string|max:10',
+        'excerpt_font_style' => 'nullable|in:normal,italic',
+        'excerpt_font_size' => 'nullable|string|max:20',
+        'content_font_family' => 'nullable|string|max:40',
+        'content_font_weight' => 'nullable|string|max:10',
+        'content_font_style' => 'nullable|in:normal,italic',
+        'content_font_size' => 'nullable|string|max:20',
+    ];
+
+    private function isStoredUpload(?string $path): bool
+    {
+        if (! $path) {
+            return false;
+        }
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return false;
+        }
+        if (str_starts_with($path, '/')) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function index(Request $request)
+    {
+        $query = Article::query()->orderByDesc('published_at')->orderByDesc('id');
+
+        if ($request->boolean('published', true) && ! $request->boolean('all')) {
+            $query->published();
+        }
+
+        if ($category = $request->query('category')) {
+            $query->where('category', $category);
+        }
+
+        if ($limit = $request->integer('limit')) {
+            $query->limit(max(1, min($limit, 50)));
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $query->get(),
+        ]);
+    }
+
+    public function show(string $slug)
+    {
+        $article = Article::query()
+            ->published()
+            ->where('slug', $slug)
+            ->first();
+
+        if (! $article) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Artikel tidak ditemukan',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $article,
+        ]);
+    }
+
+    public function adminIndex()
+    {
+        $articles = Article::query()
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $articles,
+        ]);
+    }
+
+    public function adminShow($id)
+    {
+        $article = Article::find($id);
+
+        if (! $article) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Artikel tidak ditemukan',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $article,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), array_merge([
+            'title' => 'required|string|max:255',
+            'title_en' => 'nullable|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:articles,slug',
+            'excerpt' => 'nullable|string|max:500',
+            'excerpt_en' => 'nullable|string|max:500',
+            'content' => 'required|string',
+            'content_en' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
+            'category' => 'nullable|string|max:100',
+            'author' => 'nullable|string|max:120',
+            'is_published' => 'nullable|boolean',
+            'published_at' => 'nullable|date',
+        ], self::TYPOGRAPHY_RULES));
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $request->only(array_merge([
+            'title',
+            'title_en',
+            'excerpt',
+            'excerpt_en',
+            'content',
+            'content_en',
+            'category',
+            'author',
+            'published_at',
+        ], self::TYPOGRAPHY_FIELDS));
+
+        $data['slug'] = $request->filled('slug')
+            ? Article::makeUniqueSlug($request->input('slug'))
+            : Article::makeUniqueSlug($request->input('title'));
+        $data['category'] = $data['category'] ?: 'parfum';
+        $data['is_published'] = $request->boolean('is_published', true);
+        $data['published_at'] = $data['published_at'] ?? now();
+
+        $data['title_font_family'] = $data['title_font_family'] ?? 'nohemi';
+        $data['title_font_weight'] = $data['title_font_weight'] ?? '700';
+        $data['title_font_style'] = $data['title_font_style'] ?? 'normal';
+        $data['title_font_size'] = $data['title_font_size'] ?? '40';
+        $data['excerpt_font_family'] = $data['excerpt_font_family'] ?? 'parkinsans';
+        $data['excerpt_font_weight'] = $data['excerpt_font_weight'] ?? '400';
+        $data['excerpt_font_style'] = $data['excerpt_font_style'] ?? 'normal';
+        $data['excerpt_font_size'] = $data['excerpt_font_size'] ?? '18';
+        $data['content_font_family'] = $data['content_font_family'] ?? 'parkinsans';
+        $data['content_font_weight'] = $data['content_font_weight'] ?? '400';
+        $data['content_font_style'] = $data['content_font_style'] ?? 'normal';
+        $data['content_font_size'] = $data['content_font_size'] ?? '17';
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('articles', 'public');
+        }
+
+        $article = Article::create($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Artikel berhasil ditambahkan',
+            'data' => $article,
+        ], 201);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $article = Article::find($id);
+
+        if (! $article) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Artikel tidak ditemukan',
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), array_merge([
+            'title' => 'sometimes|required|string|max:255',
+            'title_en' => 'nullable|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:articles,slug,'.$article->id,
+            'excerpt' => 'nullable|string|max:500',
+            'excerpt_en' => 'nullable|string|max:500',
+            'content' => 'sometimes|required|string',
+            'content_en' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
+            'category' => 'nullable|string|max:100',
+            'author' => 'nullable|string|max:120',
+            'is_published' => 'nullable|boolean',
+            'published_at' => 'nullable|date',
+        ], self::TYPOGRAPHY_RULES));
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $request->only(array_merge([
+            'title',
+            'title_en',
+            'excerpt',
+            'excerpt_en',
+            'content',
+            'content_en',
+            'category',
+            'author',
+            'published_at',
+        ], self::TYPOGRAPHY_FIELDS));
+
+        if ($request->filled('slug')) {
+            $data['slug'] = Article::makeUniqueSlug($request->input('slug'), $article->id);
+        } elseif ($request->filled('title') && $request->input('title') !== $article->title) {
+            $data['slug'] = Article::makeUniqueSlug($request->input('title'), $article->id);
+        }
+
+        if ($request->has('is_published')) {
+            $data['is_published'] = $request->boolean('is_published');
+        }
+
+        if ($request->hasFile('image')) {
+            if ($this->isStoredUpload($article->image)) {
+                Storage::disk('public')->delete($article->image);
+            }
+            $data['image'] = $request->file('image')->store('articles', 'public');
+        }
+
+        $article->update($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Artikel berhasil diupdate',
+            'data' => $article->fresh(),
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $article = Article::find($id);
+
+        if (! $article) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Artikel tidak ditemukan',
+            ], 404);
+        }
+
+        if ($this->isStoredUpload($article->image)) {
+            Storage::disk('public')->delete($article->image);
+        }
+
+        $article->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Artikel berhasil dihapus',
+        ]);
+    }
+}

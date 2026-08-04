@@ -1,0 +1,198 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\SiteContent;
+use Illuminate\Database\Seeder;
+
+/**
+ * CMS untuk halaman Belanja, Belanja Details, dan Checkout (ID + EN).
+ */
+class ShopCmsSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $id = [
+            // ---- BELANJA ----
+            ['belanja', 'hero', 'headline_1', 'string', 'Koleksi'],
+            ['belanja', 'hero', 'headline_2', 'string', 'Aroma'],
+            ['belanja', 'hero', 'headline_3', 'string', 'Evomi'],
+            ['belanja', 'hero', 'subtitle', 'string', 'Pilih karakter aromamu, atau coba semuanya!'],
+            ['belanja', 'hero', 'banner_image', 'image', ''],
+            ['belanja', 'list', 'empty_title', 'string', 'Belum ada produk'],
+            ['belanja', 'list', 'empty_hint', 'string', 'Produk akan muncul di sini setelah tersedia.'],
+            ['belanja', 'list', 'see_detail', 'string', 'Lihat Detail'],
+            ['belanja', 'list', 'no_image', 'string', 'Tidak ada gambar'],
+            ['belanja', 'badges', 'purpose', 'string', 'Optimis'],
+            ['belanja', 'badges', 'peaceful', 'string', 'Damai'],
+            ['belanja', 'badges', 'rebel', 'string', 'Berani'],
+            ['belanja', 'badges', 'sweet', 'string', 'Manis'],
+
+            // ---- BELANJA DETAILS ----
+            ['belanja_details', 'labels', 'detail_title', 'string', 'Detail Produk'],
+            ['belanja_details', 'labels', 'price', 'string', 'Harga'],
+            ['belanja_details', 'labels', 'condition', 'string', 'Kondisi'],
+            ['belanja_details', 'labels', 'condition_value', 'string', 'Baru'],
+            ['belanja_details', 'labels', 'weight', 'string', 'Berat Satuan'],
+            ['belanja_details', 'labels', 'category', 'string', 'Kategori'],
+            ['belanja_details', 'labels', 'min_buy', 'string', 'Min. Beli'],
+            ['belanja_details', 'labels', 'min_buy_value', 'string', '1 Buah'],
+            ['belanja_details', 'labels', 'showcase', 'string', 'Etalase'],
+            ['belanja_details', 'labels', 'showcase_value', 'string', 'Semua Etalase'],
+            ['belanja_details', 'labels', 'buy_now', 'string', 'Beli Langsung'],
+            ['belanja_details', 'labels', 'add_cart', 'string', '+ Keranjang'],
+            ['belanja_details', 'labels', 'chat', 'string', 'Chat'],
+            ['belanja_details', 'labels', 'wishlist', 'string', 'Wishlist'],
+            ['belanja_details', 'labels', 'share', 'string', 'Share'],
+            ['belanja_details', 'labels', 'discussion', 'string', 'Diskusi Terbuka'],
+            ['belanja_details', 'labels', 'qty_hint', 'string', 'Atur jumlah dan catatan'],
+            ['belanja_details', 'labels', 'stock', 'string', 'Stok:'],
+            ['belanja_details', 'labels', 'subtotal', 'string', 'Subtotal'],
+            ['belanja_details', 'labels', 'shipping', 'string', 'Ongkir'],
+            ['belanja_details', 'labels', 'promo', 'string', 'Promo'],
+            ['belanja_details', 'labels', 'total', 'string', 'Total'],
+            ['belanja_details', 'labels', 'other_couriers', 'string', 'Lihat Kurir Lainnya'],
+            ['belanja_details', 'guarantee', 'title', 'string', 'Jaminan Produk'],
+            ['belanja_details', 'guarantee', 'money_back', 'string', 'Uang kembali bila produk tidak sesuai'],
+            ['belanja_details', 'guarantee', 'free_shipping', 'string', 'Bebas Ongkir'],
+            ['belanja_details', 'guarantee', 'terms', 'string', 'Syarat & ketentuan berlaku'],
+            ['belanja_details', 'chat', 'admin_name', 'string', 'Chat Admin Evomi'],
+            ['belanja_details', 'chat', 'reply_hint', 'string', 'Biasanya membalas dalam beberapa menit'],
+            ['belanja_details', 'content', 'fallback_description', 'text', 'Menghadirkan aroma yang merefleksikan ketenangan, kepercayaan diri, dan kejelasan tujuan.'],
+            ['belanja_details', 'disclaimer', 'title', 'string', 'Disclaimer untuk Ketentuan COMPLAIN'],
+            ['belanja_details', 'disclaimer', 'item_1', 'text', 'Warna dan aroma aktual dapat sedikit berbeda tergantung batch produksi.'],
+            ['belanja_details', 'disclaimer', 'item_2', 'text', 'Simpan di tempat sejuk, jauh dari sinar matahari langsung.'],
+            ['belanja_details', 'disclaimer', 'item_3', 'text', 'Komplain hanya diterima maksimal 2x24 jam setelah barang diterima, disertai video unboxing.'],
+            ['belanja_details', 'disclaimer', 'item_4', 'text', 'Produk yang sudah dibuka seal tidak dapat dikembalikan kecuali cacat produksi.'],
+            ['belanja_details', 'disclaimer', 'item_5', 'text', ''],
+            ['belanja_details', 'disclaimer', 'item_6', 'text', ''],
+            ['belanja_details', 'disclaimer', 'empty_hint', 'string', 'Memuat kebijakan toko...'],
+            ['belanja_details', 'images', 'character_purpose', 'image', '/src/images/belanja/detail/purpose-character.svg'],
+            ['belanja_details', 'images', 'character_peaceful', 'image', '/src/images/belanja/detail/peaceful-character.svg'],
+            ['belanja_details', 'images', 'character_rebel', 'image', '/src/images/belanja/detail/rebel-character.svg'],
+            ['belanja_details', 'images', 'character_sweet', 'image', '/src/images/belanja/detail/sweet-character.svg'],
+            ['belanja_details', 'badges', 'purpose', 'string', 'Optimis'],
+            ['belanja_details', 'badges', 'peaceful', 'string', 'Damai'],
+            ['belanja_details', 'badges', 'rebel', 'string', 'Berani'],
+            ['belanja_details', 'badges', 'sweet', 'string', 'Manis'],
+
+            // ---- CHECKOUT ----
+            ['checkout', 'header', 'page_title', 'string', 'Checkout'],
+            ['checkout', 'header', 'preparing', 'string', 'Mempersiapkan pesanan...'],
+            ['checkout', 'sections', 'shipping_address', 'string', 'Alamat Pengiriman'],
+            ['checkout', 'sections', 'order_details', 'string', 'Detail Pesanan'],
+            ['checkout', 'sections', 'payment', 'string', 'Metode Pembayaran'],
+            ['checkout', 'sections', 'summary', 'string', 'Ringkasan'],
+            ['checkout', 'labels', 'store_name', 'string', 'Evomi Official'],
+            ['checkout', 'labels', 'pay_now', 'string', 'Bayar Sekarang'],
+            ['checkout', 'labels', 'change_address', 'string', 'Ganti'],
+            ['checkout', 'labels', 'save_address', 'string', 'Simpan Alamat'],
+            ['checkout', 'labels', 'home', 'string', 'Rumah'],
+            ['checkout', 'labels', 'shipping_method', 'string', 'Pengiriman'],
+            ['checkout', 'labels', 'add_note', 'string', 'Kasih Catatan'],
+            ['checkout', 'labels', 'total_bill', 'string', 'Total Tagihan'],
+            ['checkout', 'messages', 'empty_cart', 'string', 'Keranjang Anda kosong.'],
+            ['checkout', 'messages', 'success_title', 'string', 'Berhasil!'],
+            ['checkout', 'messages', 'success_message', 'string', 'Pesanan Anda berhasil dibuat dan sedang diproses. Notifikasi dikirim ke email Anda.'],
+            ['checkout', 'messages', 'failed_title', 'string', 'Gagal'],
+            ['checkout', 'images', 'banner', 'image', ''],
+        ];
+
+        $en = [
+            ['belanja', 'hero', 'headline_1', 'string', 'Evomi'],
+            ['belanja', 'hero', 'headline_2', 'string', 'Scent'],
+            ['belanja', 'hero', 'headline_3', 'string', 'Collection'],
+            ['belanja', 'hero', 'subtitle', 'string', 'Pick your scent character, or try them all!'],
+            ['belanja', 'hero', 'banner_image', 'image', ''],
+            ['belanja', 'list', 'empty_title', 'string', 'No products yet'],
+            ['belanja', 'list', 'empty_hint', 'string', 'Products will appear here when available.'],
+            ['belanja', 'list', 'see_detail', 'string', 'View Details'],
+            ['belanja', 'list', 'no_image', 'string', 'No image'],
+            ['belanja', 'badges', 'purpose', 'string', 'Optimistic'],
+            ['belanja', 'badges', 'peaceful', 'string', 'Peaceful'],
+            ['belanja', 'badges', 'rebel', 'string', 'Brave'],
+            ['belanja', 'badges', 'sweet', 'string', 'Sweet'],
+
+            ['belanja_details', 'labels', 'detail_title', 'string', 'Product Details'],
+            ['belanja_details', 'labels', 'price', 'string', 'Price'],
+            ['belanja_details', 'labels', 'condition', 'string', 'Condition'],
+            ['belanja_details', 'labels', 'condition_value', 'string', 'New'],
+            ['belanja_details', 'labels', 'weight', 'string', 'Unit Weight'],
+            ['belanja_details', 'labels', 'category', 'string', 'Category'],
+            ['belanja_details', 'labels', 'min_buy', 'string', 'Min. Order'],
+            ['belanja_details', 'labels', 'min_buy_value', 'string', '1 Piece'],
+            ['belanja_details', 'labels', 'showcase', 'string', 'Showcase'],
+            ['belanja_details', 'labels', 'showcase_value', 'string', 'All Showcases'],
+            ['belanja_details', 'labels', 'buy_now', 'string', 'Buy Now'],
+            ['belanja_details', 'labels', 'add_cart', 'string', '+ Cart'],
+            ['belanja_details', 'labels', 'chat', 'string', 'Chat'],
+            ['belanja_details', 'labels', 'wishlist', 'string', 'Wishlist'],
+            ['belanja_details', 'labels', 'share', 'string', 'Share'],
+            ['belanja_details', 'labels', 'discussion', 'string', 'Open Discussion'],
+            ['belanja_details', 'labels', 'qty_hint', 'string', 'Set quantity and notes'],
+            ['belanja_details', 'labels', 'stock', 'string', 'Stock:'],
+            ['belanja_details', 'labels', 'subtotal', 'string', 'Subtotal'],
+            ['belanja_details', 'labels', 'shipping', 'string', 'Shipping'],
+            ['belanja_details', 'labels', 'promo', 'string', 'Promo'],
+            ['belanja_details', 'labels', 'total', 'string', 'Total'],
+            ['belanja_details', 'labels', 'other_couriers', 'string', 'See Other Couriers'],
+            ['belanja_details', 'guarantee', 'title', 'string', 'Product Guarantee'],
+            ['belanja_details', 'guarantee', 'money_back', 'string', "Money back if the product doesn't match"],
+            ['belanja_details', 'guarantee', 'free_shipping', 'string', 'Free Shipping'],
+            ['belanja_details', 'guarantee', 'terms', 'string', 'Terms & conditions apply'],
+            ['belanja_details', 'chat', 'admin_name', 'string', 'Chat Evomi Admin'],
+            ['belanja_details', 'chat', 'reply_hint', 'string', 'Usually replies within a few minutes'],
+            ['belanja_details', 'content', 'fallback_description', 'text', 'Presenting a scent that reflects calmness, confidence, and clarity of purpose.'],
+            ['belanja_details', 'disclaimer', 'title', 'string', 'Disclaimer for Complaint Terms'],
+            ['belanja_details', 'disclaimer', 'item_1', 'text', 'Actual color and scent may vary slightly depending on the production batch.'],
+            ['belanja_details', 'disclaimer', 'item_2', 'text', 'Store in a cool place, away from direct sunlight.'],
+            ['belanja_details', 'disclaimer', 'item_3', 'text', 'Complaints are only accepted within 2x24 hours after delivery, with an unboxing video.'],
+            ['belanja_details', 'disclaimer', 'item_4', 'text', 'Products with broken seals cannot be returned except for manufacturing defects.'],
+            ['belanja_details', 'disclaimer', 'item_5', 'text', ''],
+            ['belanja_details', 'disclaimer', 'item_6', 'text', ''],
+            ['belanja_details', 'disclaimer', 'empty_hint', 'string', 'Loading store policy...'],
+            ['belanja_details', 'images', 'character_purpose', 'image', '/src/images/belanja/detail/purpose-character.svg'],
+            ['belanja_details', 'images', 'character_peaceful', 'image', '/src/images/belanja/detail/peaceful-character.svg'],
+            ['belanja_details', 'images', 'character_rebel', 'image', '/src/images/belanja/detail/rebel-character.svg'],
+            ['belanja_details', 'images', 'character_sweet', 'image', '/src/images/belanja/detail/sweet-character.svg'],
+            ['belanja_details', 'badges', 'purpose', 'string', 'Optimistic'],
+            ['belanja_details', 'badges', 'peaceful', 'string', 'Peaceful'],
+            ['belanja_details', 'badges', 'rebel', 'string', 'Bold'],
+            ['belanja_details', 'badges', 'sweet', 'string', 'Sweet'],
+
+            ['checkout', 'header', 'page_title', 'string', 'Checkout'],
+            ['checkout', 'header', 'preparing', 'string', 'Preparing your order...'],
+            ['checkout', 'sections', 'shipping_address', 'string', 'Shipping Address'],
+            ['checkout', 'sections', 'order_details', 'string', 'Order Details'],
+            ['checkout', 'sections', 'payment', 'string', 'Payment Method'],
+            ['checkout', 'sections', 'summary', 'string', 'Summary'],
+            ['checkout', 'labels', 'store_name', 'string', 'Evomi Official'],
+            ['checkout', 'labels', 'pay_now', 'string', 'Pay Now'],
+            ['checkout', 'labels', 'change_address', 'string', 'Change'],
+            ['checkout', 'labels', 'save_address', 'string', 'Save Address'],
+            ['checkout', 'labels', 'home', 'string', 'Home'],
+            ['checkout', 'labels', 'shipping_method', 'string', 'Shipping'],
+            ['checkout', 'labels', 'add_note', 'string', 'Add a note'],
+            ['checkout', 'labels', 'total_bill', 'string', 'Total Bill'],
+            ['checkout', 'messages', 'empty_cart', 'string', 'Your cart is empty.'],
+            ['checkout', 'messages', 'success_title', 'string', 'Success!'],
+            ['checkout', 'messages', 'success_message', 'string', 'Your order has been created and is being processed. A notification was sent to your email.'],
+            ['checkout', 'messages', 'failed_title', 'string', 'Failed'],
+            ['checkout', 'images', 'banner', 'image', ''],
+        ];
+
+        foreach ($id as [$page, $section, $key, $type, $value]) {
+            SiteContent::updateOrCreate(
+                ['page' => $page, 'section' => $section, 'key' => $key, 'locale' => 'id'],
+                ['type' => $type, 'value' => $value],
+            );
+        }
+
+        foreach ($en as [$page, $section, $key, $type, $value]) {
+            SiteContent::updateOrCreate(
+                ['page' => $page, 'section' => $section, 'key' => $key, 'locale' => 'en'],
+                ['type' => $type, 'value' => $value],
+            );
+        }
+    }
+}
