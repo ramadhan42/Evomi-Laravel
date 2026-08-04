@@ -176,6 +176,23 @@ body {
     animation: slideRightSeamless 80s linear infinite;
 }
 
+@keyframes slideLeftSeamless {
+    0% {
+        transform: translateX(0%);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.animate-slide-left {
+    animation: slideLeftSeamless 80s linear infinite;
+}
+
+#detail-info-scroll::-webkit-scrollbar {
+    display: none;
+}
+
 @keyframes floatSoft {
     0%,
     100% {
@@ -260,12 +277,42 @@ body,
 }
 
 .nav-chrome {
-    background: #1172ba;
+    background: var(--nav-color, #1172ba);
 }
 
 /* Keep navbar stable during View Transitions (like Next persistent layout) */
 #evomi-header {
     view-transition-name: evomi-nav;
+    transform: translate3d(0, 0, 0);
+    transition:
+        transform 0.35s ease-out,
+        opacity 0.35s ease-out,
+        background-color 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform, opacity;
+}
+
+#evomi-header.is-nav-hidden {
+    transform: translate3d(0, -120%, 0);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Cadangan tinggi sebelum JS sync — supaya area biru navbar selalu terlihat */
+#evomi-header-spacer {
+    flex-shrink: 0;
+    pointer-events: none;
+    width: 100%;
+    height: var(--evomi-nav-h, 4.75rem);
+    min-height: var(--evomi-nav-h, 4.75rem);
+    background-color: var(--evomi-theme, #1172ba);
+    transition: background-color 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (min-width: 768px) {
+    #evomi-header-spacer {
+        height: var(--evomi-nav-h, 7.25rem);
+        min-height: var(--evomi-nav-h, 7.25rem);
+    }
 }
 
 @supports (view-transition-name: none) {
@@ -344,37 +391,283 @@ body,
     transition: none !important;
 }
 
+/* Auth account menu (match Next.js navbar) */
+.nav-avatar {
+    transition:
+        box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        background-color 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        color 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-avatar:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+    background-color: #ffffff;
+    color: var(--nav-color);
+    border-color: rgba(255, 255, 255, 0.95);
+}
+
+.nav-avatar-ring {
+    position: absolute;
+    inset: -3px;
+    border-radius: 9999px;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    opacity: 0;
+    transform: scale(0.92);
+    transition:
+        opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+}
+
+.nav-avatar:hover .nav-avatar-ring,
+.nav-avatar-wrap.is-open .nav-avatar-ring {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.nav-avatar-tooltip {
+    position: absolute;
+    top: calc(100% + 14px);
+    right: 0;
+    min-width: 260px;
+    max-width: 320px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: #ffffff;
+    color: #111827;
+    box-shadow:
+        0 16px 36px rgba(0, 0, 0, 0.14),
+        0 0 0 1px rgba(17, 24, 39, 0.06);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-10px) scale(0.96);
+    transform-origin: top right;
+    transition:
+        opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0.38s;
+    z-index: 80;
+}
+
+.nav-avatar-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 16px;
+    width: 12px;
+    height: 12px;
+    background: #ffffff;
+    transform: rotate(45deg);
+    box-shadow: -1px -1px 0 rgba(17, 24, 39, 0.06);
+}
+
+.nav-avatar-wrap.is-open .nav-avatar-tooltip {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+.nav-account-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 12px;
+    text-align: left;
+    transition:
+        background-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-account-item:hover {
+    background-color: #f3f4f6;
+}
+
+.nav-logout {
+    position: relative;
+    color: #ffffff;
+    background: transparent;
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
+    transition:
+        background-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.2s ease;
+}
+
+.nav-logout:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.9);
+}
+
+.nav-logout:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.nav-logout-icon {
+    flex-shrink: 0;
+}
+
+/* Profile account area */
+.evomi-profile-shell {
+    color: #111827;
+}
+
+.profile-brand-header {
+    box-shadow: 0 10px 30px rgba(17, 114, 186, 0.18);
+}
+
+.profile-nav-item:not(.text-white):hover {
+    background-color: color-mix(in srgb, var(--profile-item-color, #1172ba) 12%, white);
+    color: var(--profile-item-color, #1172ba);
+}
+
 /* Soft page transitions — keep navbar mounted (Next SPA feel), no loader */
 .page-shell {
     opacity: 1;
     transform: translate3d(0, 0, 0);
     transition:
-        opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-        transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-        background-color 0.2s ease;
+        opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.48s cubic-bezier(0.22, 1, 0.36, 1),
+        background-color 0.45s cubic-bezier(0.22, 1, 0.36, 1);
     will-change: opacity, transform;
 }
 
 .page-shell.is-leaving {
     opacity: 0;
-    transform: translate3d(0, 12px, 0);
+    transform: translate3d(0, 8px, 0);
     pointer-events: none;
 }
 
 .page-shell.is-entering {
     opacity: 0;
-    transform: translate3d(0, 16px, 0);
+    transform: translate3d(0, 10px, 0);
     transition: none;
 }
 
+/* Soft color morph across chrome */
+body,
+.evomi-site,
+#evomi-main,
+#evomi-header,
+#evomi-header-spacer,
+#evomi-footer-wrap footer,
+footer,
+.nav-chrome {
+    transition:
+        background-color 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.35s ease;
+}
+
+#evomi-footer-wrap {
+    background-color: var(--evomi-theme, #1172ba);
+    transition: background-color 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /*
- * Underlay saat soft-nav ke beranda: hindari flash putih
- * (konten fade out menampilkan body di belakang)
+ * Belanja details: bubble half overlaps footer.
+ * Main underlay uses theme accent so any seam is accent, not white.
+ * Bubbles stay visible against the white content above.
+ */
+body.evomi-detail-seamless #evomi-main {
+    background-color: var(--evomi-theme, #1172ba);
+    overflow: visible;
+}
+
+body.evomi-detail-seamless #evomi-footer-wrap.belanja-detail-footer-seam {
+    margin-top: -15px;
+    padding-top: 15px;
+}
+
+@media (min-width: 768px) {
+    body.evomi-detail-seamless #evomi-footer-wrap.belanja-detail-footer-seam {
+        margin-top: -23px;
+        padding-top: 23px;
+    }
+}
+
+/* Footer CTA follows product/theme accent so detail divider ↔ footer stay unified */
+.footer-daftar-btn {
+    color: var(--footer-accent, var(--evomi-theme, #1172ba));
+    border: 1px solid var(--footer-accent, var(--evomi-theme, #1172ba));
+}
+
+.footer-daftar-btn:hover:not(:disabled) {
+    background-color: var(--footer-accent, var(--evomi-theme, #1172ba));
+    color: #fff;
+}
+
+/*
+ * Underlay biru saat soft-nav ke beranda / belanja / artikel / auth:
+ * hindari flash putih yang memotong navbar ↔ section 1
  */
 body.evomi-surface-blue,
 body.evomi-surface-blue .evomi-site,
 body.evomi-surface-blue #evomi-main {
     background-color: #1172ba !important;
+}
+
+body.evomi-surface-blue #evomi-main.page-shell {
+    background-color: #1172ba !important;
+}
+
+/* Auth: sembunyikan navbar/footer, biarkan kartu login memenuhi viewport */
+body.evomi-auth-mode #evomi-header,
+body.evomi-auth-mode #evomi-header-spacer,
+body.evomi-auth-mode #evomi-footer-wrap {
+    display: none !important;
+}
+
+body.evomi-auth-mode,
+body.evomi-auth-mode .evomi-site,
+body.evomi-auth-mode #evomi-main {
+    background-color: #2b92de !important;
+}
+
+body.evomi-auth-mode #evomi-main {
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* Auth floating characters — subtle idle motion */
+@keyframes auth-char-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.auth-char-float {
+    animation: auth-char-float 5.5s ease-in-out infinite;
+    will-change: transform;
+}
+
+.auth-char-float-delay-1 {
+    animation-delay: 0.6s;
+}
+
+.auth-char-float-delay-2 {
+    animation-delay: 1.2s;
+}
+
+.auth-char-float-delay-3 {
+    animation-delay: 1.8s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-char-float {
+        animation: none;
+    }
 }
 
 @supports (view-transition-name: none) {
@@ -383,6 +676,33 @@ body.evomi-surface-blue #evomi-main {
         animation-duration: 0.32s;
         animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
     }
+}
+
+/* ——— Admin dashboard ——— */
+[x-cloak] {
+    display: none !important;
+}
+
+body.evomi-admin-mode {
+    background-color: #f8f9fa;
+}
+
+.admin-sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 999px;
+}
+
+.admin-nav-item svg {
+    flex-shrink: 0;
 }
 
 /* ——— Beranda parallax + scroll reveal (Next Framer equivalent) ——— */
@@ -558,6 +878,21 @@ body.evomi-surface-blue #evomi-main {
 .product-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 20px 40px -20px rgba(17, 114, 186, 0.35);
+}
+
+/* Belanja product cards — Next SecondSectionBelanja hover tilt */
+.belanja-card {
+    transition:
+        box-shadow 0.3s ease,
+        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.belanja-card--tilt-right:hover {
+    transform: rotate(5deg) scale(1.02);
+}
+
+.belanja-card--tilt-left:hover {
+    transform: rotate(-5deg) scale(1.02);
 }
 
 .bv-card-title {

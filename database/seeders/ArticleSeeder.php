@@ -9,6 +9,8 @@ class ArticleSeeder extends Seeder
 {
     public function run(): void
     {
+        Article::query()->delete();
+
         $articles = [
             [
                 'title' => 'Cara Memilih Parfum Sesuai Kepribadian',

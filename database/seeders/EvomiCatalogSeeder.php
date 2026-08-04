@@ -14,16 +14,6 @@ class EvomiCatalogSeeder extends Seeder
     {
         $this->seedAdminFromEnv();
 
-        if (!User::where('email', 'demo@evomi.com')->exists()) {
-            User::create([
-                'name' => 'Demo User',
-                'email' => 'demo@evomi.com',
-                'password' => 'password123',
-                'is_admin' => false,
-                'nama_lengkap' => 'Pengguna Demo',
-            ]);
-        }
-
         // Produk dikelola ProductSeeder (gambar + urutan lengkap)
 
         $kurirSeeds = [
@@ -188,6 +178,7 @@ class EvomiCatalogSeeder extends Seeder
 
     /**
      * Buat/update admin dari EVOMI_ADMIN_* di .env (pola Arcanisia).
+     * Dipakai saat seed penuh; ResetUserDataSeeder juga membuat admin fresh.
      */
     private function seedAdminFromEnv(): void
     {
@@ -195,26 +186,21 @@ class EvomiCatalogSeeder extends Seeder
             return;
         }
 
-        $email = config('evomi.development_admin.email');
-        $password = config('evomi.development_admin.password');
-
-        if (!is_string($email) || $email === '' || !is_string($password) || $password === '') {
-            $this->command?->warn(
-                'EVOMI_ADMIN_EMAIL / EVOMI_ADMIN_PASSWORD belum di-set di .env — admin tidak di-seed.',
-            );
-
-            return;
-        }
+        $email = config('evomi.development_admin.email') ?: 'admin@evomi.com';
+        $password = config('evomi.development_admin.password') ?: 'password123';
+        $name = config('evomi.development_admin.name') ?: 'Evomi Admin';
 
         User::query()->updateOrCreate(
             ['email' => $email],
             [
-                'name' => config('evomi.development_admin.name') ?: 'Evomi Admin',
+                'name' => $name,
                 'password' => $password,
                 'is_admin' => true,
-                'nama_lengkap' => config('evomi.development_admin.name') ?: 'Evomi Admin',
+                'nama_lengkap' => $name,
                 'email_verified_at' => now(),
             ],
         );
+
+        $this->command?->info("Admin disinkronkan: {$email}");
     }
 }

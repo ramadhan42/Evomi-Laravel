@@ -9,6 +9,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            ResetUserDataSeeder::class,
             EvomiCatalogSeeder::class,
             ProductSeeder::class,
             QuizSeeder::class,

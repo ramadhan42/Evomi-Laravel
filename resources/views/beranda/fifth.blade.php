@@ -95,8 +95,9 @@
     <div class="relative z-10 w-full max-w-[1100px] grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5 md:gap-6 lg:gap-8 mb-8 md:mb-12 px-0 sm:px-2">
         @foreach ($products as $product)
             <a
-                href="{{ route('belanja') }}"
+                href="{{ route('belanja.show', $product['id']) }}"
                 class="product-card group relative w-full max-w-[260px] mx-auto rounded-[18px] md:rounded-[24px] shadow-sm hover:shadow-xl transition-[box-shadow] duration-300 ease-out overflow-hidden flex flex-col border-2 {{ $product['border'] }} hover:z-20 parallax-self"
+                data-soft-nav
                 data-reveal
                 data-reveal-delay="{{ number_format($loop->index * 0.12, 2, '.', '') }}"
                 data-parallax="0.1"

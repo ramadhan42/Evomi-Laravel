@@ -18,10 +18,16 @@ class ProductSeeder extends Seeder
      *
      * File gambar per produk (wajib):
      * - belanja.png          → image_produk_belanja (halaman belanja)
-     * - image_1.png … image_4.png → gallery detail
+     * - image_1.png … image_3.png → gallery detail (3 slide, sama Next.js)
+     * - image_4.png          → opsional (disimpan, tidak dipakai di detail)
      */
     public function run(): void
     {
+        // Hapus produk lama + folder storage products agar path gambar bersih
+        Product::query()->delete();
+        Storage::disk('public')->deleteDirectory('products');
+        Storage::disk('public')->makeDirectory('products');
+
         $catalog = [
             [
                 'slug' => 'purpose',

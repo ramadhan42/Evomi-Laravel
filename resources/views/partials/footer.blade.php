@@ -1,4 +1,10 @@
-<footer class="w-full bg-[#1172BA] py-10 md:pt-12 md:pb-8 px-5 md:px-8 lg:px-24 relative font-nohemi text-white">
+@php
+    $footerAccent = $themeAccent ?? '#1172BA';
+@endphp
+<footer
+    class="w-full py-10 md:pt-12 md:pb-8 px-5 md:px-8 lg:px-24 relative font-nohemi text-white"
+    style="background-color: {{ $footerAccent }}; --footer-accent: {{ $footerAccent }}"
+>
     <div class="flex flex-col lg:flex-row justify-between gap-y-12 lg:gap-y-0 mb-12 md:mb-8">
         {{-- Buletin --}}
         <div class="flex flex-col gap-3 md:gap-4 w-full lg:w-[45%] max-w-[400px] mx-auto lg:mx-0 text-center lg:text-left items-center lg:items-start">
@@ -31,7 +37,7 @@
                 <button
                     type="submit"
                     :disabled="submitting"
-                    class="footer-daftar-btn flex-shrink-0 w-[100px] md:w-[120px] h-[50px] md:h-[48px] rounded-full text-[14px] md:text-[16px] font-bold transition-all shadow-sm bg-white text-[#1172BA] border border-[#1172BA] hover:bg-[#1172BA] hover:text-white disabled:opacity-70 disabled:cursor-not-allowed"
+                    class="footer-daftar-btn flex-shrink-0 w-[100px] md:w-[120px] h-[50px] md:h-[48px] rounded-full text-[14px] md:text-[16px] font-bold transition-all shadow-sm bg-white disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     <span x-text="submitting ? '...' : 'Daftar'">Daftar</span>
                 </button>
@@ -104,6 +110,9 @@
                     </li>
                     <li>
                         <a href="{{ route('belanja') }}" class="text-[14px] md:text-[16px] inline-block w-fit hover:scale-110 hover:font-bold transition-all origin-left" data-soft-nav>Belanja</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('artikel') }}" class="text-[14px] md:text-[16px] inline-block w-fit hover:scale-110 hover:font-bold transition-all origin-left" data-soft-nav>Artikel</a>
                     </li>
                     <li>
                         <a href="{{ route('kuis') }}" class="text-[14px] md:text-[16px] inline-block w-fit hover:scale-110 hover:font-bold transition-all origin-left" data-soft-nav>Kuis</a>
