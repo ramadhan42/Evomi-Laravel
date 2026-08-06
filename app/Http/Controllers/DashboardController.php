@@ -6,23 +6,23 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    /** @var array<string, string> */
-    private const STUB_PAGES = [
-        'cms' => 'CMS',
-        'products' => 'Produk',
-        'articles' => 'Artikel',
-        'promos' => 'Promo',
-        'payment' => 'Pembayaran',
-        'kurirs' => 'Kurir',
-        'quiz' => 'Kuis',
-        'orders' => 'Pesanan',
-        'trackings' => 'Pelacakan',
-        'messages' => 'Pesan',
-        'cart' => 'Keranjang',
-        'wishlist' => 'Wishlist',
-        'users' => 'Semua User',
-        'subscribers' => 'Subscriber',
-        'profile' => 'Profil Admin',
+    /** @var array<string, array{title: string, view: string}> */
+    private const PAGES = [
+        'cms' => ['title' => 'CMS', 'view' => 'dashboard.cms'],
+        'products' => ['title' => 'Produk', 'view' => 'dashboard.products'],
+        'articles' => ['title' => 'Artikel', 'view' => 'dashboard.articles'],
+        'promos' => ['title' => 'Promo', 'view' => 'dashboard.promos'],
+        'payment' => ['title' => 'Pembayaran', 'view' => 'dashboard.payment'],
+        'kurirs' => ['title' => 'Kurir', 'view' => 'dashboard.kurirs'],
+        'quiz' => ['title' => 'Kuis', 'view' => 'dashboard.quiz'],
+        'orders' => ['title' => 'Pesanan', 'view' => 'dashboard.orders'],
+        'trackings' => ['title' => 'Pelacakan', 'view' => 'dashboard.trackings'],
+        'messages' => ['title' => 'Pesan', 'view' => 'dashboard.messages'],
+        'cart' => ['title' => 'Keranjang', 'view' => 'dashboard.cart'],
+        'wishlist' => ['title' => 'Wishlist', 'view' => 'dashboard.wishlist'],
+        'users' => ['title' => 'Semua User', 'view' => 'dashboard.users'],
+        'subscribers' => ['title' => 'Subscriber', 'view' => 'dashboard.subscribers'],
+        'profile' => ['title' => 'Profil Admin', 'view' => 'dashboard.profile'],
     ];
 
     public function home(): View
@@ -33,13 +33,15 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function stub(string $page): View
+    public function page(string $page): View
     {
-        abort_unless(array_key_exists($page, self::STUB_PAGES), 404);
+        abort_unless(array_key_exists($page, self::PAGES), 404);
 
-        return view('dashboard.stub', [
+        $meta = self::PAGES[$page];
+
+        return view($meta['view'], [
             'activeMenu' => $page,
-            'pageTitle' => self::STUB_PAGES[$page],
+            'pageTitle' => $meta['title'],
             'pageKey' => $page,
         ]);
     }

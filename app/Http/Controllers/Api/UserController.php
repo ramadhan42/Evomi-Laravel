@@ -55,11 +55,14 @@ class UserController extends Controller
             'phone' => ['nullable', 'string', 'max:20'], // Tambahkan validasi phone
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8'],
-            'avatar_profile' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'], // Validasi gambar
+            'avatar_profile' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'], // Validasi gambar
         ]);
 
         // Handle File Upload
         if ($request->hasFile('avatar_profile')) {
+            if ($user->avatar_profile && ! str_starts_with((string) $user->avatar_profile, 'http')) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar_profile);
+            }
             $path = $request->file('avatar_profile')->store('avatars', 'public');
             $validated['avatar_profile'] = $path;
         }
@@ -75,7 +78,7 @@ class UserController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Profil berhasil diperbarui.',
-            'data' => $user,
+            'data' => $user->fresh(),
         ], 200);
     }
 

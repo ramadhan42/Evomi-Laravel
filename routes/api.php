@@ -190,6 +190,8 @@ Route::middleware(['auth:sanctum', 'last.seen'])->group(function () {
         Route::get('/payment-settings', [PaymentSettingController::class, 'show']);
         Route::put('/payment-settings', [PaymentSettingController::class, 'update']);
         Route::patch('/payment-settings', [PaymentSettingController::class, 'update']);
+
+        Route::get('/products', [ProductController::class, 'adminIndex']);
     });
 
     // Product write + order status + tracking update (admin)

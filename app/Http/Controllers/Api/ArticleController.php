@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Article;
+use App\Support\BelanjaCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -55,6 +56,18 @@ class ArticleController extends Controller
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentArticle(Article $article): array
+    {
+        $data = $article->toArray();
+        $resolved = BelanjaCatalog::articleImageUrl($article->image);
+        $data['image_url'] = $resolved !== '' ? $resolved : null;
+
+        return $data;
+    }
+
     public function index(Request $request)
     {
         $query = Article::query()->orderByDesc('published_at')->orderByDesc('id');
@@ -73,7 +86,7 @@ class ArticleController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $query->get(),
+            'data' => $query->get()->map(fn (Article $a) => $this->presentArticle($a))->values(),
         ]);
     }
 
@@ -93,7 +106,7 @@ class ArticleController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $article,
+            'data' => $this->presentArticle($article),
         ]);
     }
 
@@ -102,7 +115,9 @@ class ArticleController extends Controller
         $articles = Article::query()
             ->orderByDesc('published_at')
             ->orderByDesc('id')
-            ->get();
+            ->get()
+            ->map(fn (Article $a) => $this->presentArticle($a))
+            ->values();
 
         return response()->json([
             'success' => true,
@@ -123,7 +138,7 @@ class ArticleController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $article,
+            'data' => $this->presentArticle($article),
         ]);
     }
 
@@ -192,7 +207,7 @@ class ArticleController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Artikel berhasil ditambahkan',
-            'data' => $article,
+            'data' => $this->presentArticle($article),
         ], 201);
     }
 
@@ -263,7 +278,7 @@ class ArticleController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Artikel berhasil diupdate',
-            'data' => $article->fresh(),
+            'data' => $this->presentArticle($article->fresh()),
         ]);
     }
 

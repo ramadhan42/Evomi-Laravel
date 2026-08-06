@@ -10,7 +10,7 @@
     </div>
 
     <template x-if="loading">
-        <div class="w-full py-24 flex items-center justify-center">
+        <div class="w-full min-h-[60vh] flex items-center justify-center">
             <div class="w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin"></div>
         </div>
     </template>
@@ -22,7 +22,7 @@
     <template x-if="!loading && !error">
         <div class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <a href="{{ route('dashboard.stub', 'products') }}" class="relative bg-white p-6 rounded-2xl shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-50/50 hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)] hover:border-gray-200 transition-all">
+                <a href="{{ route('dashboard.page', 'products') }}" class="relative bg-white p-6 rounded-2xl shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-50/50 hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)] hover:border-gray-200 transition-all">
                     <div class="flex justify-between items-start gap-3">
                         <div class="min-w-0">
                             <p class="text-sm font-medium text-gray-500">Total Produk</p>
@@ -37,7 +37,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('dashboard.stub', 'orders') }}" class="relative bg-white p-6 rounded-2xl shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-50/50 hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)] hover:border-gray-200 transition-all">
+                <a href="{{ route('dashboard.page', 'orders') }}" class="relative bg-white p-6 rounded-2xl shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-50/50 hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)] hover:border-gray-200 transition-all">
                     <div class="flex justify-between items-start gap-3">
                         <div class="min-w-0">
                             <p class="text-sm font-medium text-gray-500">Total Pesanan</p>
@@ -52,7 +52,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('dashboard.stub', 'users') }}" class="relative bg-white p-6 rounded-2xl shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-50/50 hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)] hover:border-gray-200 transition-all">
+                <a href="{{ route('dashboard.page', 'users') }}" class="relative bg-white p-6 rounded-2xl shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-50/50 hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)] hover:border-gray-200 transition-all">
                     <div class="flex justify-between items-start gap-3">
                         <div class="min-w-0">
                             <p class="text-sm font-medium text-gray-500">Pengguna Aktif</p>
@@ -67,7 +67,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('dashboard.stub', 'orders') }}" class="relative bg-white p-6 rounded-2xl shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-50/50 hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)] hover:border-gray-200 transition-all">
+                <a href="{{ route('dashboard.page', 'orders') }}" class="relative bg-white p-6 rounded-2xl shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-50/50 hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)] hover:border-gray-200 transition-all">
                     <div class="flex justify-between items-start gap-3">
                         <div class="min-w-0">
                             <p class="text-sm font-medium text-gray-500">Total Pendapatan</p>
@@ -124,13 +124,13 @@
                     <div class="space-y-3 flex-1" x-show="recentOrders.length > 0">
                         <template x-for="order in recentOrders" :key="order.id">
                             <a
-                                href="{{ route('dashboard.stub', 'orders') }}"
+                                href="{{ route('dashboard.page', 'orders') }}"
                                 class="block w-full rounded-2xl border border-gray-100 bg-gray-50/40 p-3.5 text-left transition-colors hover:border-gray-200 hover:bg-white hover:shadow-sm"
                             >
                                 <div class="flex items-start gap-3">
                                     <div class="w-12 h-12 rounded-xl border border-gray-200 bg-white flex items-center justify-center overflow-hidden shrink-0">
                                         <template x-if="order.imageUrl">
-                                            <img :src="order.imageUrl" :alt="order.productTitle" class="w-full h-full object-cover" x-on:error="$el.style.display='none'">
+                                            <img :src="order.imageUrl" :alt="order.productTitle" class="w-full h-full object-contain p-1" x-on:error="$el.style.display='none'">
                                         </template>
                                         <template x-if="!order.imageUrl">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>

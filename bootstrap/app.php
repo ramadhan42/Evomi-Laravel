@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->encryptCookies(except: [
+            'evomi_locale',
+        ]);
 
         if (env('APP_ENV', 'production') !== 'local') {
             $middleware->throttleApi('60,1');

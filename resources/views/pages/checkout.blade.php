@@ -2,6 +2,10 @@
 
 @section('title', 'Checkout | Evomi')
 
+@php
+    $checkoutCms = \App\Support\CmsStorefront::forPage('checkout');
+@endphp
+
 @section('content')
 <section
     class="bg-[#F0F3F7] w-full min-h-screen pt-4 pb-16 relative"
@@ -17,7 +21,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p class="text-gray-500 font-parkinsans text-sm">Menyiapkan pesanan…</p>
+        <p class="text-gray-500 font-parkinsans text-sm">{{ $checkoutCms->get('header', 'preparing', evomi_l('Menyiapkan pesanan…', 'Preparing your order...')) }}</p>
     </div>
 
     <div
@@ -31,7 +35,7 @@
             class="inline-flex px-5 py-2.5 text-white rounded-xl text-sm font-semibold"
             :style="{ backgroundColor: brand }"
             data-soft-nav
-        >Kembali</a>
+        >{{ evomi_l('Kembali', 'Back') }}</a>
     </div>
 
     <div
@@ -43,7 +47,7 @@
         x-transition:enter-end="opacity-100 translate-y-0"
     >
         <div class="mb-4 md:mb-5">
-            <h1 class="text-2xl md:text-[28px] font-bold font-nohemi tracking-tight" :style="{ color: brand }">Checkout</h1>
+            <h1 class="text-2xl md:text-[28px] font-bold font-nohemi tracking-tight" :style="{ color: brand }">{{ $checkoutCms->get('header', 'page_title', 'Checkout') }}</h1>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-stretch">
@@ -60,8 +64,8 @@
                                 <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
                             </span>
                             <div>
-                                <p class="text-sm font-bold text-gray-900">Alamat Pengiriman</p>
-                                <p class="text-[11px] text-gray-400 font-parkinsans">Pastikan alamat penerima sudah benar</p>
+                                <p class="text-sm font-bold text-gray-900">{{ $checkoutCms->get('sections', 'shipping_address', evomi_l('Alamat Pengiriman', 'Shipping Address')) }}</p>
+                                <p class="text-[11px] text-gray-400 font-parkinsans">{{ evomi_l('Pastikan alamat penerima sudah benar', 'Make sure the recipient address is correct') }}</p>
                             </div>
                         </div>
                         <button
@@ -70,7 +74,7 @@
                             @click="startEditAddress()"
                             class="shrink-0 px-3.5 py-1.5 rounded-lg border text-sm font-semibold transition hover:bg-gray-50"
                             :style="{ color: brand, borderColor: brand + '55' }"
-                        >Ubah</button>
+                        >{{ $checkoutCms->get('labels', 'change_address', evomi_l('Ubah', 'Change')) }}</button>
                     </div>
 
                     <div x-show="!editingAddress && hasAddress" class="rounded-xl bg-gray-50/80 border border-gray-100 p-3.5 md:p-4">
@@ -78,7 +82,7 @@
                             <span
                                 class="mt-0.5 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-md shrink-0"
                                 :style="{ color: brand, backgroundColor: brand + '14' }"
-                            >Rumah</span>
+                            >{{ $checkoutCms->get('labels', 'home', evomi_l('Rumah', 'Home')) }}</span>
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-bold text-gray-900" x-text="form.name"></p>
                                 <p class="text-[13px] text-gray-600 mt-1 leading-relaxed" x-text="form.address"></p>
@@ -92,24 +96,24 @@
                     </div>
 
                     <div x-show="editingAddress || !hasAddress" x-cloak class="space-y-3 font-parkinsans">
-                        <p x-show="!hasAddress" class="text-sm text-gray-500">Isi alamat pengiriman untuk melanjutkan.</p>
+                        <p x-show="!hasAddress" class="text-sm text-gray-500">{{ evomi_l('Isi alamat pengiriman untuk melanjutkan.', 'Enter a shipping address to continue.') }}</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-[11px] font-semibold text-gray-500 mb-1.5">Nama penerima</label>
+                                <label class="block text-[11px] font-semibold text-gray-500 mb-1.5">{{ evomi_l('Nama penerima', 'Recipient name') }}</label>
                                 <div class="relative">
                                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0"/></svg>
-                                    <input type="text" x-model="draft.name" placeholder="Nama lengkap" class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 outline-none focus:ring-2" :style="{ '--tw-ring-color': brand + '40' }">
+                                    <input type="text" x-model="draft.name" placeholder="{{ evomi_l('Nama lengkap', 'Full name') }}" class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 outline-none focus:ring-2" :style="{ '--tw-ring-color': brand + '40' }">
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-[11px] font-semibold text-gray-500 mb-1.5">Email</label>
+                                <label class="block text-[11px] font-semibold text-gray-500 mb-1.5">{{ evomi_l('Email', 'Email') }}</label>
                                 <div class="relative">
                                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
                                     <input type="email" x-model="draft.email" placeholder="email@kamu.com" class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 outline-none focus:ring-2" :style="{ '--tw-ring-color': brand + '40' }">
                                 </div>
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[11px] font-semibold text-gray-500 mb-1.5">No. HP</label>
+                                <label class="block text-[11px] font-semibold text-gray-500 mb-1.5">{{ evomi_l('No. HP', 'Phone') }}</label>
                                 <div class="relative max-w-md">
                                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"/></svg>
                                     <input type="tel" x-model="draft.phone" placeholder="08xxxxxxxxxx" class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 outline-none focus:ring-2" :style="{ '--tw-ring-color': brand + '40' }">
@@ -117,15 +121,15 @@
                             </div>
                         </div>
                         <div>
-                            <label class="block text-[11px] font-semibold text-gray-500 mb-1.5">Alamat lengkap</label>
+                            <label class="block text-[11px] font-semibold text-gray-500 mb-1.5">{{ evomi_l('Alamat lengkap', 'Full address') }}</label>
                             <div class="relative">
                                 <svg class="absolute left-3 top-3 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
-                                <textarea x-model="draft.address" rows="3" placeholder="Jalan, nomor, RT/RW, kelurahan, kecamatan, kota, kode pos" class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 outline-none resize-none focus:ring-2" :style="{ '--tw-ring-color': brand + '40' }"></textarea>
+                                <textarea x-model="draft.address" rows="3" placeholder="{{ evomi_l('Jalan, nomor, RT/RW, kelurahan, kecamatan, kota, kode pos', 'Street, number, district, city, postal code') }}" class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 outline-none resize-none focus:ring-2" :style="{ '--tw-ring-color': brand + '40' }"></textarea>
                             </div>
                         </div>
                         <div class="flex gap-2 justify-end pt-1">
-                            <button type="button" x-show="hasAddress" @click="cancelAddressEdit()" class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50">Batal</button>
-                            <button type="button" @click="saveAddress()" class="px-4 py-2 rounded-lg text-sm font-semibold text-white" :style="{ backgroundColor: brand }">Simpan Alamat</button>
+                            <button type="button" x-show="hasAddress" @click="cancelAddressEdit()" class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50">{{ evomi_l('Batal', 'Cancel') }}</button>
+                            <button type="button" @click="saveAddress()" :disabled="savingAddress" class="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" :style="{ backgroundColor: brand }" x-text="savingAddress ? $L('Menyimpan...', 'Saving...') : @js($checkoutCms->get('labels', 'save_address', evomi_l('Simpan Alamat', 'Save Address')))"></button>
                         </div>
                     </div>
                 </div>
@@ -321,7 +325,7 @@
                         >
                             <svg x-show="!processing" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                             <svg x-show="processing" x-cloak class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                            <span x-text="processing ? 'Memproses…' : 'Bayar Sekarang'"></span>
+                            <span x-text="processing ? $L('Memproses…', 'Processing…') : @js($checkoutCms->get('labels', 'pay_now', evomi_l('Bayar Sekarang', 'Pay Now')))"></span>
                         </button>
                         <p class="mt-3 text-[11px] text-gray-400 leading-relaxed text-center">
                             Dengan melanjutkan, kamu menyetujui syarat &amp; ketentuan Evomi.
@@ -354,7 +358,7 @@
                     @click="closeModal()"
                     class="w-full py-3 rounded-xl font-semibold text-white"
                     :style="{ backgroundColor: brand }"
-                    x-text="modal.type === 'success' ? 'Selesai' : 'Tutup'"
+                    x-text="modal.type === 'success' ? $L('Selesai', 'Done') : $L('Tutup', 'Close')"
                 ></button>
             </div>
         </div>

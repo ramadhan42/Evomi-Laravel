@@ -10,11 +10,35 @@ use Illuminate\Support\Facades\Validator;
 class OrderTrackingController extends Controller
 {
     /**
+     * Normalize timeline entries so clients always receive `time` (accepts legacy `date`).
+     *
+     * @param  mixed  $timeline
+     * @return array<int, array{status: mixed, time: mixed, description: mixed}>
+     */
+    private function normalizeTimeline($timeline): array
+    {
+        return collect($timeline ?? [])->map(function ($item) {
+            $item = is_array($item) ? $item : (array) $item;
+
+            return [
+                'status' => $item['status'] ?? '',
+                'time' => $item['time'] ?? $item['date'] ?? null,
+                'description' => $item['description'] ?? null,
+            ];
+        })->values()->all();
+    }
+
+    /**
      * 1. READ (All): Mengambil daftar semua pelacakan pesanan
      */
     public function index()
     {
-        $trackings = OrderTracking::latest()->get();
+        $trackings = OrderTracking::latest()->get()->map(function (OrderTracking $tracking) {
+            $row = $tracking->toArray();
+            $row['timeline'] = $this->normalizeTimeline($tracking->timeline);
+
+            return $row;
+        });
 
         return response()->json([
             'success' => true,
@@ -48,12 +72,19 @@ class OrderTrackingController extends Controller
             ], 422);
         }
 
-        $tracking = OrderTracking::create($request->all());
+        $payload = $request->all();
+        if (array_key_exists('timeline', $payload)) {
+            $payload['timeline'] = $this->normalizeTimeline($payload['timeline']);
+        }
+
+        $tracking = OrderTracking::create($payload);
+        $data = $tracking->toArray();
+        $data['timeline'] = $this->normalizeTimeline($tracking->timeline);
 
         return response()->json([
             'success' => true,
             'message' => 'Data pelacakan berhasil dibuat.',
-            'data' => $tracking
+            'data' => $data
         ], 201);
     }
 
@@ -83,16 +114,6 @@ class OrderTrackingController extends Controller
             ], 404);
         }
 
-        $timeline = collect($tracking->timeline ?? [])->map(function ($item) {
-            $rawTime = $item['time'] ?? $item['date'] ?? null;
-
-            return [
-                'status' => $item['status'] ?? '',
-                'time' => $rawTime,
-                'description' => $item['description'] ?? null,
-            ];
-        })->values()->all();
-
         return response()->json([
             'success' => true,
             'data' => [
@@ -112,7 +133,7 @@ class OrderTrackingController extends Controller
                     'phone' => $tracking->recipient_phone,
                     'address' => $tracking->recipient_address,
                 ],
-                'timeline' => $timeline,
+                'timeline' => $this->normalizeTimeline($tracking->timeline),
             ]
         ], 200);
     }
@@ -152,13 +173,21 @@ class OrderTrackingController extends Controller
             ], 422);
         }
 
-        // Lakukan update data
-        $tracking->update($request->all());
+        $payload = $request->all();
+        if (array_key_exists('timeline', $payload)) {
+            $payload['timeline'] = $this->normalizeTimeline($payload['timeline']);
+        }
+
+        $tracking->update($payload);
+        $tracking->refresh();
+
+        $data = $tracking->toArray();
+        $data['timeline'] = $this->normalizeTimeline($tracking->timeline);
 
         return response()->json([
             'success' => true,
             'message' => 'Data pelacakan berhasil diperbarui.',
-            'data' => $tracking
+            'data' => $data
         ], 200);
     }
 

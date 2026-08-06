@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Faq;
 use App\Models\SiteContent;
+use App\Support\BerandaCmsDefaults;
 use App\Support\LocaleResolver;
 use App\Support\PublicContentCache;
 use Illuminate\Http\Request;
@@ -83,6 +84,12 @@ class CmsController extends Controller
                     'value' => null,
                 ];
             });
+        }
+
+        // Beranda: merge canonical frontend defaults so Dashboard shows editable
+        // fields even when DB rows are missing. Existing DB values always win.
+        if ($page === 'beranda') {
+            $rows = BerandaCmsDefaults::mergeAdminRows($rows, $locale);
         }
 
         return response()->json([
@@ -169,14 +176,7 @@ class CmsController extends Controller
      */
     private function isLayoutStyleKey(string $key): bool
     {
-        if (str_starts_with($key, 'wave_')) {
-            return true;
-        }
-
-        return (bool) preg_match(
-            '/(_mobile|_desktop|_color|_fs_|_size_|_gap_|_rotate_|_pos_|_left_|_right_|_top_|_bottom_)/',
-            $key
-        );
+        return BerandaCmsDefaults::isLayoutStyleKey($key);
     }
 
     /**

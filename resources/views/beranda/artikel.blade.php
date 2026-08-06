@@ -2,16 +2,16 @@
     <div class="relative z-10 max-w-6xl mx-auto px-5 md:px-8">
         <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 md:mb-10">
             <div>
-                <h2 class="text-white text-[26px] md:text-[38px] font-bold leading-tight">Artikel Parfum</h2>
+                <h2 class="text-white text-[26px] md:text-[38px] font-bold leading-tight">{{ evomi_l('Artikel Parfum', 'Perfume Articles') }}</h2>
                 <p class="text-white/75 text-[13px] md:text-[15px] mt-2 max-w-lg">
-                    Cerita aroma, tips wewangian, dan inspirasi karakter Evomi.
+                    {{ evomi_l('Cerita aroma, tips wewangian, dan inspirasi karakter Evomi.', 'Scent stories, fragrance tips, and Evomi character inspiration.') }}
                 </p>
             </div>
             <a
                 href="{{ route('artikel') }}"
                 class="inline-flex items-center gap-2 self-start rounded-full bg-white text-[#1172BA] px-5 py-2.5 text-sm font-semibold hover:bg-[#9CD6FF] transition-colors"
             >
-                Lihat Semua
+                {{ evomi_l('Lihat Semua', 'View All') }}
             </a>
         </div>
 
@@ -26,12 +26,12 @@
                         >
                     </div>
                     <div class="p-5">
-                        <span class="text-[11px] uppercase tracking-wide text-[#9CD6FF] font-semibold">Parfum</span>
+                        <span class="text-[11px] uppercase tracking-wide text-[#9CD6FF] font-semibold">{{ evomi_l('Parfum', 'Perfume') }}</span>
                         <h3 class="mt-2 text-white font-semibold text-lg leading-snug group-hover:text-[#9CD6FF] transition-colors">
-                            Inspirasi aroma #{{ $i }}
+                            {{ evomi_l('Inspirasi aroma #' . $i, 'Scent inspiration #' . $i) }}
                         </h3>
                         <p class="mt-2 text-white/70 text-[13px] line-clamp-2">
-                            Jelajahi kisah di balik karakter wewangian Evomi.
+                            {{ evomi_l('Jelajahi kisah di balik karakter wewangian Evomi.', 'Explore stories behind Evomi fragrance characters.') }}
                         </p>
                     </div>
                 </a>

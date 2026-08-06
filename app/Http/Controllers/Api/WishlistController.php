@@ -18,7 +18,7 @@ class WishlistController extends Controller
             ->with('product')
             ->get();
 
-        return ProductLocalizer::mapWithProduct($wishlists, $locale);
+        return response()->json(ProductLocalizer::mapWithProduct($wishlists, $locale));
     }
 
     /**
@@ -91,10 +91,6 @@ class WishlistController extends Controller
     // Menghapus dari wishlist
     public function destroy($id, Request $request)
     {
-        // Tambahkan log ini (cek di storage/logs/laravel.log)
-        \Log::info('User ID yang mencoba hapus: ' . auth()->id());
-
-        // Cari item berdasarkan ID
         $wishlist = Wishlist::find($id);
 
         if (!$wishlist) {

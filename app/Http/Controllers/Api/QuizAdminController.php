@@ -225,6 +225,7 @@ class QuizAdminController extends Controller
         $validated = $request->validate([
             'quiz_question_id' => 'required|integer|exists:quiz_questions,id',
             'option_text' => 'required|string|max:1000',
+            'option_text_en' => 'nullable|string|max:1000',
             'prestige_score' => 'nullable|integer|min:0|max:100',
             'peaceful_calm_score' => 'nullable|integer|min:0|max:100',
             'rebel_brave_score' => 'nullable|integer|min:0|max:100',
@@ -234,6 +235,7 @@ class QuizAdminController extends Controller
         $option = QuizOption::create([
             'quiz_question_id' => $validated['quiz_question_id'],
             'option_text' => $validated['option_text'],
+            'option_text_en' => $validated['option_text_en'] ?? null,
             'prestige_score' => (int) ($validated['prestige_score'] ?? 0),
             'peaceful_calm_score' => (int) ($validated['peaceful_calm_score'] ?? 0),
             'rebel_brave_score' => (int) ($validated['rebel_brave_score'] ?? 0),
@@ -263,6 +265,7 @@ class QuizAdminController extends Controller
 
         $validated = $request->validate([
             'option_text' => 'sometimes|required|string|max:1000',
+            'option_text_en' => 'nullable|string|max:1000',
             'prestige_score' => 'nullable|integer|min:0|max:100',
             'peaceful_calm_score' => 'nullable|integer|min:0|max:100',
             'rebel_brave_score' => 'nullable|integer|min:0|max:100',
@@ -271,6 +274,9 @@ class QuizAdminController extends Controller
 
         $option->update([
             'option_text' => $validated['option_text'] ?? $option->option_text,
+            'option_text_en' => array_key_exists('option_text_en', $validated)
+                ? $validated['option_text_en']
+                : $option->option_text_en,
             'prestige_score' => array_key_exists('prestige_score', $validated)
                 ? (int) $validated['prestige_score']
                 : $option->prestige_score,

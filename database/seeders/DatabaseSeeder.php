@@ -10,6 +10,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             ResetUserDataSeeder::class,
+            PersonalityThemeSeeder::class,
             EvomiCatalogSeeder::class,
             ProductSeeder::class,
             QuizSeeder::class,

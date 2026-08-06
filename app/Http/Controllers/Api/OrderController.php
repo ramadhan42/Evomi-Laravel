@@ -472,15 +472,12 @@ class OrderController extends Controller
             return response()->json(['message' => 'Anda tidak diizinkan menghapus pesanan ini.'], 403);
         }
 
-        $query = Order::where('created_at', $order->created_at);
-        if (! auth()->user()?->is_admin) {
-            $query->where('user_id', auth()->id());
-        }
-        $deleted = $query->delete();
+        // Delete only this order row (do not cascade by shared created_at batch).
+        $order->delete();
 
         return response()->json([
             'message' => 'Riwayat pesanan berhasil dihapus',
-            'deleted_count' => $deleted,
+            'deleted_count' => 1,
         ], 200);
     }
 

@@ -32,10 +32,10 @@ class LocaleSeeder extends Seeder
         // Navbar
         $this->put('navbar', 'site', 'browser_title', 'string', 'Evomi Website', 'id');
         $this->put('navbar', 'site', 'dashboard_browser_title', 'string', 'Evomi Dashboard', 'id');
-        $this->put('navbar', 'site', 'favicon', 'image', '/favicon.ico', 'id');
+        $this->put('navbar', 'site', 'favicon', 'image', '/favicon.png', 'id');
         $this->put('navbar', 'site', 'browser_title', 'string', 'Evomi Website');
         $this->put('navbar', 'site', 'dashboard_browser_title', 'string', 'Evomi Dashboard');
-        $this->put('navbar', 'site', 'favicon', 'image', '/favicon.ico');
+        $this->put('navbar', 'site', 'favicon', 'image', '/favicon.png');
         foreach ([
             'beranda' => 'Home',
             'tentang' => 'About',
@@ -56,6 +56,7 @@ class LocaleSeeder extends Seeder
         $this->put('footer', 'menu', 'heading', 'string', 'Menu');
         $this->put('footer', 'menu', 'beranda', 'string', 'Home');
         $this->put('footer', 'menu', 'belanja', 'string', 'Shop');
+        $this->put('footer', 'menu', 'artikel', 'string', 'Articles');
         $this->put('footer', 'menu', 'kuis', 'string', 'Quiz');
         $this->put('footer', 'help', 'heading', 'string', 'Help');
         $this->put('footer', 'help', 'faq', 'string', 'FAQ');

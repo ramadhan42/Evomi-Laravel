@@ -64,6 +64,19 @@ class ProductController extends Controller
         ], 200);
     }
 
+    /**
+     * Admin list: raw bilingual product rows (no locale merge) for edit forms.
+     */
+    public function adminIndex()
+    {
+        $products = Product::query()->orderBy('id', 'asc')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $products,
+        ], 200);
+    }
+
     public function show(Request $request, $id)
     {
         $locale = LocaleResolver::normalize($request->query('locale', 'id'));

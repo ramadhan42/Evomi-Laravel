@@ -1,63 +1,183 @@
 @extends('layouts.app')
 
-@section('title', 'Detail Pesanan | Evomi')
+@section('title', evomi_l('Detail Pesanan | Evomi', 'Order Details | Evomi'))
 
 @section('content')
 <x-profile-shell>
-    <div x-data="evomiProfileHistoryShow(@js($orderId))" class="space-y-6">
-        <a href="{{ route('profile.history') }}" data-soft-nav class="inline-flex text-sm font-semibold text-[#1172BA] hover:underline">← Kembali ke Riwayat</a>
-
-        <div x-show="loading" x-cloak class="py-16 flex justify-center">
-            <div class="w-8 h-8 border-4 border-gray-200 border-t-[#1172BA] rounded-full animate-spin"></div>
+    <div x-data="evomiProfileHistoryShow(@js($orderId))" class="min-h-[60vh] bg-gray-50 -mx-0 sm:rounded-3xl relative pb-8">
+        <div class="max-w-4xl mx-auto px-1 sm:px-4 pt-2 pb-2">
+            <a href="{{ route('profile.history') }}" data-soft-nav class="inline-flex items-center gap-2 text-gray-600 hover:text-black font-medium mb-6 transition-colors text-sm">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+                {{ evomi_l('Kembali ke Riwayat', 'Back to History') }}
+            </a>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">{{ evomi_l('Detail Pesanan', 'Order Details') }}</h1>
         </div>
 
-        <div x-show="!loading && error" x-cloak class="rounded-2xl bg-red-50 border border-red-100 text-red-700 px-4 py-3 text-sm" x-text="error"></div>
+        <div x-show="error && !group" x-cloak class="flex flex-col items-center justify-center min-h-[40vh] p-4 text-center">
+            <svg class="w-10 h-10 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
+            <h2 class="text-xl font-bold text-gray-800 mb-2" x-text="error || @js(evomi_l('Pesanan tidak ditemukan', 'Order not found'))"></h2>
+            <a href="{{ route('profile.history') }}" data-soft-nav class="mt-2 px-6 py-2.5 bg-black text-white rounded-xl font-medium shadow-sm">{{ evomi_l('Kembali ke Riwayat', 'Back to History') }}</a>
+        </div>
 
-        <div x-show="!loading && !error && group" x-cloak class="space-y-6">
-            <div class="profile-brand-header rounded-2xl sm:rounded-3xl p-6 sm:p-8 text-white" style="background: linear-gradient(135deg, #1172BA 0%, #0d5a94 100%)">
-                <h1 class="text-2xl sm:text-3xl font-bold">Detail Pesanan</h1>
-                <p class="mt-1 text-white/80 text-sm" x-text="group.invoice"></p>
-            </div>
-
-            <div class="rounded-2xl border border-gray-100 bg-white p-5 space-y-3">
-                <div class="flex flex-wrap gap-2">
-                    <span class="text-[10px] font-medium px-2 py-0.5 rounded-md border" :class="group.statusClass" x-text="group.statusLabel"></span>
-                    <span class="text-[10px] font-medium px-2 py-0.5 rounded-md border" :class="group.paymentClass" x-text="group.paymentLabel"></span>
-                </div>
-                <button
-                    type="button"
-                    x-show="group.canConfirm"
-                    class="text-xs font-semibold px-4 py-2 rounded-xl bg-emerald-500 text-white"
-                    @click="confirmGroup()"
-                >Konfirmasi Pesanan Diterima</button>
-            </div>
-
-            <div class="rounded-2xl border border-gray-100 bg-white p-5 space-y-4">
-                <h2 class="font-semibold text-gray-900">Informasi Produk</h2>
-                <template x-for="item in group.items" :key="item.id">
-                    <div class="flex gap-4 border-t border-gray-50 pt-4 first:border-0 first:pt-0">
-                        <div class="w-16 h-16 rounded-xl overflow-hidden bg-gray-50 border shrink-0">
-                            <img :src="item.imageUrl" :alt="item.title" class="w-full h-full object-cover">
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-sm text-gray-900" x-text="item.title"></p>
-                            <p class="text-xs text-gray-500 mt-1" x-text="item.priceLabel + ' × ' + item.quantity"></p>
-                            <p class="text-sm font-bold text-gray-900 mt-2" x-text="item.lineTotalLabel"></p>
+        <main x-show="group" x-cloak class="max-w-4xl mx-auto w-full px-1 sm:px-4 pt-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 text-gray-600">
+                        <svg x-show="statusIcon === 'clock'" class="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                        <svg x-show="statusIcon === 'box'" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
+                        <svg x-show="statusIcon === 'truck'" class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.131 1.131 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>
+                        <svg x-show="statusIcon === 'check'" class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 mb-0.5">{{ evomi_l('Status Pesanan', 'Order Status') }}</p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-block px-3 py-1 rounded-full text-xs font-bold border" :class="group.statusClass" x-text="group.statusLabel"></span>
+                            <span class="inline-block px-3 py-1 rounded-full text-xs font-bold border" :class="group.paymentClass" x-text="group.paymentLabel"></span>
                         </div>
                     </div>
-                </template>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 sm:justify-end">
+                    <button
+                        type="button"
+                        x-show="group.canConfirm"
+                        x-cloak
+                        @click="requestConfirm()"
+                        class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs font-bold transition-colors shadow-sm inline-flex items-center gap-1.5 active:scale-95"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                        {{ evomi_l('Konfirmasi Pesanan', 'Confirm Order') }}
+                    </button>
+                    <div class="sm:text-right">
+                        <p class="text-xs text-gray-400 mb-0.5">{{ evomi_l('No. Invoice', 'Invoice No.') }}</p>
+                        <p class="font-bold text-gray-900 bg-gray-50 px-3 py-1 rounded-lg inline-block border border-gray-100 text-sm" x-text="group.invoice"></p>
+                    </div>
+                </div>
             </div>
 
-            <div class="rounded-2xl border border-gray-100 bg-white p-5 space-y-2 text-sm">
-                <h2 class="font-semibold text-gray-900 mb-3">Rincian Pembayaran</h2>
-                <div class="flex justify-between text-gray-600"><span>Metode</span><span x-text="group.paymentMethod || '—'"></span></div>
-                <div class="flex justify-between text-gray-600"><span>Tanggal</span><span x-text="group.dateLabel"></span></div>
-                <div class="flex justify-between text-gray-600"><span>Subtotal</span><span x-text="group.subtotalLabel"></span></div>
-                <div class="flex justify-between text-gray-600"><span>Ongkir</span><span x-text="group.shippingLabel"></span></div>
-                <div class="flex justify-between text-gray-600"><span>Promo</span><span x-text="group.promoLabel"></span></div>
-                <div class="flex justify-between font-bold text-gray-900 border-t border-gray-100 pt-3"><span>Total Belanja</span><span x-text="group.totalLabel"></span></div>
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                <div class="p-6 border-b border-gray-100">
+                    <h2 class="font-bold text-gray-900 text-lg mb-6">{{ evomi_l('Informasi Produk', 'Product Information') }}</h2>
+                    <div class="space-y-6">
+                        <template x-for="(item, index) in group.items" :key="item.id">
+                            <div class="flex flex-col sm:flex-row gap-6" :class="index !== 0 ? 'pt-6 border-t border-gray-100' : ''">
+                                <div class="w-full sm:w-36 h-36 bg-gray-50 rounded-xl p-3 flex-shrink-0 border border-gray-100 flex items-center justify-center overflow-hidden">
+                                    <img :src="item.imageUrl" :alt="item.title" class="max-h-full max-w-full w-auto h-auto object-contain drop-shadow-sm" x-on:error="$el.style.display='none'">
+                                </div>
+                                <div class="flex-1 flex flex-col min-w-0">
+                                    <div class="flex justify-between items-start gap-4">
+                                        <div class="min-w-0">
+                                            <h3 class="text-xl font-bold text-gray-900 mb-2" x-text="item.title"></h3>
+                                            <p class="text-gray-500 text-sm mb-4 line-clamp-2" x-text="item.description || @js(evomi_l('Tidak ada deskripsi produk.', 'No product description.'))"></p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            x-show="item.canDeleteItem"
+                                            x-cloak
+                                            @click="requestRemoveItem(item)"
+                                            class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                                            :title="$L('Hapus Item', 'Remove Item')"
+                                        >
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4 text-sm mt-auto bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        <div>
+                                            <p class="text-gray-500 mb-1">{{ evomi_l('Harga Satuan', 'Unit Price') }}</p>
+                                            <p class="font-bold text-gray-900" x-text="item.priceLabel"></p>
+                                        </div>
+                                        <div>
+                                            <p class="text-gray-500 mb-1">{{ evomi_l('Kuantitas', 'Quantity') }}</p>
+                                            <p class="font-bold text-gray-900"><span x-text="item.quantity || 1"></span> {{ evomi_l('Item', 'Items') }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="p-6 bg-white">
+                    <h2 class="font-bold text-gray-900 text-lg mb-4">{{ evomi_l('Rincian Pembayaran', 'Payment Details') }}</h2>
+                    <div class="space-y-4 text-sm">
+                        <div class="flex justify-between items-center text-gray-600">
+                            <span>{{ evomi_l('Metode Pembayaran', 'Payment Method') }}</span>
+                            <span class="font-medium text-gray-900 bg-gray-100 px-3 py-1 rounded-md" x-text="group.paymentMethod || @js(evomi_l('Tidak diketahui', 'Unknown'))"></span>
+                        </div>
+                        <div class="flex justify-between items-center text-gray-600">
+                            <span>{{ evomi_l('Status Pembayaran', 'Payment Status') }}</span>
+                            <span class="font-medium px-3 py-1 rounded-md border text-xs" :class="group.paymentClass" x-text="group.paymentLabel"></span>
+                        </div>
+                        <div class="flex justify-between items-center text-gray-600">
+                            <span>{{ evomi_l('Tanggal Pembelian', 'Purchase Date') }}</span>
+                            <span class="font-medium text-gray-900" x-text="group.dateTimeLabel"></span>
+                        </div>
+                        <div class="flex justify-between items-center text-gray-600 mt-2">
+                            <span>{{ evomi_l('Total Subtotal Produk', 'Product Subtotal') }}</span>
+                            <span class="font-medium text-gray-900" x-text="group.subtotalLabel"></span>
+                        </div>
+                        <div class="flex justify-between items-center text-gray-600">
+                            <span>{{ evomi_l('Ongkos Kirim', 'Shipping Cost') }}</span>
+                            <span class="font-medium text-gray-900" x-text="group.shippingLabel"></span>
+                        </div>
+                        <div class="flex justify-between items-center text-gray-600">
+                            <span>{{ evomi_l('Promo', 'Promo') }}</span>
+                            <span class="font-medium text-gray-900" x-text="group.promoLabel"></span>
+                        </div>
+                        <div class="flex justify-between items-center font-bold text-base border-t border-gray-100 pt-4 mt-2">
+                            <span class="text-gray-900">{{ evomi_l('Total Belanja', 'Order Total') }}</span>
+                            <span :style="{ color: themeColor }" x-text="group.totalLabel"></span>
+                        </div>
+                        <p class="text-[11px] text-gray-400 pt-1">{{ evomi_l('Sudah termasuk PPN jika ada', 'Includes VAT if applicable') }}</p>
+                    </div>
+                </div>
             </div>
-        </div>
+        </main>
+
+        <div
+            x-show="toast"
+            x-cloak
+            x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2.5 rounded-full bg-slate-900 text-white text-sm font-medium shadow-lg"
+            x-text="toast"
+        ></div>
+
+        <template x-teleport="body">
+            <div x-show="modal.open" x-cloak class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <div class="absolute inset-0" @click="modal.type !== 'loading' && closeModal()"></div>
+                <div class="relative bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl border border-slate-100">
+                    <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full" :class="modal.variant === 'delete' ? 'bg-rose-50' : 'bg-emerald-50'">
+                        <template x-if="modal.type === 'confirm' && modal.variant === 'delete'">
+                            <svg class="w-7 h-7 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                        </template>
+                        <template x-if="modal.type === 'confirm' && modal.variant !== 'delete'">
+                            <svg class="w-7 h-7 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                        </template>
+                        <template x-if="modal.type === 'loading'">
+                            <div class="w-7 h-7 border-2 border-slate-200 border-t-[#1172BA] rounded-full animate-spin"></div>
+                        </template>
+                        <template x-if="modal.type === 'error'">
+                            <svg class="w-7 h-7 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                        </template>
+                    </div>
+                    <div class="space-y-2">
+                        <h3 class="text-lg font-bold text-slate-900 tracking-tight" x-text="modal.title"></h3>
+                        <p class="text-sm text-slate-600 leading-relaxed" x-text="modal.message"></p>
+                    </div>
+                    <div class="flex gap-3 pt-1" x-show="modal.type === 'confirm'">
+                        <button type="button" @click="closeModal()" class="w-full font-semibold py-3 rounded-xl text-sm border border-slate-200 text-slate-700 hover:bg-slate-50 transition">{{ evomi_l('Batal', 'Cancel') }}</button>
+                        <button
+                            type="button"
+                            @click="runModalAction()"
+                            class="w-full font-semibold py-3 rounded-xl text-sm text-white transition"
+                            :class="modal.variant === 'delete' ? 'bg-rose-500 hover:bg-rose-600' : 'bg-emerald-500 hover:bg-emerald-600'"
+                            x-text="modal.confirmText"
+                        ></button>
+                    </div>
+                    <button type="button" x-show="modal.type === 'error'" @click="closeModal()" class="w-full mt-1 bg-[#1172BA] font-bold py-3 rounded-xl text-sm text-white">{{ evomi_l('Tutup', 'Close') }}</button>
+                </div>
+            </div>
+        </template>
     </div>
 </x-profile-shell>
 @endsection

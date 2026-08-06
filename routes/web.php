@@ -20,8 +20,8 @@ Route::get('/login', [PageController::class, 'login'])->name('login');
 Route::get('/register', [PageController::class, 'register'])->name('register');
 
 Route::get('/dashboard', [DashboardController::class, 'home'])->name('dashboard');
-Route::get('/dashboard/{page}', [DashboardController::class, 'stub'])
-    ->name('dashboard.stub')
+Route::get('/dashboard/{page}', [DashboardController::class, 'page'])
+    ->name('dashboard.page')
     ->where('page', 'cms|products|articles|promos|payment|kurirs|quiz|orders|trackings|messages|cart|wishlist|users|subscribers|profile');
 
 Route::prefix('profile')->name('profile.')->group(function () {

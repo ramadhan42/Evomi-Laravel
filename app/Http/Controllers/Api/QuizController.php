@@ -9,6 +9,7 @@ use App\Models\QuizOption;
 use App\Models\QuizPersonalityResult;
 use App\Models\QuizQuestion;
 use App\Models\UserQuizAnswer;
+use App\Support\BelanjaCatalog;
 use App\Support\LocaleResolver;
 use App\Support\ProductLocalizer;
 use Illuminate\Http\Request;
@@ -106,6 +107,8 @@ class QuizController extends Controller
                     'color' => $row->color,
                     'bg_image' => $row->bg_image,
                     'product_image' => $row->product_image,
+                    'bg_image_url' => BelanjaCatalog::articleImageUrl($row->bg_image),
+                    'product_image_url' => BelanjaCatalog::articleImageUrl($row->product_image),
                     'product_image_width_mobile' => $row->product_image_width_mobile,
                     'product_image_width_desktop' => $row->product_image_width_desktop,
                     'bg_image_width_mobile' => $row->bg_image_width_mobile,

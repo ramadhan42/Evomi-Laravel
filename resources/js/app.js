@@ -1,8 +1,33 @@
 import Alpine from 'alpinejs';
+import { registerAdminCrud } from './admin-crud';
+import {
+    createAdminI18nApi,
+    readAdminLocale,
+    writeAdminLocale,
+} from './admin-i18n';
+import { L as storefrontL, currentLocale, registerStorefrontI18n } from './storefront-i18n';
 
 window.Alpine = Alpine;
+registerStorefrontI18n(Alpine);
 
 let softNavBusy = false;
+let localeRevealTimer = 0;
+
+function beginLocaleSwitchFx() {
+    const root = document.documentElement;
+    root.dataset.localeLoading = 'true';
+    root.removeAttribute('data-locale-reveal');
+}
+
+function finishLocaleSwitchFx() {
+    const root = document.documentElement;
+    root.removeAttribute('data-locale-loading');
+    root.dataset.localeReveal = 'true';
+    if (localeRevealTimer) window.clearTimeout(localeRevealTimer);
+    localeRevealTimer = window.setTimeout(() => {
+        root.removeAttribute('data-locale-reveal');
+    }, 520);
+}
 
 function pathKey(url) {
     const u = typeof url === 'string' ? new URL(url, window.location.origin) : url;
@@ -101,6 +126,149 @@ function setSurfaceForPath(pathname) {
 
 function wait(ms) {
     return new Promise((r) => setTimeout(r, ms));
+}
+
+/* ——— Full-page loader (parity with Next.js LoadingScreen) ——— */
+const LOADER_MIN_MS = 1200;
+const LOADER_MAX_MS = 2400;
+
+function unlockEvomiLoaderScroll() {
+    document.documentElement.classList.remove('evomi-loading');
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+}
+
+function initEvomiLoader() {
+    const root = document.getElementById('evomi-loader');
+    const bar = document.getElementById('evomi-loader-bar');
+    if (!root) {
+        unlockEvomiLoaderScroll();
+        return;
+    }
+
+    const startedAt = Date.now();
+    let raf = 0;
+    let done = false;
+    let hideTimer = 0;
+    let pollTimer = 0;
+    let maxTimer = 0;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    const setProgress = (pct) => {
+        if (bar) bar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+    };
+
+    const finish = () => {
+        if (done) return;
+        done = true;
+        setProgress(100);
+        root.classList.add('is-fading');
+        unlockEvomiLoaderScroll();
+        window.dispatchEvent(new CustomEvent('evomi:loader-done'));
+        hideTimer = window.setTimeout(() => {
+            root.classList.add('is-hidden');
+            root.setAttribute('aria-busy', 'false');
+            root.removeAttribute('aria-live');
+        }, 500);
+    };
+
+    const tick = () => {
+        if (done) return;
+        const elapsed = Date.now() - startedAt;
+        const soft = Math.min(92, 8 + (elapsed / LOADER_MAX_MS) * 84);
+        setProgress(soft);
+        raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    const tryFinish = () => {
+        const elapsed = Date.now() - startedAt;
+        const ready = document.readyState === 'complete' || elapsed >= LOADER_MAX_MS;
+        if (ready && elapsed >= LOADER_MIN_MS) {
+            finish();
+            return;
+        }
+        pollTimer = window.setTimeout(tryFinish, 120);
+    };
+
+    const onLoad = () => tryFinish();
+    if (document.readyState === 'complete') {
+        tryFinish();
+    } else {
+        window.addEventListener('load', onLoad, { once: true });
+        maxTimer = window.setTimeout(tryFinish, LOADER_MAX_MS);
+    }
+
+    // Safety: if the tab is hidden mid-load, still unlock eventually
+    window.addEventListener(
+        'pageshow',
+        (e) => {
+            if (e.persisted && !done) finish();
+        },
+        { once: true },
+    );
+
+    return () => {
+        done = true;
+        cancelAnimationFrame(raf);
+        window.clearTimeout(hideTimer);
+        window.clearTimeout(pollTimer);
+        window.clearTimeout(maxTimer);
+        window.removeEventListener('load', onLoad);
+        unlockEvomiLoaderScroll();
+    };
+}
+
+// Module scripts run after parse — loader markup is already in the DOM
+initEvomiLoader();
+
+function isProfilePath(pathname) {
+    const p = (pathname || '').replace(/\/$/, '') || '/';
+    return p === '/profile' || p.startsWith('/profile/');
+}
+
+function isHistoryDetailPath(pathname) {
+    const p = (pathname || '').replace(/\/$/, '') || '/';
+    return /^\/profile\/history\/[^/]+$/.test(p);
+}
+
+function isArtikelDetailPath(pathname) {
+    const p = (pathname || '').replace(/\/$/, '') || '/';
+    return /^\/artikel\/[^/]+$/.test(p);
+}
+
+/** Soft-nav / hard-load routes that should feel instant (no leave fade / full loader). */
+function shouldSkipPageLoadingFeel(pathname) {
+    return isArtikelDetailPath(pathname) || isHistoryDetailPath(pathname);
+}
+
+const HISTORY_GROUPS_CACHE_KEY = 'evomi_history_groups_v1';
+
+function cacheHistoryGroups(groups) {
+    try {
+        sessionStorage.setItem(HISTORY_GROUPS_CACHE_KEY, JSON.stringify(groups || []));
+    } catch {
+        /* ignore quota / private mode */
+    }
+}
+
+function findCachedHistoryGroup(orderId) {
+    try {
+        const raw = sessionStorage.getItem(HISTORY_GROUPS_CACHE_KEY);
+        if (!raw) return null;
+        const groups = JSON.parse(raw);
+        if (!Array.isArray(groups)) return null;
+        const id = String(orderId);
+        return (
+            groups.find((g) => String(g.groupId) === id) ||
+            groups.find((g) => (g.items || []).some((i) => String(i.id) === id)) ||
+            null
+        );
+    } catch {
+        return null;
+    }
 }
 
 function isDashboardPath(pathname) {
@@ -215,65 +383,115 @@ function fulfillmentStatusConfig(status) {
     switch (normalizedStatus) {
         case 'menunggu_konfirmasi':
             return {
-                label: 'Menunggu Konfirmasi',
-                class: 'bg-orange-50 text-orange-600 border border-orange-100',
+                label: storefrontL('Menunggu Konfirmasi', 'Awaiting Confirmation'),
+                class: 'bg-orange-50 text-orange-600 border-orange-200',
+                dot: 'bg-orange-500',
             };
         case 'pengemasan':
             return {
-                label: 'Pengemasan',
-                class: 'bg-purple-50 text-purple-600 border border-purple-100',
+                label: storefrontL('Dikemas', 'Packing'),
+                class: 'bg-purple-50 text-purple-600 border-purple-200',
+                dot: 'bg-purple-500',
             };
         case 'dalam_perjalanan':
             return {
-                label: 'Dalam Perjalanan',
-                class: 'bg-blue-50 text-blue-600 border border-blue-100',
+                label: storefrontL('Dalam Perjalanan', 'In Transit'),
+                class: 'bg-gray-100 text-gray-700 border-gray-300',
+                dot: 'bg-gray-500',
             };
         case 'diterima':
             return {
-                label: 'Diterima',
-                class: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
+                label: storefrontL('Diterima', 'Received'),
+                class: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+                dot: 'bg-emerald-500',
             };
         case 'selesai':
             return {
-                label: 'Selesai',
-                class: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
+                label: storefrontL('Selesai', 'Completed'),
+                class: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+                dot: 'bg-emerald-500',
             };
         default:
             return {
-                label: status || 'Diproses',
-                class: 'bg-gray-50 text-gray-600 border border-gray-100',
+                label: status || storefrontL('Diproses', 'Processing'),
+                class: 'bg-slate-50 text-slate-700 border-slate-200',
+                dot: 'bg-slate-400',
             };
     }
 }
 
 function paymentStatusBadgeClass(status) {
-    if (status === 'success') return 'bg-emerald-50 text-emerald-700 border border-emerald-100';
-    if (status === 'cancelled') return 'bg-red-50 text-red-700 border border-red-100';
-    return 'bg-amber-50 text-amber-700 border border-amber-100';
+    if (status === 'success') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+    if (status === 'cancelled') return 'bg-rose-50 text-rose-700 border-rose-100';
+    return 'bg-amber-50 text-amber-700 border-amber-100';
 }
 
 function paymentStatusLabel(status) {
-    if (status === 'success') return 'Berhasil';
-    if (status === 'cancelled') return 'Dibatalkan';
-    return 'Pending';
+    if (status === 'success') return storefrontL('Berhasil', 'Success');
+    if (status === 'cancelled') return storefrontL('Dibatalkan', 'Cancelled');
+    return storefrontL('Pending', 'Pending');
+}
+
+/**
+ * Resolve any stored media reference to a browsable URL.
+ * Seeded records point at files shipped in /public (e.g. src/images/articles/a.jpg),
+ * while uploads live on the public disk and need the /storage prefix.
+ */
+function mediaUrl(path) {
+    if (!path) return '';
+    const raw = String(path).trim();
+    if (!raw || raw === 'null' || raw === 'undefined') return '';
+    if (/^(https?:|blob:|data:)/i.test(raw)) return raw;
+
+    const cleaned = raw.replace(/^\/+/, '');
+    if (!cleaned) return '';
+    if (/^storage\//i.test(cleaned)) return `/${cleaned}`;
+    if (/^(src|images|img|assets|build|fonts)\//i.test(cleaned)) return `/${cleaned}`;
+
+    return `/storage/${cleaned}`;
 }
 
 function storageUrl(path) {
-    if (!path) return '';
-    if (/^https?:\/\//i.test(path)) return path;
-    return `/storage/${String(path).replace(/^\/+/, '')}`;
+    return mediaUrl(path);
 }
 
 /** Only return a usable avatar URL; empty/null/"null" → null (show initial letter). */
-function resolveAvatarUrl(path) {
+function resolveAvatarUrl(path, cacheKey = null) {
     if (path == null) return null;
     const raw = String(path).trim();
     if (!raw || raw === 'null' || raw === 'undefined' || raw === '/') return null;
     if (/^(blob:|data:)/i.test(raw)) return raw;
-    if (/^https?:\/\//i.test(raw)) return raw;
-    const cleaned = raw.replace(/^\/+/, '');
-    if (!cleaned || cleaned === 'storage' || cleaned === 'storage/') return null;
-    return `/storage/${cleaned.replace(/^storage\//i, '')}`;
+    let url = '';
+    if (/^https?:\/\//i.test(raw)) {
+        url = raw;
+    } else {
+        const cleaned = raw.replace(/^\/+/, '');
+        if (!cleaned || cleaned === 'storage' || cleaned === 'storage/') return null;
+        url = mediaUrl(cleaned) || '';
+    }
+    if (!url) return null;
+    if (cacheKey != null && String(cacheKey).trim() !== '') {
+        const sep = url.includes('?') ? '&' : '?';
+        return `${url}${sep}v=${encodeURIComponent(String(cacheKey))}`;
+    }
+    return url;
+}
+
+/** Resolve navbar/profile avatar from a user payload (avatar_profile or avatar). */
+function avatarUrlFromUser(user) {
+    if (!user || typeof user !== 'object') return null;
+    const path = user.avatar_profile || user.avatar || null;
+    const cacheKey = user.updated_at || user.avatar_updated_at || null;
+    return resolveAvatarUrl(path, cacheKey);
+}
+
+function syncNavbarAuth() {
+    try {
+        window.__evomiNav?.readAuth?.();
+    } catch {
+        /* ignore */
+    }
+    window.dispatchEvent(new Event('auth-change'));
 }
 
 function userDisplayInitial(userOrName, email = '') {
@@ -306,15 +524,20 @@ function productPrice(product) {
     return Number(product?.price || product?.harga || 0) || 0;
 }
 
-function productImage(product) {
-    const path =
-        product?.image_produk_belanja ||
-        product?.image_1 ||
-        product?.image ||
-        '';
-    const url = storageUrl(path);
-    if (url) return url;
+function productAccent(product) {
+    if (product?.color) return String(product.color);
+    const personality = String(product?.personality_type || '').toLowerCase();
+    const map = {
+        prestige: '#1172BA',
+        purpose_prestige: '#1172BA',
+        peaceful_calm: '#5EA14A',
+        rebel_brave: '#E33D35',
+        sweet_shy: '#DD74A5',
+    };
+    return map[personality] || DEFAULT_THEME_BLUE;
+}
 
+function productImageFallback(product) {
     const personality = String(product?.personality_type || '').toLowerCase();
     const fallbacks = {
         prestige: '/src/images/section%205/purpose-prestige.png',
@@ -326,10 +549,26 @@ function productImage(product) {
     return fallbacks[personality] || '/src/images/section%205/purpose-prestige.png';
 }
 
+function productImage(product, prefer = 'default') {
+    let path = '';
+    if (prefer === 'wishlist') {
+        path = product?.image_2 || product?.image_1 || product?.image || '';
+    } else if (prefer === 'cart') {
+        path = product?.image_1 || product?.image_2 || product?.image || '';
+    } else {
+        path =
+            product?.image_produk_belanja ||
+            product?.image_1 ||
+            product?.image ||
+            '';
+    }
+    const url = storageUrl(path);
+    return url || productImageFallback(product);
+}
+
 function groupOrdersByCreatedAt(orders) {
     const map = new Map();
     for (const order of orders || []) {
-        const key = `${order.created_at}|${order.id}`;
         // Prefer grouping by identical created_at timestamp (checkout batch)
         const batchKey = String(order.created_at || order.id);
         if (!map.has(batchKey)) {
@@ -338,57 +577,80 @@ function groupOrdersByCreatedAt(orders) {
         map.get(batchKey).push(order);
     }
 
-    return Array.from(map.entries()).map(([batchKey, items]) => {
-        const first = items[0];
-        const quantity = items.reduce((s, o) => s + (Number(o.quantity) || 0), 0);
-        const subtotal = items.reduce((s, o) => s + (Number(o.total_price) || 0), 0);
-        const shipping = items.reduce((s, o) => s + (Number(o.shipping_cost) || 0), 0);
-        const promo = items.reduce((s, o) => s + (Number(o.promo_discount) || 0), 0);
-        const total = items.reduce((s, o) => s + orderGrandTotal(o), 0);
-        const status = first.status;
-        const pay = normalizePaymentStatus(first.payment_status);
-        const fulfill = fulfillmentStatusConfig(status);
-        const extra = items.length > 1 ? ` (+${items.length - 1})` : '';
+    return Array.from(map.entries())
+        .map(([batchKey, items]) => {
+            const first = items[0];
+            const quantity = items.reduce((s, o) => s + (Number(o.quantity) || 0), 0);
+            const subtotal = items.reduce((s, o) => s + (Number(o.total_price) || 0), 0);
+            const shipping = items.reduce((s, o) => s + (Number(o.shipping_cost) || 0), 0);
+            const promo = items.reduce((s, o) => s + (Number(o.promo_discount) || 0), 0);
+            const total = items.reduce((s, o) => s + orderGrandTotal(o), 0);
+            const status = first.status;
+            const pay = normalizePaymentStatus(first.payment_status);
+            const fulfill = fulfillmentStatusConfig(status);
+            const extraCount = Math.max(0, items.length - 1);
+            const idStr = String(first.id);
+            const invoice = /^\d+$/.test(idStr) ? `#INV-${idStr}` : `#${idStr.toUpperCase()}`;
 
-        return {
-            groupId: first.id,
-            batchKey,
-            items: items.map((o) => ({
-                ...o,
-                title: productTitle(o.product),
-                priceLabel: formatRupiah(productPrice(o.product) || Number(o.total_price) / Math.max(1, Number(o.quantity) || 1)),
-                lineTotalLabel: formatRupiah(orderGrandTotal(o)),
-                imageUrl: productImage(o.product),
-            })),
-            invoice: String(first.id),
-            productTitle: productTitle(first.product) + extra,
-            imageUrl: productImage(first.product),
-            quantity,
-            dateLabel: new Date(first.created_at).toLocaleString('id-ID', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-            }),
-            totalLabel: formatRupiah(total),
-            subtotalLabel: formatRupiah(subtotal),
-            shippingLabel: formatRupiah(shipping),
-            promoLabel: formatRupiah(promo),
-            status,
-            statusLabel: fulfill.label,
-            statusClass: fulfill.class,
-            paymentLabel: paymentStatusLabel(pay) === 'Berhasil'
-                ? 'Pembayaran berhasil'
-                : paymentStatusLabel(pay) === 'Dibatalkan'
-                  ? 'Pembayaran dibatalkan'
-                  : 'Pembayaran pending',
-            paymentClass: paymentStatusBadgeClass(pay),
-            paymentMethod: first.metode_pembayaran || '',
-            canConfirm: String(status).toLowerCase() === 'dalam_perjalanan',
-            canDelete: ['diterima', 'selesai'].includes(String(status).toLowerCase()),
-        };
-    });
+            return {
+                groupId: first.id,
+                batchKey,
+                items: items.map((o) => ({
+                    ...o,
+                    title: productTitle(o.product),
+                    description:
+                        o.product?.description ||
+                        o.product?.deskripsi ||
+                        o.product?.desc ||
+                        '',
+                    priceLabel: formatRupiah(
+                        productPrice(o.product) ||
+                            Number(o.total_price) / Math.max(1, Number(o.quantity) || 1),
+                    ),
+                    lineTotalLabel: formatRupiah(orderGrandTotal(o)),
+                    imageUrl: productImage(o.product, 'cart'),
+                    accent: productAccent(o.product),
+                    canDeleteItem: ['diterima', 'selesai', ''].includes(
+                        String(o.status || status || '').toLowerCase(),
+                    ),
+                })),
+                invoice,
+                productTitle: productTitle(first.product),
+                extraCount,
+                imageUrl: productImage(first.product, 'cart'),
+                accent: productAccent(first.product),
+                quantity,
+                dateLabel: new Date(first.created_at).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                }),
+                dateTimeLabel: new Date(first.created_at).toLocaleString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                }),
+                totalLabel: formatRupiah(total),
+                subtotalLabel: formatRupiah(subtotal),
+                shippingLabel: formatRupiah(shipping),
+                promoLabel: formatRupiah(promo),
+                status,
+                statusLabel: fulfill.label,
+                statusClass: fulfill.class,
+                statusDot: fulfill.dot,
+                paymentLabel: paymentStatusLabel(pay),
+                paymentClass: paymentStatusBadgeClass(pay),
+                paymentMethod: first.metode_pembayaran || '',
+                canConfirm: String(status).toLowerCase() === 'dalam_perjalanan',
+                canDelete: ['diterima', 'selesai'].includes(String(status).toLowerCase()),
+            };
+        })
+        .sort(
+            (a, b) =>
+                new Date(b.batchKey).getTime() - new Date(a.batchKey).getTime(),
+        );
 }
 
 async function fetchBadgeCounts() {
@@ -434,12 +696,30 @@ function waitFrames(n = 2) {
 }
 
 document.addEventListener('alpine:init', () => {
+    registerAdminCrud(Alpine, {
+        authHeaders,
+        readApiJson,
+        apiErrorMessage,
+        formatRupiah,
+        storageUrl,
+        mediaUrl,
+        resolveAvatarUrl,
+        fulfillmentStatusConfig,
+        normalizePaymentStatus,
+        paymentStatusLabel,
+        paymentStatusBadgeClass,
+        orderGrandTotal,
+        clearAuthSession,
+        getAuthUser,
+    });
+
     Alpine.data('evomiNavbar', (activeIndex = 0) => ({
         open: false,
         isNavHidden: false,
-        activeIndex,
+        activeIndex: Number(activeIndex),
         lastScrollY: 0,
         _scrollTicking: false,
+        _activeClassTimer: null,
         indicator: { left: 0, width: 0, opacity: 0 },
         isLoggedIn: false,
         isAdmin: false,
@@ -450,6 +730,8 @@ document.addEventListener('alpine:init', () => {
         logoutLoading: false,
         logoutConfirmOpen: false,
         badges: { cart: 0, wishlist: 0, history: 0, unread: 0 },
+        locale: 'id',
+        _localeRevealTimer: null,
 
         get userInitial() {
             return userDisplayInitial(
@@ -466,6 +748,20 @@ document.addEventListener('alpine:init', () => {
             return (this.badges?.[key] || 0) > 0 ? filled : empty;
         },
 
+        setLocale(next) {
+            const code = next === 'en' ? 'en' : 'id';
+            if (this.locale === code) return;
+            this.locale = writeAdminLocale(code);
+            window.dispatchEvent(new CustomEvent('evomi-admin-locale', { detail: this.locale }));
+            window.dispatchEvent(new Event('locale-change'));
+            beginLocaleSwitchFx();
+            window.setTimeout(() => {
+                softNavigate(window.location.href, { push: false, force: true }).finally(() => {
+                    finishLocaleSwitchFx();
+                });
+            }, 380);
+        },
+
         get indicatorStyle() {
             return {
                 transform: `translate3d(${this.indicator.left}px, 0, 0)`,
@@ -476,26 +772,38 @@ document.addEventListener('alpine:init', () => {
 
         init() {
             window.__evomiNav = this;
+            this.locale = readAdminLocale();
+            writeAdminLocale(this.locale);
             this.lastScrollY = window.scrollY || document.documentElement.scrollTop || 0;
             this.readAuth();
             this._onAuthChange = () => this.readAuth();
             this._onBadgeRefresh = () => this.refreshBadges();
+            this._onLocaleChange = (e) => {
+                this.locale = e?.detail || readAdminLocale();
+            };
             window.addEventListener('auth-change', this._onAuthChange);
             window.addEventListener('storage', this._onAuthChange);
             window.addEventListener('cart_updated', this._onBadgeRefresh);
             window.addEventListener('wishlist_updated', this._onBadgeRefresh);
             window.addEventListener('history_updated', this._onBadgeRefresh);
             window.addEventListener('messages_read', this._onBadgeRefresh);
+            window.addEventListener('evomi-admin-locale', this._onLocaleChange);
 
             this.$nextTick(() => {
                 this.syncSpacer();
                 this.moveIndicator(this.activeIndex, false);
+                this.syncActiveClasses(this.activeIndex);
                 requestAnimationFrame(() => {
                     this.moveIndicator(this.activeIndex, true);
+                    this.syncActiveClasses(this.activeIndex);
                     this.syncSpacer();
                 });
                 // Fonts/images can change header height after first paint
-                window.setTimeout(() => this.syncSpacer(), 120);
+                window.setTimeout(() => {
+                    this.moveIndicator(this.activeIndex, false);
+                    this.syncActiveClasses(this.activeIndex);
+                    this.syncSpacer();
+                }, 120);
             });
 
             this._onResize = () => {
@@ -509,7 +817,7 @@ document.addEventListener('alpine:init', () => {
                 this._spacerObserver.observe(this.$el);
             }
 
-            // Arcanisia-style: hide on scroll down, show on scroll up
+            // Hide whole navbar on scroll down, show on scroll up (CSS transform only)
             this._onScroll = () => {
                 if (this._scrollTicking) return;
                 this._scrollTicking = true;
@@ -539,7 +847,7 @@ document.addEventListener('alpine:init', () => {
                 this.userEmail = user.email || null;
                 this.userName = user.name || user.nama_lengkap || null;
                 this.isAdmin = Boolean(user.is_admin);
-                this.userAvatar = resolveAvatarUrl(user.avatar_profile);
+                this.userAvatar = avatarUrlFromUser(user);
                 this.refreshBadges();
             } else {
                 this.isLoggedIn = false;
@@ -624,6 +932,7 @@ document.addEventListener('alpine:init', () => {
         updateScrollVisibility() {
             const y = window.scrollY || document.documentElement.scrollTop || 0;
             const prev = this.lastScrollY;
+            const delta = y - prev;
 
             // Keep visible while mobile menu is open
             if (this.open) {
@@ -632,9 +941,14 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
-            if (y > prev && y > 100) {
+            // Ignore tiny jitter so the slow slide can finish cleanly
+            if (Math.abs(delta) < 6) {
+                return;
+            }
+
+            if (delta > 0 && y > 90) {
                 this.isNavHidden = true;
-            } else {
+            } else if (delta < 0 || y <= 70) {
                 this.isNavHidden = false;
             }
 
@@ -643,21 +957,50 @@ document.addEventListener('alpine:init', () => {
 
         setActive(index, animate = true) {
             // Tentang (#about) keeps Beranda pill active — same as Next isActive
-            const pillIndex = index === 1 ? 0 : index;
+            const pillIndex = index === 1 ? 0 : Number(index);
+            if (Number.isNaN(pillIndex) || pillIndex < 0) {
+                this.clearActive(animate);
+                return;
+            }
+
+            if (this._activeClassTimer) {
+                clearTimeout(this._activeClassTimer);
+                this._activeClassTimer = null;
+            }
+
             this.activeIndex = pillIndex;
+            // Blue on selected + white on others immediately; shared pill slides under
             this.syncActiveClasses(pillIndex);
             this.moveIndicator(pillIndex, animate);
         },
 
+        clearActive(animate = true) {
+            if (this._activeClassTimer) {
+                clearTimeout(this._activeClassTimer);
+                this._activeClassTimer = null;
+            }
+
+            this.activeIndex = -1;
+            this.indicator = { ...this.indicator, opacity: 0 };
+            this.syncActiveClasses(-1);
+        },
+
         syncActiveClasses(pillIndex) {
             const roots = [this.$refs.track, this.$refs.mobileMenu].filter(Boolean);
+
             roots.forEach((root) => {
                 root.querySelectorAll('[data-nav-index]').forEach((el) => {
                     const i = Number(el.dataset.navIndex);
-                    const on = i === pillIndex;
+                    const on = pillIndex >= 0 && i === pillIndex;
+
                     el.classList.toggle('is-active', on);
-                    el.classList.toggle('text-[var(--nav-color)]', on);
-                    el.classList.toggle('text-white', !on);
+                    el.classList.remove(
+                        'is-pill-moving',
+                        'is-entering-active',
+                        'is-leaving-active',
+                        'text-[var(--nav-color)]',
+                        'text-white',
+                    );
                 });
             });
         },
@@ -666,10 +1009,15 @@ document.addEventListener('alpine:init', () => {
             const track = this.$refs.track;
             if (!track) return;
 
+            if (index < 0) {
+                this.indicator = { ...this.indicator, opacity: 0 };
+                return;
+            }
+
             const items = track.querySelectorAll('[data-nav-index]');
             const item = items[index];
             if (!item) {
-                this.indicator.opacity = 0;
+                this.indicator = { ...this.indicator, opacity: 0 };
                 return;
             }
 
@@ -701,6 +1049,7 @@ document.addEventListener('alpine:init', () => {
         kurirs: Array.isArray(payload.kurirs) ? payload.kurirs : [],
         promo: Math.max(0, Number(payload.promo) || 0),
         loginUrl: payload.loginUrl || '/login',
+        applyTheme: payload.applyTheme !== false,
 
         currentIndex: 0,
         quantity: 1,
@@ -711,12 +1060,15 @@ document.addEventListener('alpine:init', () => {
         isCopied: false,
         isWishlisted: false,
         statusMessage: '',
+        statusTone: 'success',
+        wishlistMessage: '',
         draft: '',
         chatBubbles: [],
         detailScrollHeight: null,
         alert: { show: false, message: '' },
         chatTemplates: ['Hai, barang ini ready?', 'Bisa dikirim hari ini?', 'Terima kasih'],
         actionBusy: false,
+        wishlistBusy: false,
         wishlistId: null,
         _galleryTimer: null,
         _resizeObserver: null,
@@ -774,7 +1126,9 @@ document.addEventListener('alpine:init', () => {
 
         init() {
             this.selectedKurir = this.kurirs[0] || null;
-            applyProductTheme(this.accent);
+            if (this.applyTheme) {
+                applyProductTheme(this.accent);
+            }
 
             if (this.gallery.length > 1) {
                 this._galleryTimer = window.setInterval(() => {
@@ -792,12 +1146,56 @@ document.addEventListener('alpine:init', () => {
 
             this._onResize = () => this.syncDetailHeight();
             window.addEventListener('resize', this._onResize);
+
+            this._onWishlistSync = () => this.syncWishlistState();
+            window.addEventListener('wishlist_updated', this._onWishlistSync);
+            window.addEventListener('auth-change', this._onWishlistSync);
+            this.syncWishlistState();
         },
 
         destroy() {
             if (this._galleryTimer) window.clearInterval(this._galleryTimer);
             if (this._resizeObserver) this._resizeObserver.disconnect();
             if (this._onResize) window.removeEventListener('resize', this._onResize);
+            if (this._onWishlistSync) {
+                window.removeEventListener('wishlist_updated', this._onWishlistSync);
+                window.removeEventListener('auth-change', this._onWishlistSync);
+            }
+        },
+
+        flashStatus(message, tone = 'success', ms = 2200) {
+            this.statusMessage = message;
+            this.statusTone = tone;
+            if (this._statusTimer) window.clearTimeout(this._statusTimer);
+            this._statusTimer = window.setTimeout(() => {
+                this.statusMessage = '';
+            }, ms);
+        },
+
+        async syncWishlistState() {
+            if (!getAuthToken() || !this.id) {
+                this.isWishlisted = false;
+                this.wishlistId = null;
+                return;
+            }
+            try {
+                const res = await fetch('/api/wishlists?locale=id', {
+                    headers: authHeaders(true),
+                    credentials: 'same-origin',
+                });
+                if (!res.ok) return;
+                const data = await readApiJson(res);
+                const list = Array.isArray(data) ? data : data.data || [];
+                const match = list.find(
+                    (item) =>
+                        Number(item.product_id) === Number(this.id) ||
+                        Number(item.product?.id) === Number(this.id),
+                );
+                this.isWishlisted = Boolean(match);
+                this.wishlistId = match?.id ?? null;
+            } catch {
+                /* keep current local state */
+            }
         },
 
         syncDetailHeight() {
@@ -883,11 +1281,12 @@ document.addEventListener('alpine:init', () => {
         async addToCart() {
             if (this.isOutOfStock || this.actionBusy) return;
             if (!getAuthToken()) {
-                this.requireLogin('Silakan login terlebih dahulu untuk menambah ke keranjang.');
+                this.requireLogin(storefrontL('Silakan login terlebih dahulu untuk menambah ke keranjang.', 'Please log in first to add items to cart.'));
                 return;
             }
             this.actionBusy = true;
-            this.statusMessage = 'Menambah...';
+            this.statusMessage = storefrontL('Menambah...', 'Adding...');
+            this.statusTone = 'info';
             try {
                 const res = await fetch('/api/carts', {
                     method: 'POST',
@@ -899,17 +1298,22 @@ document.addEventListener('alpine:init', () => {
                     }),
                 });
                 const data = await readApiJson(res);
-                if (!res.ok) {
-                    throw new Error(apiErrorMessage(data, 'Gagal menambah ke keranjang.'));
+                if (res.status === 401) {
+                    clearAuthSession();
+                    this.requireLogin(storefrontL('Sesi habis. Silakan login lagi.', 'Session expired. Please log in again.'));
+                    return;
                 }
-                this.statusMessage = 'Ditambahkan!';
+                if (!res.ok) {
+                    throw new Error(apiErrorMessage(data, storefrontL('Gagal menambah ke keranjang.', 'Failed to add to cart.')));
+                }
+                this.flashStatus(storefrontL('Ditambahkan ke keranjang!', 'Added to cart!'), 'success');
                 emitEvomiEvent('cart_updated');
-                window.setTimeout(() => {
-                    this.statusMessage = '';
-                }, 1800);
             } catch (err) {
-                this.statusMessage = '';
-                this.requireLogin(err instanceof Error ? err.message : 'Gagal menambah ke keranjang.');
+                this.flashStatus(
+                    err instanceof Error ? err.message : storefrontL('Gagal menambah ke keranjang.', 'Failed to add to cart.'),
+                    'error',
+                    3200,
+                );
             } finally {
                 this.actionBusy = false;
             }
@@ -917,11 +1321,12 @@ document.addEventListener('alpine:init', () => {
 
         async toggleWishlist() {
             if (!getAuthToken()) {
-                this.requireLogin('Silakan login terlebih dahulu untuk menambah wishlist.');
+                this.requireLogin(storefrontL('Silakan login terlebih dahulu untuk menambah wishlist.', 'Please log in first to add to wishlist.'));
                 return;
             }
-            if (this.actionBusy) return;
-            this.actionBusy = true;
+            if (this.actionBusy || this.wishlistBusy) return;
+            this.wishlistBusy = true;
+            this.wishlistMessage = '';
             try {
                 if (this.isWishlisted && this.wishlistId) {
                     const res = await fetch(`/api/wishlists/${this.wishlistId}`, {
@@ -929,12 +1334,19 @@ document.addEventListener('alpine:init', () => {
                         headers: authHeaders(true),
                         credentials: 'same-origin',
                     });
+                    if (res.status === 401) {
+                        clearAuthSession();
+                        this.requireLogin(storefrontL('Sesi habis. Silakan login lagi.', 'Session expired. Please log in again.'));
+                        return;
+                    }
                     if (!res.ok) {
                         const data = await readApiJson(res);
-                        throw new Error(apiErrorMessage(data, 'Gagal menghapus wishlist.'));
+                        throw new Error(apiErrorMessage(data, storefrontL('Gagal menghapus wishlist.', 'Failed to remove from wishlist.')));
                     }
                     this.isWishlisted = false;
                     this.wishlistId = null;
+                    this.wishlistMessage = storefrontL('Dihapus dari wishlist.', 'Removed from wishlist.');
+                    emitEvomiEvent('wishlist_updated');
                 } else {
                     const res = await fetch('/api/wishlists', {
                         method: 'POST',
@@ -943,17 +1355,37 @@ document.addEventListener('alpine:init', () => {
                         body: JSON.stringify({ product_id: this.id }),
                     });
                     const data = await readApiJson(res);
+                    if (res.status === 401) {
+                        clearAuthSession();
+                        this.requireLogin(storefrontL('Sesi habis. Silakan login lagi.', 'Session expired. Please log in again.'));
+                        return;
+                    }
                     if (!res.ok) {
-                        throw new Error(apiErrorMessage(data, 'Gagal menambah wishlist.'));
+                        const message = apiErrorMessage(data, storefrontL('Gagal menambah wishlist.', 'Failed to add to wishlist.'));
+                        if (/sudah ada|already/i.test(message)) {
+                            await this.syncWishlistState();
+                            this.wishlistMessage = storefrontL('Sudah ada di wishlist.', 'Already in wishlist.');
+                            return;
+                        }
+                        throw new Error(message);
                     }
                     this.isWishlisted = true;
                     this.wishlistId = data?.id || data?.data?.id || null;
+                    if (!this.wishlistId) await this.syncWishlistState();
+                    this.wishlistMessage = storefrontL('Ditambahkan ke wishlist!', 'Added to wishlist!');
+                    emitEvomiEvent('wishlist_updated');
                 }
-                emitEvomiEvent('wishlist_updated');
+                window.setTimeout(() => {
+                    this.wishlistMessage = '';
+                }, 2200);
             } catch (err) {
-                this.requireLogin(err instanceof Error ? err.message : 'Gagal mengubah wishlist.');
+                this.wishlistMessage =
+                    err instanceof Error ? err.message : storefrontL('Gagal mengubah wishlist.', 'Failed to update wishlist.');
+                window.setTimeout(() => {
+                    this.wishlistMessage = '';
+                }, 3200);
             } finally {
-                this.actionBusy = false;
+                this.wishlistBusy = false;
             }
         },
 
@@ -961,7 +1393,7 @@ document.addEventListener('alpine:init', () => {
             const text = (this.draft || '').trim();
             if (!text) return;
             if (!getAuthToken()) {
-                this.requireLogin('Anda harus login terlebih dahulu untuk mengirim pesan ke admin.');
+                this.requireLogin(storefrontL('Anda harus login terlebih dahulu untuk mengirim pesan ke admin.', 'Please log in first to message admin.'));
                 this.isChatOpen = false;
                 return;
             }
@@ -980,7 +1412,7 @@ document.addEventListener('alpine:init', () => {
                 });
                 const data = await readApiJson(res);
                 if (!res.ok) {
-                    throw new Error(apiErrorMessage(data, 'Gagal mengirim pesan.'));
+                    throw new Error(apiErrorMessage(data, storefrontL('Gagal mengirim pesan.', 'Failed to send message.')));
                 }
                 this.chatBubbles.push({
                     id: Date.now(),
@@ -990,7 +1422,7 @@ document.addEventListener('alpine:init', () => {
                 this.draft = '';
                 emitEvomiEvent('chat_updated');
             } catch (err) {
-                this.requireLogin(err instanceof Error ? err.message : 'Gagal mengirim pesan.');
+                this.requireLogin(err instanceof Error ? err.message : storefrontL('Gagal mengirim pesan.', 'Failed to send message.'));
                 this.isChatOpen = false;
             }
         },
@@ -1028,16 +1460,27 @@ document.addEventListener('alpine:init', () => {
             return Math.max(1, Math.ceil(this.filtered.length / this.perPage));
         },
 
+        get pageNumbers() {
+            return Array.from({ length: this.totalPages }, (_, i) => i + 1);
+        },
+
         get paged() {
             const start = (this.page - 1) * this.perPage;
             return this.filtered.slice(start, start + this.perPage);
         },
 
         get resultLabel() {
-            if (this.query.trim()) {
-                return `${this.filtered.length} hasil untuk "${this.query.trim()}"`;
+            const q = this.query.trim();
+            if (q) {
+                return storefrontL(
+                    `${this.filtered.length} hasil untuk “${q}”`,
+                    `${this.filtered.length} results for “${q}”`,
+                );
             }
-            return `${this.articles.length} artikel tersedia`;
+            return storefrontL(
+                `${this.articles.length} artikel tersedia`,
+                `${this.articles.length} articles available`,
+            );
         },
 
         init() {
@@ -1046,9 +1489,29 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
+        scrollTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+
+        goPrev() {
+            this.page = Math.max(1, this.page - 1);
+            this.scrollTop();
+        },
+
+        goNext() {
+            this.page = Math.min(this.totalPages, this.page + 1);
+            this.scrollTop();
+        },
+
+        goToPage(n) {
+            this.page = Math.min(this.totalPages, Math.max(1, Number(n) || 1));
+            this.scrollTop();
+        },
+
         formatDate(value) {
             try {
-                return new Date(value).toLocaleDateString('id-ID', {
+                const locale = currentLocale() === 'en' ? 'en-US' : 'id-ID';
+                return new Date(value).toLocaleDateString(locale, {
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric',
@@ -1056,6 +1519,38 @@ document.addEventListener('alpine:init', () => {
             } catch {
                 return value;
             }
+        },
+    }));
+
+    Alpine.data('evomiArtikelShow', (meta = {}) => ({
+        copied: false,
+        title: meta.title || document.title,
+        excerpt: meta.excerpt || '',
+
+        async copyLink() {
+            try {
+                await navigator.clipboard.writeText(window.location.href);
+                this.copied = true;
+                window.setTimeout(() => {
+                    this.copied = false;
+                }, 2000);
+            } catch {
+                this.copied = false;
+            }
+        },
+
+        async share() {
+            const url = window.location.href;
+            const title = this.title || 'Evomi';
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title, url });
+                    return;
+                } catch {
+                    /* fall through to copy */
+                }
+            }
+            await this.copyLink();
         },
     }));
 
@@ -1098,7 +1593,7 @@ document.addEventListener('alpine:init', () => {
                 });
                 const data = await readApiJson(res);
                 if (!res.ok) {
-                    throw new Error(apiErrorMessage(data, 'Gagal mengirim pesan.'));
+                    throw new Error(apiErrorMessage(data, storefrontL('Gagal mengirim pesan.', 'Failed to send message.')));
                 }
                 this.status = {
                     type: 'success',
@@ -1128,7 +1623,10 @@ document.addEventListener('alpine:init', () => {
             sweet_shy: 0,
             rebel_brave: 0,
         },
+        answers: [],
+        resultKey: null,
         result: null,
+        submitting: false,
 
         get currentQuestion() {
             return this.questions[this.step] || null;
@@ -1139,32 +1637,109 @@ document.addEventListener('alpine:init', () => {
             return ((this.step + 1) / this.questions.length) * 100;
         },
 
-        answer(option) {
+        get hasCustomBgWidth() {
+            return Boolean(this.result?.bg_image_width_mobile || this.result?.bg_image_width_desktop);
+        },
+
+        get hasCustomProductWidth() {
+            return Boolean(this.result?.product_image_width_mobile || this.result?.product_image_width_desktop);
+        },
+
+        resultImageStyle(kind = 'bg') {
+            const style = { objectPosition: 'right bottom' };
+            if (kind === 'bg' && this.hasCustomBgWidth) {
+                const m = this.result.bg_image_width_mobile || this.result.bg_image_width_desktop || 300;
+                const d = this.result.bg_image_width_desktop || this.result.bg_image_width_mobile || 380;
+                style['--qr-bg-w-m'] = `${m}px`;
+                style['--qr-bg-w-d'] = `${d}px`;
+            }
+            if (kind === 'product' && this.hasCustomProductWidth) {
+                const m = this.result.product_image_width_mobile || this.result.product_image_width_desktop || 320;
+                const d = this.result.product_image_width_desktop || this.result.product_image_width_mobile || 500;
+                style['--qr-product-w-m'] = `${m}px`;
+                style['--qr-product-w-d'] = `${d}px`;
+            }
+            return style;
+        },
+
+        async answer(option) {
+            const question = this.currentQuestion;
+            if (!question || !option) return;
+
             ['peaceful_calm', 'purpose_prestige', 'sweet_shy', 'rebel_brave'].forEach((key) => {
                 this.scores[key] += Number(option[key] || 0);
             });
+            this.answers.push({
+                question_id: Number(question.id),
+                option_id: Number(option.id),
+            });
 
             if (this.step >= this.questions.length - 1) {
-                this.finish();
+                await this.finish();
                 return;
             }
             this.step += 1;
         },
 
-        finish() {
-            const winner =
-                Object.entries(this.scores).sort((a, b) => b[1] - a[1])[0]?.[0] ||
-                'purpose_prestige';
-            this.result = this.results[winner] || this.results.purpose_prestige;
+        getResultKey() {
+            let highest = -1;
+            let winner = 'purpose_prestige';
+            ['peaceful_calm', 'purpose_prestige', 'sweet_shy', 'rebel_brave'].forEach((key) => {
+                const score = Number(this.scores[key] || 0);
+                if (score > highest) {
+                    highest = score;
+                    winner = key;
+                }
+            });
+            return winner;
+        },
+
+        async submitHistory() {
+            if (!getAuthToken() || this.answers.length === 0 || this.submitting) return;
+            this.submitting = true;
+            try {
+                const locale = currentLocale();
+                await fetch(`/api/quiz/submit?locale=${locale}`, {
+                    method: 'POST',
+                    headers: authHeaders(true),
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ answers: this.answers, locale }),
+                });
+            } catch {
+                // Hasil lokal tetap ditampilkan
+            } finally {
+                this.submitting = false;
+            }
+        },
+
+        async finish() {
+            await this.submitHistory();
+            const winner = this.getResultKey();
+            this.resultKey = winner;
+            this.result = this.results[winner] || this.results.purpose_prestige || null;
             this.finished = true;
-            this.accent = this.result.color;
-            applyProductTheme(this.result.color);
+            const color = this.result?.color || DEFAULT_THEME_BLUE;
+            this.accent = color;
+            applyProductTheme(color);
+            this.$nextTick(() => {
+                applyProductTheme(color);
+                if (typeof bindSoftLinks === 'function') {
+                    bindSoftLinks(this.$el);
+                }
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        },
+
+        scrollToDetail() {
+            this.$refs.productDetail?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         },
 
         restart() {
             this.step = 0;
             this.finished = false;
             this.result = null;
+            this.resultKey = null;
+            this.answers = [];
             this.accent = DEFAULT_THEME_BLUE;
             this.scores = {
                 peaceful_calm: 0,
@@ -1173,6 +1748,9 @@ document.addEventListener('alpine:init', () => {
                 rebel_brave: 0,
             };
             restoreProductTheme();
+            this.$nextTick(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
         },
     }));
 
@@ -1203,8 +1781,9 @@ document.addEventListener('alpine:init', () => {
             };
         },
 
-        destinationForUser(user) {
-            return user?.is_admin ? '/dashboard' : '/';
+        destinationForUser() {
+            // Admin & user sama: ke beranda dulu (dashboard tetap bisa diakses dari menu akun)
+            return '/';
         },
 
         async submit() {
@@ -1286,9 +1865,8 @@ document.addEventListener('alpine:init', () => {
                     this.openModal({
                         type: 'success',
                         title: 'Selamat Datang!',
-                        message: user?.is_admin
-                            ? 'Login berhasil. Mengarahkan ke dashboard admin Evomi.'
-                            : 'Login berhasil. Selamat melanjutkan petualangan aroma Anda bersama Evomi.',
+                        message:
+                            'Login berhasil. Selamat melanjutkan petualangan aroma Anda bersama Evomi.',
                         cta: 'Lanjutkan',
                         go,
                     });
@@ -1327,25 +1905,35 @@ document.addEventListener('alpine:init', () => {
         ready: false,
         denied: false,
         deniedMessage: '',
+        locale: 'id',
 
         init() {
+            this.locale = readAdminLocale();
+            document.documentElement.setAttribute('data-admin-theme', 'light');
+            try {
+                localStorage.setItem('evomi-admin-theme', 'light');
+            } catch {
+                /* ignore */
+            }
+
             const token = getAuthToken();
             const user = getAuthUser();
+            const i18n = createAdminI18nApi(() => this.locale);
 
             if (!token || !user) {
                 this.denied = true;
-                this.deniedMessage = 'Silakan login terlebih dahulu.';
+                this.deniedMessage = i18n.t('auth', 'login_required');
                 window.setTimeout(() => {
                     window.location.replace('/login');
                 }, 900);
                 return;
             }
 
-            if (user.is_admin !== true) {
+            const isAdmin = user.is_admin === true || user.is_admin === 1 || user.is_admin === '1';
+            if (!isAdmin) {
                 clearAuthSession();
                 this.denied = true;
-                this.deniedMessage =
-                    'Akses ditolak! Anda tidak memiliki izin sebagai Administrator.';
+                this.deniedMessage = i18n.t('auth', 'denied_message');
                 window.setTimeout(() => {
                     window.location.replace('/login');
                 }, 1400);
@@ -1353,6 +1941,20 @@ document.addEventListener('alpine:init', () => {
             }
 
             this.ready = true;
+        },
+
+        t(section, key, id = '', en = '') {
+            return createAdminI18nApi(() => this.locale).t(section, key, id, en);
+        },
+
+        setLocale(next) {
+            const code = next === 'en' ? 'en' : 'id';
+            if (this.locale === code) return;
+            beginLocaleSwitchFx();
+            this.locale = writeAdminLocale(code);
+            window.dispatchEvent(new CustomEvent('evomi-admin-locale', { detail: this.locale }));
+            window.dispatchEvent(new Event('locale-change'));
+            window.setTimeout(() => finishLocaleSwitchFx(), 420);
         },
 
         async logout() {
@@ -1514,15 +2116,68 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
-    Alpine.data('evomiProfileShell', () => ({
+    Alpine.data('evomiProfileShell', (initialKey = 'settings') => ({
         ready: false,
+        activeKey: initialKey || 'settings',
         badges: { cart: 0, wishlist: 0, history: 0, unread: 0 },
+        indicator: { top: 0, height: 0, opacity: 0, color: '#1172BA' },
+
+        get indicatorStyle() {
+            return {
+                transform: `translate3d(0, ${this.indicator.top}px, 0)`,
+                height: `${Math.max(this.indicator.height, 0)}px`,
+                opacity: this.indicator.opacity,
+                backgroundColor: this.indicator.color,
+            };
+        },
 
         badgeLabel(key) {
             return formatBadge(this.badges?.[key] || 0);
         },
 
+        previewTo(key) {
+            if (!key || key === this.activeKey) return;
+            this.setActive(key, true);
+        },
+
+        setActive(key, animate = true) {
+            if (!key) return;
+            this.activeKey = key;
+            this.$el?.setAttribute('data-active-menu', key);
+            this.moveIndicator(key, animate);
+        },
+
+        moveIndicator(key, animate = true) {
+            const track = this.$refs.profileTrack;
+            if (!track) return;
+
+            const item = track.querySelector(`[data-profile-key="${key}"]`);
+            if (!item) {
+                this.indicator = { ...this.indicator, opacity: 0 };
+                return;
+            }
+
+            const trackRect = track.getBoundingClientRect();
+            const itemRect = item.getBoundingClientRect();
+            const color = item.dataset.profileColor || '#1172BA';
+
+            if (!animate) track.classList.add('profile-indicator-no-anim');
+
+            this.indicator = {
+                top: itemRect.top - trackRect.top,
+                height: itemRect.height,
+                opacity: 1,
+                color,
+            };
+
+            if (!animate) {
+                requestAnimationFrame(() => track.classList.remove('profile-indicator-no-anim'));
+            }
+        },
+
         async init() {
+            window.__evomiProfileShell = this;
+
             const token = getAuthToken();
             const user = getAuthUser();
             if (!token || !user) {
@@ -1537,7 +2192,31 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('history_updated', this._onBadge);
             window.addEventListener('messages_read', this._onBadge);
             window.addEventListener('auth-change', this._onBadge);
-            this.$nextTick(() => bindSoftLinks(this.$el));
+
+            this._onResize = () => this.moveIndicator(this.activeKey, false);
+            window.addEventListener('resize', this._onResize);
+
+            this.$nextTick(() => {
+                this.moveIndicator(this.activeKey, false);
+                requestAnimationFrame(() => this.moveIndicator(this.activeKey, true));
+                bindSoftLinks(this.$el);
+            });
+        },
+
+        destroy() {
+            if (window.__evomiProfileShell === this) {
+                window.__evomiProfileShell = null;
+            }
+            if (this._onBadge) {
+                window.removeEventListener('cart_updated', this._onBadge);
+                window.removeEventListener('wishlist_updated', this._onBadge);
+                window.removeEventListener('history_updated', this._onBadge);
+                window.removeEventListener('messages_read', this._onBadge);
+                window.removeEventListener('auth-change', this._onBadge);
+            }
+            if (this._onResize) {
+                window.removeEventListener('resize', this._onResize);
+            }
         },
 
         async refreshBadges() {
@@ -1550,11 +2229,16 @@ document.addEventListener('alpine:init', () => {
         saving: false,
         showPassword: false,
         status: { type: '', message: '' },
+        toast: '',
         form: { name: '', email: '', phone: '', address: '', password: '' },
         avatarPreview: null,
         avatarFile: null,
+        avatarPath: null,
+        lastLoginAt: null,
+        lastSeenAt: null,
         lastLoginLabel: '',
         lastSeenLabel: '',
+        lastSeenExact: '',
 
         get initial() {
             return userDisplayInitial(this.form.name || this.form.email);
@@ -1564,8 +2248,16 @@ document.addEventListener('alpine:init', () => {
             await this.load();
         },
 
+        showToast(message, ms = 2400) {
+            this.toast = message;
+            if (this._toastTimer) window.clearTimeout(this._toastTimer);
+            this._toastTimer = window.setTimeout(() => {
+                this.toast = '';
+            }, ms);
+        },
+
         formatPresence(value) {
-            if (!value) return '';
+            if (!value) return '—';
             try {
                 return new Date(value).toLocaleString('id-ID', {
                     day: 'numeric',
@@ -1576,6 +2268,25 @@ document.addEventListener('alpine:init', () => {
                 });
             } catch {
                 return String(value);
+            }
+        },
+
+        formatPresenceRelative(value) {
+            if (!value) return '—';
+            try {
+                const d = new Date(value);
+                const diffMs = Date.now() - d.getTime();
+                if (Number.isNaN(diffMs)) return this.formatPresence(value);
+                const mins = Math.floor(diffMs / 60000);
+                if (mins < 1) return 'Baru saja';
+                if (mins < 60) return `${mins} menit lalu`;
+                const hours = Math.floor(mins / 60);
+                if (hours < 24) return `${hours} jam lalu`;
+                const days = Math.floor(hours / 24);
+                if (days < 7) return `${days} hari lalu`;
+                return this.formatPresence(value);
+            } catch {
+                return this.formatPresence(value);
             }
         },
 
@@ -1600,13 +2311,17 @@ document.addEventListener('alpine:init', () => {
                     address: user.alamat_lengkap || '',
                     password: '',
                 };
-                this.avatarPreview = resolveAvatarUrl(user.avatar_profile);
-                this.lastLoginLabel = this.formatPresence(user.last_login_at);
-                this.lastSeenLabel = this.formatPresence(user.last_seen_at);
+                this.avatarPath = user.avatar_profile || user.avatar || null;
+                this.avatarPreview = avatarUrlFromUser(user);
+                this.lastLoginAt = user.last_login_at || null;
+                this.lastSeenAt = user.last_seen_at || null;
+                this.lastLoginLabel = this.formatPresence(this.lastLoginAt);
+                this.lastSeenLabel = this.formatPresenceRelative(this.lastSeenAt);
+                this.lastSeenExact = this.formatPresence(this.lastSeenAt);
             } catch (err) {
                 this.status = {
                     type: 'error',
-                    message: err instanceof Error ? err.message : 'Gagal memuat profil.',
+                    message: err instanceof Error ? err.message : storefrontL('Gagal memuat profil.', 'Failed to load profile.'),
                 };
             } finally {
                 this.loading = false;
@@ -1617,7 +2332,8 @@ document.addEventListener('alpine:init', () => {
             const file = e.target.files?.[0];
             if (!file) return;
             if (file.size > 2 * 1024 * 1024) {
-                this.status = { type: 'error', message: 'Ukuran foto maksimal 2MB.' };
+                this.showToast('Ukuran foto maksimal 2MB.');
+                e.target.value = '';
                 return;
             }
             this.avatarFile = file;
@@ -1630,7 +2346,7 @@ document.addEventListener('alpine:init', () => {
 
         async save() {
             this.saving = true;
-            this.status = { type: '', message: '' };
+            this.status = { type: 'processing', message: storefrontL('Menyimpan perubahan...', 'Saving changes...') };
             try {
                 if (this.form.password && this.form.password.length < 8) {
                     throw new Error('Password baru minimal 8 karakter.');
@@ -1655,20 +2371,28 @@ document.addEventListener('alpine:init', () => {
                     body: fd,
                 });
                 const data = await readApiJson(res);
-                if (!res.ok) throw new Error(apiErrorMessage(data, 'Gagal menyimpan profil.'));
+                if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Gagal menyimpan profil.', 'Failed to save profile.')));
 
                 const user = data.data || data.user || {};
                 const prev = getAuthUser() || {};
-                const merged = { ...prev, ...user };
+                const merged = {
+                    ...prev,
+                    ...user,
+                    avatar_profile: user.avatar_profile ?? prev.avatar_profile ?? null,
+                    updated_at: user.updated_at || new Date().toISOString(),
+                };
                 setAuthSession(getAuthToken(), merged);
                 this.form.password = '';
                 this.avatarFile = null;
-                this.avatarPreview = resolveAvatarUrl(user.avatar_profile);
-                this.status = { type: 'success', message: 'Profil berhasil diperbarui.' };
+                this.avatarPath = merged.avatar_profile || null;
+                this.avatarPreview = avatarUrlFromUser(merged);
+                syncNavbarAuth();
+                this.status = { type: '', message: '' };
+                this.showToast(storefrontL('Profil berhasil diperbarui.', 'Profile updated successfully.'));
             } catch (err) {
                 this.status = {
                     type: 'error',
-                    message: err instanceof Error ? err.message : 'Gagal menyimpan.',
+                    message: err instanceof Error ? err.message : storefrontL('Gagal menyimpan.', 'Failed to save.'),
                 };
             } finally {
                 this.saving = false;
@@ -1681,6 +2405,8 @@ document.addEventListener('alpine:init', () => {
         error: '',
         items: [],
         toast: '',
+        updatingId: null,
+        modal: { open: false, type: 'confirm', message: '', confirmAction: null },
 
         get subtotalLabel() {
             const total = this.items.reduce(
@@ -1690,8 +2416,38 @@ document.addEventListener('alpine:init', () => {
             return formatRupiah(total);
         },
 
+        get itemCount() {
+            return this.items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+        },
+
         async init() {
             await this.load();
+        },
+
+        showToast(message, ms = 2200) {
+            this.toast = message;
+            if (this._toastTimer) window.clearTimeout(this._toastTimer);
+            this._toastTimer = window.setTimeout(() => {
+                this.toast = '';
+            }, ms);
+        },
+
+        openConfirm(message, confirmAction) {
+            this.modal = { open: true, type: 'confirm', message, confirmAction };
+        },
+
+        openError(message) {
+            this.modal = { open: true, type: 'error', message, confirmAction: null };
+        },
+
+        closeModal() {
+            this.modal = { open: false, type: 'confirm', message: '', confirmAction: null };
+        },
+
+        async confirmModal() {
+            const action = this.modal.confirmAction;
+            this.closeModal();
+            if (typeof action === 'function') await action();
         },
 
         mapItem(row) {
@@ -1701,7 +2457,8 @@ document.addEventListener('alpine:init', () => {
                 id: row.id,
                 product_id: row.product_id || row.product?.id,
                 title: productTitle(row.product),
-                imageUrl: productImage(row.product),
+                imageUrl: productImage(row.product, 'cart'),
+                accent: productAccent(row.product),
                 stock: Number(row.product?.quantity ?? row.product?.stock ?? 0) || 0,
                 quantity: qty,
                 unitPrice: unit,
@@ -1724,10 +2481,12 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 const data = await readApiJson(res);
+                if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Gagal memuat keranjang.', 'Failed to load cart.')));
                 const list = Array.isArray(data) ? data : data.data || [];
                 this.items = list.map((row) => this.mapItem(row));
+                emitEvomiEvent('cart_updated');
             } catch (err) {
-                this.error = err instanceof Error ? err.message : 'Gagal memuat keranjang.';
+                this.error = err instanceof Error ? err.message : storefrontL('Gagal memuat keranjang.', 'Failed to load cart.');
             } finally {
                 this.loading = false;
                 this.$nextTick(() => bindSoftLinks(this.$el));
@@ -1735,11 +2494,21 @@ document.addEventListener('alpine:init', () => {
         },
 
         async changeQty(item, delta) {
-            const next = Math.max(1, (Number(item.quantity) || 1) + delta);
-            if (item.stock && next > item.stock) {
-                this.toast = `Stok tersedia: ${item.stock}`;
+            const next = (Number(item.quantity) || 1) + delta;
+            if (next < 1) {
+                this.requestRemove(item);
                 return;
             }
+            if (item.stock && next > item.stock) {
+                this.showToast(storefrontL(`Stok tidak mencukupi. Tersedia: ${item.stock}`, `Insufficient stock. Available: ${item.stock}`));
+                return;
+            }
+            if (this.updatingId === item.id) return;
+
+            const prevQty = item.quantity;
+            this.updatingId = item.id;
+            item.quantity = next;
+            item.lineTotalLabel = formatRupiah(item.unitPrice * next);
             try {
                 const res = await fetch(`/api/carts/${item.id}`, {
                     method: 'PUT',
@@ -1748,13 +2517,21 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({ quantity: next }),
                 });
                 const data = await readApiJson(res);
-                if (!res.ok) throw new Error(apiErrorMessage(data, 'Gagal mengubah jumlah.'));
-                item.quantity = next;
-                item.lineTotalLabel = formatRupiah(item.unitPrice * next);
+                if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Gagal mengubah jumlah.', 'Failed to update quantity.')));
                 emitEvomiEvent('cart_updated');
             } catch (err) {
-                this.toast = err instanceof Error ? err.message : 'Gagal mengubah jumlah.';
+                item.quantity = prevQty;
+                item.lineTotalLabel = formatRupiah(item.unitPrice * prevQty);
+                this.openError(err instanceof Error ? err.message : storefrontL('Gagal mengubah jumlah.', 'Failed to update quantity.'));
+            } finally {
+                this.updatingId = null;
             }
+        },
+
+        requestRemove(item) {
+            this.openConfirm(storefrontL('Hapus produk ini dari keranjang?', 'Remove this product from cart?'), async () => {
+                await this.remove(item);
+            });
         },
 
         async remove(item) {
@@ -1766,24 +2543,25 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (!res.ok) {
                     const data = await readApiJson(res);
-                    throw new Error(apiErrorMessage(data, 'Gagal menghapus item.'));
+                    throw new Error(apiErrorMessage(data, storefrontL('Gagal menghapus item.', 'Failed to remove item.')));
                 }
                 this.items = this.items.filter((i) => i.id !== item.id);
                 emitEvomiEvent('cart_updated');
+                this.showToast(storefrontL('Item dihapus dari keranjang.', 'Item removed from cart.'));
             } catch (err) {
-                this.toast = err instanceof Error ? err.message : 'Gagal menghapus.';
+                this.openError(err instanceof Error ? err.message : storefrontL('Gagal menghapus.', 'Failed to remove.'));
             }
         },
 
         goCheckout() {
             if (!this.items.length) {
-                this.toast = 'Keranjang masih kosong.';
-                window.setTimeout(() => {
-                    this.toast = '';
-                }, 2500);
+                this.showToast(storefrontL('Keranjang masih kosong.', 'Cart is still empty.'));
                 return;
             }
-            window.location.href = '/checkout?type=cart';
+            this.showToast(storefrontL('Mengalihkan ke checkout...', 'Redirecting to checkout...'));
+            window.setTimeout(() => {
+                window.location.href = '/checkout?type=cart';
+            }, 500);
         },
     }));
 
@@ -1792,9 +2570,36 @@ document.addEventListener('alpine:init', () => {
         error: '',
         items: [],
         toast: '',
+        addingId: null,
+        modal: { open: false, type: 'confirm', message: '', targetId: null },
 
         async init() {
             await this.load();
+        },
+
+        showToast(message, ms = 2200) {
+            this.toast = message;
+            if (this._toastTimer) window.clearTimeout(this._toastTimer);
+            this._toastTimer = window.setTimeout(() => {
+                this.toast = '';
+            }, ms);
+        },
+
+        closeModal() {
+            this.modal = { open: false, type: 'confirm', message: '', targetId: null };
+        },
+
+        requestRemove(item) {
+            this.modal = {
+                open: true,
+                type: 'confirm',
+                message: storefrontL('Hapus produk ini dari wishlist?', 'Remove this product from wishlist?'),
+                targetId: item.id,
+            };
+        },
+
+        openError(message) {
+            this.modal = { open: true, type: 'error', message, targetId: null };
         },
 
         mapItem(row) {
@@ -1802,7 +2607,8 @@ document.addEventListener('alpine:init', () => {
                 id: row.id,
                 product_id: row.product_id || row.product?.id,
                 title: productTitle(row.product),
-                imageUrl: productImage(row.product),
+                imageUrl: productImage(row.product, 'wishlist'),
+                accent: productAccent(row.product),
                 priceLabel: formatRupiah(productPrice(row.product)),
             };
         },
@@ -1821,14 +2627,27 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 const data = await readApiJson(res);
+                if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Gagal memuat wishlist.', 'Failed to load wishlist.')));
                 const list = Array.isArray(data) ? data : data.data || [];
                 this.items = list.map((row) => this.mapItem(row));
+                emitEvomiEvent('wishlist_updated');
             } catch (err) {
-                this.error = err instanceof Error ? err.message : 'Gagal memuat wishlist.';
+                this.error = err instanceof Error ? err.message : storefrontL('Gagal memuat wishlist.', 'Failed to load wishlist.');
             } finally {
                 this.loading = false;
                 this.$nextTick(() => bindSoftLinks(this.$el));
             }
+        },
+
+        async confirmRemove() {
+            const id = this.modal.targetId;
+            if (!id) {
+                this.closeModal();
+                return;
+            }
+            const item = this.items.find((i) => i.id === id);
+            this.closeModal();
+            if (item) await this.remove(item);
         },
 
         async remove(item) {
@@ -1840,16 +2659,23 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (!res.ok) {
                     const data = await readApiJson(res);
-                    throw new Error(apiErrorMessage(data, 'Gagal menghapus wishlist.'));
+                    throw new Error(apiErrorMessage(data, storefrontL('Gagal menghapus wishlist.', 'Failed to remove from wishlist.')));
                 }
                 this.items = this.items.filter((i) => i.id !== item.id);
                 emitEvomiEvent('wishlist_updated');
+                this.showToast(storefrontL('Produk dihapus dari wishlist.', 'Product removed from wishlist.'));
             } catch (err) {
-                this.toast = err instanceof Error ? err.message : 'Gagal menghapus.';
+                this.openError(err instanceof Error ? err.message : storefrontL('Gagal menghapus.', 'Failed to remove.'));
             }
         },
 
         async moveToCart(item) {
+            if (!getAuthToken()) {
+                this.openError('Silakan login terlebih dahulu untuk menambahkan produk.');
+                return;
+            }
+            if (this.addingId === item.id) return;
+            this.addingId = item.id;
             try {
                 const res = await fetch('/api/carts', {
                     method: 'POST',
@@ -1858,15 +2684,23 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({ product_id: item.product_id, quantity: 1 }),
                 });
                 const data = await readApiJson(res);
-                if (!res.ok) throw new Error(apiErrorMessage(data, 'Gagal menambah ke keranjang.'));
-                await this.remove(item);
+                if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Gagal menambah ke keranjang.', 'Failed to add to cart.')));
+
+                const del = await fetch(`/api/wishlists/${item.id}`, {
+                    method: 'DELETE',
+                    headers: authHeaders(true),
+                    credentials: 'same-origin',
+                });
+                if (del.ok) {
+                    this.items = this.items.filter((i) => i.id !== item.id);
+                }
                 emitEvomiEvent('cart_updated');
-                this.toast = 'Produk dipindahkan ke keranjang.';
-                window.setTimeout(() => {
-                    this.toast = '';
-                }, 2500);
+                emitEvomiEvent('wishlist_updated');
+                this.showToast('Ditambahkan ke keranjang.');
             } catch (err) {
-                this.toast = err instanceof Error ? err.message : 'Gagal memindahkan.';
+                this.openError(err instanceof Error ? err.message : storefrontL('Gagal memindahkan.', 'Failed to move item.'));
+            } finally {
+                this.addingId = null;
             }
         },
     }));
@@ -1877,6 +2711,16 @@ document.addEventListener('alpine:init', () => {
         groups: [],
         page: 1,
         perPage: 5,
+        toast: '',
+        modal: {
+            open: false,
+            type: 'confirm',
+            variant: 'confirm',
+            title: '',
+            message: '',
+            confirmText: '',
+            action: null,
+        },
 
         get pageCount() {
             return Math.max(1, Math.ceil(this.groups.length / this.perPage));
@@ -1891,6 +2735,62 @@ document.addEventListener('alpine:init', () => {
             await this.load();
         },
 
+        showToast(message, ms = 2200) {
+            this.toast = message;
+            if (this._toastTimer) window.clearTimeout(this._toastTimer);
+            this._toastTimer = window.setTimeout(() => {
+                this.toast = '';
+            }, ms);
+        },
+
+        closeModal() {
+            this.modal = {
+                open: false,
+                type: 'confirm',
+                variant: 'confirm',
+                title: '',
+                message: '',
+                confirmText: '',
+                action: null,
+            };
+        },
+
+        openConfirm({ variant, title, message, confirmText, action }) {
+            this.modal = {
+                open: true,
+                type: 'confirm',
+                variant: variant || 'confirm',
+                title,
+                message,
+                confirmText,
+                action,
+            };
+        },
+
+        async runModalAction() {
+            const action = this.modal.action;
+            if (typeof action !== 'function') {
+                this.closeModal();
+                return;
+            }
+            this.modal.type = 'loading';
+            this.modal.title = storefrontL('Memproses...', 'Processing...');
+            this.modal.message =
+                this.modal.variant === 'delete'
+                    ? storefrontL('Sedang menghapus riwayat pesanan Anda...', 'Deleting your order history...')
+                    : storefrontL('Sedang menyelesaikan pesanan Anda...', 'Completing your order...');
+            try {
+                await action();
+                this.closeModal();
+            } catch (err) {
+                this.modal.type = 'error';
+                this.modal.title = storefrontL('Gagal', 'Failed');
+                this.modal.message =
+                    err instanceof Error ? err.message : storefrontL('Terjadi kesalahan. Coba lagi.', 'Something went wrong. Please try again.');
+                this.modal.action = null;
+            }
+        },
+
         async load() {
             this.loading = true;
             this.error = '';
@@ -1905,72 +2805,170 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 const data = await readApiJson(res);
+                if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Gagal memuat riwayat belanja.', 'Failed to load order history.')));
                 const list = Array.isArray(data) ? data : data.data || [];
                 this.groups = groupOrdersByCreatedAt(list);
+                cacheHistoryGroups(this.groups);
                 this.page = 1;
+                emitEvomiEvent('history_updated');
             } catch (err) {
-                this.error = err instanceof Error ? err.message : 'Gagal memuat riwayat.';
+                this.error = err instanceof Error ? err.message : storefrontL('Gagal memuat riwayat.', 'Failed to load history.');
             } finally {
                 this.loading = false;
                 this.$nextTick(() => bindSoftLinks(this.$el));
             }
         },
 
-        async confirmGroup(group) {
-            try {
-                for (const item of group.items) {
-                    const res = await fetch(`/api/orders/${item.id}/confirm`, {
-                        method: 'PATCH',
-                        headers: authHeaders(true),
-                        credentials: 'same-origin',
-                    });
-                    if (!res.ok) {
-                        const data = await readApiJson(res);
-                        throw new Error(apiErrorMessage(data, 'Gagal konfirmasi pesanan.'));
+        requestConfirm(group) {
+            this.openConfirm({
+                variant: 'confirm',
+                title: storefrontL('Pesanan Diterima', 'Order Received'),
+                message:
+                    storefrontL('Apakah Anda yakin telah menerima paket pesanan ini dengan baik? Jika ya, pesanan akan diselesaikan.', 'Have you received this package in good condition? If yes, the order will be completed.'),
+                confirmText: storefrontL('Ya, Terima Pesanan', 'Yes, Order Received'),
+                action: async () => {
+                    for (const item of group.items) {
+                        const res = await fetch(`/api/orders/${item.id}/confirm`, {
+                            method: 'PATCH',
+                            headers: authHeaders(true),
+                            credentials: 'same-origin',
+                        });
+                        if (!res.ok) {
+                            const data = await readApiJson(res);
+                            throw new Error(apiErrorMessage(data, storefrontL('Gagal konfirmasi pesanan.', 'Failed to confirm order.')));
+                        }
                     }
-                }
-                emitEvomiEvent('history_updated');
-                await this.load();
-            } catch (err) {
-                this.error = err instanceof Error ? err.message : 'Gagal konfirmasi.';
-            }
+                    emitEvomiEvent('history_updated');
+                    await this.load();
+                    this.showToast(storefrontL('Pesanan telah berhasil diselesaikan.', 'Order completed successfully.'));
+                },
+            });
         },
 
-        async removeGroup(group) {
-            if (!window.confirm('Hapus pesanan ini dari riwayat?')) return;
-            try {
-                for (const item of group.items) {
-                    const res = await fetch(`/api/orders/${item.id}`, {
-                        method: 'DELETE',
-                        headers: authHeaders(true),
-                        credentials: 'same-origin',
-                    });
-                    if (!res.ok) {
-                        const data = await readApiJson(res);
-                        throw new Error(apiErrorMessage(data, 'Gagal menghapus riwayat.'));
+        requestRemove(group) {
+            this.openConfirm({
+                variant: 'delete',
+                title: storefrontL('Hapus Riwayat', 'Delete History'),
+                message:
+                    storefrontL('Apakah Anda yakin ingin menghapus seluruh pesanan ini dari riwayat belanja?', 'Are you sure you want to delete this order from your shopping history?'),
+                confirmText: storefrontL('Ya, Hapus', 'Yes, Delete'),
+                action: async () => {
+                    for (const item of group.items) {
+                        const res = await fetch(`/api/orders/${item.id}`, {
+                            method: 'DELETE',
+                            headers: authHeaders(true),
+                            credentials: 'same-origin',
+                        });
+                        if (!res.ok) {
+                            const data = await readApiJson(res);
+                            throw new Error(apiErrorMessage(data, storefrontL('Gagal menghapus riwayat.', 'Failed to delete history.')));
+                        }
                     }
-                }
-                emitEvomiEvent('history_updated');
-                await this.load();
-            } catch (err) {
-                this.error = err instanceof Error ? err.message : 'Gagal menghapus.';
-            }
+                    emitEvomiEvent('history_updated');
+                    await this.load();
+                    this.showToast(storefrontL('Riwayat pesanan telah dihapus.', 'Order history deleted.'));
+                },
+            });
         },
     }));
 
     Alpine.data('evomiProfileHistoryShow', (orderId) => ({
         orderId,
-        loading: true,
+        loading: false,
         error: '',
         group: null,
-
-        async init() {
-            await this.load();
+        toast: '',
+        modal: {
+            open: false,
+            type: 'confirm',
+            variant: 'confirm',
+            title: '',
+            message: '',
+            confirmText: '',
+            action: null,
         },
 
-        async load() {
-            this.loading = true;
-            this.error = '';
+        get themeColor() {
+            return this.group?.accent || '#1172BA';
+        },
+
+        get statusIcon() {
+            const s = String(this.group?.status || '').toLowerCase();
+            if (s === 'menunggu_konfirmasi') return 'clock';
+            if (s === 'pengemasan') return 'box';
+            if (s === 'dalam_perjalanan') return 'truck';
+            return 'check';
+        },
+
+        async init() {
+            const cached = findCachedHistoryGroup(this.orderId);
+            if (cached) {
+                this.group = cached;
+                this.error = '';
+            }
+            await this.load({ silent: Boolean(cached) });
+        },
+
+        showToast(message, ms = 2200) {
+            this.toast = message;
+            if (this._toastTimer) window.clearTimeout(this._toastTimer);
+            this._toastTimer = window.setTimeout(() => {
+                this.toast = '';
+            }, ms);
+        },
+
+        closeModal() {
+            this.modal = {
+                open: false,
+                type: 'confirm',
+                variant: 'confirm',
+                title: '',
+                message: '',
+                confirmText: '',
+                action: null,
+            };
+        },
+
+        openConfirm({ variant, title, message, confirmText, action }) {
+            this.modal = {
+                open: true,
+                type: 'confirm',
+                variant: variant || 'confirm',
+                title,
+                message,
+                confirmText,
+                action,
+            };
+        },
+
+        async runModalAction() {
+            const action = this.modal.action;
+            if (typeof action !== 'function') {
+                this.closeModal();
+                return;
+            }
+            this.modal.type = 'loading';
+            this.modal.title = storefrontL('Memproses...', 'Processing...');
+            this.modal.message =
+                this.modal.variant === 'delete'
+                    ? 'Menghapus item dari riwayat...'
+                    : storefrontL('Sedang menyelesaikan pesanan Anda...', 'Completing your order...');
+            try {
+                await action();
+                this.closeModal();
+            } catch (err) {
+                this.modal.type = 'error';
+                this.modal.title = storefrontL('Gagal', 'Failed');
+                this.modal.message =
+                    err instanceof Error ? err.message : storefrontL('Terjadi kesalahan. Coba lagi.', 'Something went wrong. Please try again.');
+                this.modal.action = null;
+            }
+        },
+
+        async load({ silent = false } = {}) {
+            // Never show a full loading screen on history detail
+            this.loading = false;
+            if (!silent) this.error = '';
             try {
                 const res = await fetch('/api/shopping-history?locale=id', {
                     headers: authHeaders(true),
@@ -1984,46 +2982,97 @@ document.addEventListener('alpine:init', () => {
                 const data = await readApiJson(res);
                 const list = Array.isArray(data) ? data : data.data || [];
                 const groups = groupOrdersByCreatedAt(list);
-                this.group =
+                cacheHistoryGroups(groups);
+                const found =
                     groups.find((g) => String(g.groupId) === String(this.orderId)) ||
                     groups.find((g) => g.items.some((i) => String(i.id) === String(this.orderId))) ||
                     null;
-                if (!this.group) this.error = 'Pesanan tidak ditemukan.';
+                if (found) {
+                    this.group = found;
+                    this.error = '';
+                } else if (!this.group) {
+                    this.error = storefrontL('Pesanan tidak ditemukan di dalam riwayat belanja Anda.', 'Order not found in your shopping history.');
+                }
             } catch (err) {
-                this.error = err instanceof Error ? err.message : 'Gagal memuat detail.';
+                if (!this.group) {
+                    this.error = err instanceof Error ? err.message : storefrontL('Gagal memuat detail.', 'Failed to load details.');
+                }
             } finally {
                 this.loading = false;
                 this.$nextTick(() => bindSoftLinks(this.$el));
             }
         },
 
-        async confirmGroup() {
+        requestConfirm() {
             if (!this.group) return;
-            try {
-                for (const item of this.group.items) {
-                    const res = await fetch(`/api/orders/${item.id}/confirm`, {
-                        method: 'PATCH',
+            this.openConfirm({
+                variant: 'confirm',
+                title: 'Konfirmasi Pesanan',
+                message:
+                    'Apakah Anda yakin telah menerima seluruh paket pesanan ini dengan baik? Status pesanan akan diubah menjadi Selesai.',
+                confirmText: 'Ya, Sudah Diterima',
+                action: async () => {
+                    for (const item of this.group.items) {
+                        const res = await fetch(`/api/orders/${item.id}/confirm`, {
+                            method: 'PATCH',
+                            headers: authHeaders(true),
+                            credentials: 'same-origin',
+                        });
+                        if (!res.ok) {
+                            const data = await readApiJson(res);
+                            throw new Error(apiErrorMessage(data, storefrontL('Gagal konfirmasi pesanan.', 'Failed to confirm order.')));
+                        }
+                    }
+                    emitEvomiEvent('history_updated');
+                    await this.load({ silent: true });
+                    this.showToast('Semua pesanan Anda telah berhasil diselesaikan.');
+                },
+            });
+        },
+
+        requestRemoveItem(item) {
+            if (!item) return;
+            this.openConfirm({
+                variant: 'delete',
+                title: storefrontL('Hapus Item', 'Delete Item'),
+                message: 'Apakah Anda yakin ingin menghapus item ini dari riwayat belanja?',
+                confirmText: storefrontL('Hapus', 'Delete'),
+                action: async () => {
+                    const res = await fetch(`/api/orders/${item.id}`, {
+                        method: 'DELETE',
                         headers: authHeaders(true),
                         credentials: 'same-origin',
                     });
                     if (!res.ok) {
                         const data = await readApiJson(res);
-                        throw new Error(apiErrorMessage(data, 'Gagal konfirmasi pesanan.'));
+                        throw new Error(apiErrorMessage(data, storefrontL('Gagal menghapus item.', 'Failed to remove item.')));
                     }
-                }
-                emitEvomiEvent('history_updated');
-                await this.load();
-            } catch (err) {
-                this.error = err instanceof Error ? err.message : 'Gagal konfirmasi.';
-            }
+                    emitEvomiEvent('history_updated');
+                    const remaining = (this.group?.items || []).filter(
+                        (i) => String(i.id) !== String(item.id),
+                    );
+                    if (remaining.length === 0) {
+                        this.showToast('Seluruh item pesanan ini telah terhapus.');
+                        window.setTimeout(() => {
+                            softNavigate('/profile/history');
+                        }, 600);
+                        return;
+                    }
+                    await this.load({ silent: true });
+                    this.showToast('Item pesanan telah dihapus.');
+                },
+            });
         },
     }));
 
     Alpine.data('evomiProfileChat', () => ({
         loading: true,
+        refreshing: false,
         sending: false,
         draft: '',
+        sendError: '',
         messages: [],
+        showJumpLatest: false,
         hints: [
             'Cek status pesanan saya',
             'Rekomendasi aroma untuk saya',
@@ -2040,6 +3089,61 @@ document.addEventListener('alpine:init', () => {
             if (this._poll) window.clearInterval(this._poll);
         },
 
+        dayKey(iso) {
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return '';
+            return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        },
+
+        dayLabel(iso) {
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return '';
+            const today = new Date();
+            const yday = new Date();
+            yday.setDate(today.getDate() - 1);
+            if (this.dayKey(iso) === this.dayKey(today.toISOString())) return 'Hari ini';
+            if (this.dayKey(iso) === this.dayKey(yday.toISOString())) return 'Kemarin';
+            return d.toLocaleDateString('id-ID', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+            });
+        },
+
+        showDayDivider(index) {
+            if (index === 0) return true;
+            const prev = this.messages[index - 1];
+            const cur = this.messages[index];
+            return this.dayKey(prev?.createdAt) !== this.dayKey(cur?.createdAt);
+        },
+
+        isConsecutive(index) {
+            if (index === 0) return false;
+            const prev = this.messages[index - 1];
+            const cur = this.messages[index];
+            return prev?.type === cur?.type;
+        },
+
+        onThreadScroll() {
+            const el = this.$refs.thread;
+            if (!el) return;
+            const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+            this.showJumpLatest = dist > 120;
+        },
+
+        jumpLatest() {
+            const el = this.$refs.thread;
+            if (!el) return;
+            el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+            this.showJumpLatest = false;
+        },
+
+        useHint(hint) {
+            this.draft = hint;
+            this.$nextTick(() => this.$refs.composer?.focus());
+        },
+
         async load(silent = false) {
             const user = getAuthUser();
             if (!user?.email) {
@@ -2047,37 +3151,46 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             if (!silent) this.loading = true;
+            else this.refreshing = true;
             try {
                 const res = await fetch(`/api/contact?email=${encodeURIComponent(user.email)}`, {
                     headers: { Accept: 'application/json' },
                 });
                 const data = await readApiJson(res);
                 const raw = Array.isArray(data) ? data : data.data || data.messages || [];
-                // Normalize possible shapes into bubbles
-                this.messages = [];
+                const bubbles = [];
                 for (const row of raw) {
-                    if (row.type && row.text) {
-                        this.messages.push({
-                            id: row.id || `${row.type}-${row.created_at}`,
+                    if (row.type && (row.text || row.message)) {
+                        bubbles.push({
+                            id: String(row.id || `${row.type}-${row.created_at}`),
                             type: row.type === 'admin' ? 'admin' : 'user',
                             text: row.text || row.message || '',
+                            createdAt: row.created_at,
+                            subject: row.subject || '',
+                            isReadByAdmin: Boolean(row.isReadByAdmin ?? row.is_read_by_admin),
+                            isNew: Boolean(row.isNew),
                             timeLabel: new Date(row.created_at).toLocaleString('id-ID', {
-                                day: 'numeric',
-                                month: 'short',
                                 hour: '2-digit',
                                 minute: '2-digit',
                             }),
                         });
                         continue;
                     }
-                    if (row.message) {
-                        this.messages.push({
+                    if (row.message && row.message !== '[Percakapan dimulai oleh admin]') {
+                        const readByAdmin =
+                            row.is_read_by_admin === true ||
+                            row.is_read_by_admin === 1 ||
+                            row.is_read_by_admin === '1' ||
+                            (Array.isArray(row.replies) && row.replies.length > 0);
+                        bubbles.push({
                             id: `u-${row.id}`,
                             type: 'user',
                             text: row.message,
+                            createdAt: row.created_at,
+                            subject: row.subject || '',
+                            isReadByAdmin: Boolean(readByAdmin),
+                            isNew: false,
                             timeLabel: new Date(row.created_at).toLocaleString('id-ID', {
-                                day: 'numeric',
-                                month: 'short',
                                 hour: '2-digit',
                                 minute: '2-digit',
                             }),
@@ -2085,19 +3198,31 @@ document.addEventListener('alpine:init', () => {
                     }
                     const replies = row.replies || row.contact_replies || [];
                     for (const rep of replies) {
-                        this.messages.push({
+                        const unread =
+                            !(
+                                rep.is_read_by_user === true ||
+                                rep.is_read_by_user === 1 ||
+                                rep.is_read_by_user === '1'
+                            );
+                        bubbles.push({
                             id: `a-${rep.id}`,
                             type: 'admin',
                             text: rep.reply_message || rep.message || rep.reply || rep.text || '',
+                            createdAt: rep.created_at,
+                            subject: '',
+                            isReadByAdmin: true,
+                            isNew: unread,
                             timeLabel: new Date(rep.created_at).toLocaleString('id-ID', {
-                                day: 'numeric',
-                                month: 'short',
                                 hour: '2-digit',
                                 minute: '2-digit',
                             }),
                         });
                     }
                 }
+                bubbles.sort(
+                    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+                );
+                this.messages = bubbles;
 
                 await fetch('/api/contact/mark-read', {
                     method: 'POST',
@@ -2107,14 +3232,14 @@ document.addEventListener('alpine:init', () => {
                 }).catch(() => {});
                 emitEvomiEvent('messages_read');
 
-                this.$nextTick(() => {
-                    const el = this.$refs.thread;
-                    if (el) el.scrollTop = el.scrollHeight;
-                });
+                if (!silent) {
+                    this.$nextTick(() => this.jumpLatest());
+                }
             } catch {
                 /* keep previous */
             } finally {
                 this.loading = false;
+                this.refreshing = false;
             }
         },
 
@@ -2125,24 +3250,45 @@ document.addEventListener('alpine:init', () => {
             if (!user?.email) return;
 
             this.sending = true;
+            this.sendError = '';
+            const pendingId = `pending-${Date.now()}`;
+            this.messages.push({
+                id: pendingId,
+                type: 'user',
+                text,
+                createdAt: new Date().toISOString(),
+                subject: 'Pesan Dukungan Pelanggan',
+                isReadByAdmin: false,
+                isNew: false,
+                pending: true,
+                timeLabel: new Date().toLocaleString('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                }),
+            });
+            this.draft = '';
+            this.$nextTick(() => this.jumpLatest());
+
             try {
                 const res = await fetch('/api/contact', {
                     method: 'POST',
                     headers: authHeaders(true),
                     credentials: 'same-origin',
                     body: JSON.stringify({
-                        name: user.name || user.email,
+                        name: user.name || user.nama_lengkap || user.email,
                         email: user.email,
                         subject: 'Pesan Dukungan Pelanggan',
                         message: text,
                     }),
                 });
                 const data = await readApiJson(res);
-                if (!res.ok) throw new Error(apiErrorMessage(data, 'Gagal mengirim pesan.'));
-                this.draft = '';
+                if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Gagal mengirim pesan.', 'Failed to send message.')));
                 await this.load(true);
             } catch (err) {
-                window.alert(err instanceof Error ? err.message : 'Gagal mengirim.');
+                this.messages = this.messages.filter((m) => m.id !== pendingId);
+                this.draft = text;
+                this.sendError =
+                    err instanceof Error ? err.message : storefrontL('Gagal mengirim pesan. Coba lagi ya.', 'Failed to send message. Please try again.');
             } finally {
                 this.sending = false;
             }
@@ -2163,6 +3309,7 @@ document.addEventListener('alpine:init', () => {
         promoDiscount: 0,
         orderNote: '',
         editingAddress: false,
+        savingAddress: false,
         form: { name: '', email: '', phone: '', address: '' },
         draft: { name: '', email: '', phone: '', address: '' },
         modal: { open: false, type: 'success', title: '', message: '' },
@@ -2175,6 +3322,44 @@ document.addEventListener('alpine:init', () => {
                     this.form.phone?.trim() &&
                     this.form.address?.trim(),
             );
+        },
+
+        applyAddress(next, { openEditorIfIncomplete = true } = {}) {
+            const normalized = {
+                name: String(next?.name || '').trim(),
+                email: String(next?.email || '').trim(),
+                phone: String(next?.phone || '').trim(),
+                address: String(next?.address || '').trim(),
+            };
+            this.form = { ...normalized };
+            this.draft = { ...normalized };
+            if (openEditorIfIncomplete) {
+                this.editingAddress = !this.hasAddress;
+            }
+        },
+
+        addressFromUser(user) {
+            if (!user || typeof user !== 'object') {
+                return { name: '', email: '', phone: '', address: '' };
+            }
+            return {
+                name: String(user.name || user.nama_lengkap || user.nama || '').trim(),
+                email: String(user.email || '').trim(),
+                phone: String(user.phone || user.no_hp || '').trim(),
+                address: String(
+                    user.alamat_lengkap || user.alamat || user.address || '',
+                ).trim(),
+            };
+        },
+
+        syncAuthUserLocal(userPatch) {
+            try {
+                const prev = getAuthUser() || {};
+                const merged = { ...prev, ...userPatch };
+                setAuthSession(getAuthToken(), merged);
+            } catch {
+                /* ignore */
+            }
         },
 
         get itemCount() {
@@ -2225,12 +3410,8 @@ document.addEventListener('alpine:init', () => {
             try {
                 await Promise.all([this.loadKurirs(params.get('kurirId')), this.loadItems(params)]);
                 await this.prefillProfile();
-                if (!this.hasAddress) {
-                    this.editingAddress = true;
-                    this.draft = { ...this.form };
-                }
             } catch (err) {
-                this.fatalError = err instanceof Error ? err.message : 'Gagal memuat checkout.';
+                this.fatalError = err instanceof Error ? err.message : storefrontL('Gagal memuat checkout.', 'Failed to load checkout.');
             } finally {
                 this.loading = false;
                 applyProductTheme(this.brand);
@@ -2251,7 +3432,7 @@ document.addEventListener('alpine:init', () => {
             if (this.type === 'cart') {
                 if (!getAuthToken()) {
                     window.location.replace('/login');
-                    throw new Error('Login diperlukan untuk checkout keranjang.');
+                    throw new Error(storefrontL('Login diperlukan untuk checkout keranjang.', 'Login required for cart checkout.'));
                 }
                 const res = await fetch('/api/carts?locale=id', {
                     headers: authHeaders(true),
@@ -2260,7 +3441,7 @@ document.addEventListener('alpine:init', () => {
                 if (res.status === 401) {
                     clearAuthSession();
                     window.location.replace('/login');
-                    throw new Error('Sesi berakhir.');
+                    throw new Error(storefrontL('Sesi berakhir.', 'Session expired.'));
                 }
                 const data = await readApiJson(res);
                 const list = Array.isArray(data) ? data : data.data || [];
@@ -2274,7 +3455,7 @@ document.addEventListener('alpine:init', () => {
                     image: productImage(row.product),
                     personality_type: row.product?.personality_type || '',
                 })).filter((i) => i.product_id);
-                if (!this.items.length) throw new Error('Keranjang kosong.');
+                if (!this.items.length) throw new Error(storefrontL('Keranjang kosong.', 'Cart is empty.'));
                 this.brand = DEFAULT_THEME_BLUE;
                 return;
             }
@@ -2282,12 +3463,12 @@ document.addEventListener('alpine:init', () => {
             const productId = Number(params.get('productId'));
             const qty = Math.max(1, Number(params.get('qty') || 1));
             const unitPrice = Number(params.get('unitPrice') || 0);
-            if (!productId) throw new Error('Produk checkout tidak valid.');
+            if (!productId) throw new Error(storefrontL('Produk checkout tidak valid.', 'Invalid checkout product.'));
 
             const res = await fetch(`/api/products/${productId}`, { headers: { Accept: 'application/json' } });
             const data = await readApiJson(res);
             const product = data?.data || data;
-            if (!res.ok || !product?.id) throw new Error('Produk tidak ditemukan.');
+            if (!res.ok || !product?.id) throw new Error(storefrontL('Produk tidak ditemukan.', 'Product not found.'));
 
             this.items = [{
                 id: `buynow-${product.id}`,
@@ -2305,44 +3486,108 @@ document.addEventListener('alpine:init', () => {
         },
 
         async prefillProfile() {
-            if (!getAuthToken()) return;
+            if (!getAuthToken()) {
+                // Guest: form kosong → tampilkan editor
+                this.editingAddress = !this.hasAddress;
+                this.draft = { ...this.form };
+                return;
+            }
+
             try {
                 const res = await fetch('/api/user/profile', {
                     headers: authHeaders(true),
                     credentials: 'same-origin',
                 });
-                if (!res.ok) return;
-                const data = await readApiJson(res);
-                const user = data?.data || data?.user || data;
-                this.form = {
-                    name: user?.nama || user?.name || '',
-                    email: user?.email || '',
-                    phone: user?.phone || user?.no_hp || '',
-                    address: user?.alamat || user?.address || '',
-                };
+                if (res.ok) {
+                    const data = await readApiJson(res);
+                    const user = data?.data || data?.user || data;
+                    this.applyAddress(this.addressFromUser(user));
+                    this.syncAuthUserLocal(user);
+                    return;
+                }
             } catch {
-                /* ignore */
+                /* fallback localStorage */
             }
+
+            this.applyAddress(this.addressFromUser(getAuthUser()));
         },
 
         startEditAddress() {
             this.draft = { ...this.form };
             this.editingAddress = true;
+            this.formError = '';
         },
 
         cancelAddressEdit() {
+            if (!this.hasAddress) return;
             this.editingAddress = false;
             this.draft = { ...this.form };
+            this.formError = '';
         },
 
-        saveAddress() {
-            this.form = {
+        async saveAddress() {
+            const next = {
                 name: (this.draft.name || '').trim(),
                 email: (this.draft.email || '').trim(),
                 phone: (this.draft.phone || '').trim(),
                 address: (this.draft.address || '').trim(),
             };
+
+            if (!next.name || !next.email || !next.phone || !next.address) {
+                this.formError = 'Lengkapi nama, email, telepon, dan alamat.';
+                return false;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next.email)) {
+                this.formError = 'Format email tidak valid.';
+                return false;
+            }
+
+            this.form = { ...next };
+            this.draft = { ...next };
             this.editingAddress = false;
+            this.formError = '';
+
+            const token = getAuthToken();
+            if (!token) return true;
+
+            try {
+                this.savingAddress = true;
+                const fd = new FormData();
+                fd.append('name', next.name);
+                fd.append('nama_lengkap', next.name);
+                fd.append('email', next.email);
+                fd.append('phone', next.phone);
+                fd.append('alamat_lengkap', next.address);
+
+                const headers = authHeaders(false);
+                delete headers['Content-Type'];
+
+                const res = await fetch('/api/user/profile', {
+                    method: 'POST',
+                    headers,
+                    credentials: 'same-origin',
+                    body: fd,
+                });
+                const data = await readApiJson(res);
+                if (!res.ok) {
+                    throw new Error(apiErrorMessage(data, storefrontL('Gagal menyimpan alamat ke profil.', 'Failed to save address to profile.')));
+                }
+                const user = data?.data || data?.user || {
+                    name: next.name,
+                    nama_lengkap: next.name,
+                    email: next.email,
+                    phone: next.phone,
+                    alamat_lengkap: next.address,
+                };
+                this.syncAuthUserLocal(user);
+            } catch (err) {
+                // Alamat tetap dipakai di checkout; gagal sync profil tidak memblokir
+                console.error(err);
+            } finally {
+                this.savingAddress = false;
+            }
+
+            return true;
         },
 
         selectKurir(kurir) {
@@ -2363,8 +3608,11 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        validateForm() {
-            if (this.editingAddress) this.saveAddress();
+        async validateForm() {
+            if (this.editingAddress) {
+                const saved = await this.saveAddress();
+                if (!saved) return false;
+            }
             if (!this.hasAddress) {
                 this.formError = 'Lengkapi nama, email, telepon, dan alamat.';
                 this.editingAddress = true;
@@ -2380,7 +3628,7 @@ document.addEventListener('alpine:init', () => {
                 return false;
             }
             if (!this.items.length) {
-                this.formError = 'Tidak ada item untuk di-checkout.';
+                this.formError = storefrontL('Tidak ada item untuk di-checkout.', 'No items to checkout.');
                 return false;
             }
             this.formError = '';
@@ -2392,7 +3640,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         async submitCheckout() {
-            if (this.processing || !this.validateForm()) return;
+            if (this.processing) return;
+            if (!(await this.validateForm())) return;
 
             const token = getAuthToken();
             const isGuestBuyNow = this.type === 'buynow' && !token;
@@ -2428,7 +3677,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 if (isGuestBuyNow) {
                     if (payload.items.length !== 1) {
-                        throw new Error('Checkout tamu hanya untuk 1 produk (beli langsung).');
+                        throw new Error(storefrontL('Checkout tamu hanya untuk 1 produk (beli langsung).', 'Guest checkout is only for single-product buy now.'));
                     }
                     const res = await fetch('/api/checkout/guest', {
                         method: 'POST',
@@ -2442,7 +3691,7 @@ document.addEventListener('alpine:init', () => {
                         }),
                     });
                     const data = await readApiJson(res);
-                    if (!res.ok) throw new Error(apiErrorMessage(data, 'Checkout gagal.'));
+                    if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Checkout gagal.', 'Checkout failed.')));
                 } else {
                     const res = await fetch('/api/checkout', {
                         method: 'POST',
@@ -2454,7 +3703,7 @@ document.addEventListener('alpine:init', () => {
                         }),
                     });
                     const data = await readApiJson(res);
-                    if (!res.ok) throw new Error(apiErrorMessage(data, 'Checkout gagal.'));
+                    if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Checkout gagal.', 'Checkout failed.')));
 
                     try {
                         await fetch('/api/trackings', {
@@ -2463,7 +3712,7 @@ document.addEventListener('alpine:init', () => {
                             credentials: 'same-origin',
                             body: JSON.stringify({
                                 order_id: invoiceId,
-                                status: 'Menunggu Konfirmasi',
+                                status: storefrontL('Menunggu Konfirmasi', 'Awaiting Confirmation'),
                                 courier: this.courierLabel,
                                 recipient_name: this.form.name,
                                 recipient_phone: this.form.phone,
@@ -2480,14 +3729,14 @@ document.addEventListener('alpine:init', () => {
                 this.modal = {
                     open: true,
                     type: 'success',
-                    title: 'Checkout Berhasil!',
-                    message: `Pesanan ${invoiceId} sudah dibuat. Kamu bisa lacak di halaman Pengiriman.`,
+                    title: storefrontL('Checkout Berhasil!', 'Checkout Successful!'),
+                    message: `Pesanan ${invoiceId} sudah dibuat. Kamu akan kembali ke beranda.`,
                 };
             } catch (err) {
                 this.modal = {
                     open: true,
                     type: 'error',
-                    title: 'Checkout Gagal',
+                    title: storefrontL('Checkout Gagal', 'Checkout Failed'),
                     message: err instanceof Error ? err.message : 'Terjadi kesalahan.',
                 };
             } finally {
@@ -2497,14 +3746,9 @@ document.addEventListener('alpine:init', () => {
 
         closeModal() {
             const wasSuccess = this.modal.type === 'success';
-            const orderId = this.completedOrderId;
             this.modal.open = false;
             if (wasSuccess) {
-                if (orderId) {
-                    window.location.href = `/pengiriman/${encodeURIComponent(orderId)}`;
-                } else {
-                    window.location.href = '/';
-                }
+                window.location.href = '/';
             }
         },
     }));
@@ -2512,7 +3756,7 @@ document.addEventListener('alpine:init', () => {
 
 Alpine.start();
 
-async function softNavigate(href, { push = true, navIndex = null } = {}) {
+async function softNavigate(href, { push = true, navIndex = null, force = false } = {}) {
     if (softNavBusy) return;
 
     const url = new URL(href, window.location.origin);
@@ -2531,7 +3775,7 @@ async function softNavigate(href, { push = true, navIndex = null } = {}) {
     }
 
     // Same page + hash only (e.g. Tentang on beranda)
-    if (samePath && url.hash) {
+    if (!force && samePath && url.hash) {
         if (nav && navIndex !== null && !Number.isNaN(navIndex)) {
             nav.setActive(navIndex, true);
         }
@@ -2542,8 +3786,8 @@ async function softNavigate(href, { push = true, navIndex = null } = {}) {
         return;
     }
 
-    // Same full URL — no-op
-    if (samePath && !url.hash && !window.location.hash) {
+    // Same full URL — no-op (unless force, e.g. locale switch)
+    if (!force && samePath && !url.hash && !window.location.hash) {
         if (nav && navIndex !== null && !Number.isNaN(navIndex)) {
             nav.setActive(navIndex, true);
         }
@@ -2562,6 +3806,92 @@ async function softNavigate(href, { push = true, navIndex = null } = {}) {
     // Set underlay BEFORE fade — beranda needs blue, not white body flash
     setSurfaceForPath(url.pathname);
 
+    const fromProfile = isProfilePath(window.location.pathname);
+    const toProfile = isProfilePath(url.pathname);
+    const profileShell = document.querySelector('.evomi-profile-shell[data-profile-page]');
+
+    // Profile → profile: keep sidebar mounted so the blue pill can slide like the navbar
+    if (fromProfile && toProfile && profileShell && main) {
+        try {
+            const fetchPromise = fetch(url.href, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    Accept: 'text/html',
+                },
+                credentials: 'same-origin',
+            });
+
+            const content = profileShell.querySelector('[data-profile-content]');
+            // History detail: instant swap — no leave fade / loading-screen feel
+            const skipProfileAnim =
+                isHistoryDetailPath(url.pathname) ||
+                isHistoryDetailPath(window.location.pathname);
+
+            if (content && !skipProfileAnim) {
+                content.classList.add('profile-content-panel', 'is-leaving');
+            }
+
+            const [res] = await Promise.all([
+                fetchPromise,
+                wait(skipProfileAnim ? 0 : 280),
+            ]);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const html = await res.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const nextMain = doc.getElementById('evomi-main');
+            const nextShell = nextMain?.querySelector('.evomi-profile-shell[data-profile-page]');
+            const nextContent = nextShell?.querySelector('[data-profile-content]');
+            const nextTitle = doc.querySelector('title')?.textContent;
+            const nextMenu = nextShell?.getAttribute('data-active-menu') || 'settings';
+
+            if (!nextMain || !nextContent || !content) {
+                throw new Error('profile soft-nav fallback');
+            }
+
+            if (window.Alpine?.destroyTree) {
+                Alpine.destroyTree(content);
+            }
+            content.innerHTML = nextContent.innerHTML;
+            if (nextTitle) document.title = nextTitle;
+            profileShell.setAttribute('data-active-menu', nextMenu);
+
+            if (window.Alpine?.initTree) {
+                Alpine.initTree(content);
+            }
+            bindSoftLinks(content);
+
+            if (window.__evomiProfileShell) {
+                window.__evomiProfileShell.setActive(nextMenu, true);
+            }
+
+            if (push) {
+                history.pushState({ soft: true }, nextTitle || '', url.pathname + url.search + url.hash);
+            }
+
+            window.scrollTo({ top: 0, left: 0 });
+
+            content.classList.remove('is-leaving');
+            if (!skipProfileAnim) {
+                content.classList.add('is-entering');
+                await waitFrames(2);
+                requestAnimationFrame(() => {
+                    content.classList.remove('is-entering');
+                });
+                await wait(320);
+            }
+            softNavBusy = false;
+            return;
+        } catch (err) {
+            // Fall through to full soft-nav if partial swap fails
+            if (String(err?.message || err) !== 'profile soft-nav fallback') {
+                console.warn(err);
+            }
+            const content = profileShell.querySelector('[data-profile-content]');
+            content?.classList.remove('is-leaving', 'is-entering');
+        }
+    }
+
     try {
         // Fetch in parallel with leave animation (SPA feel, no loader)
         const fetchPromise = fetch(url.href, {
@@ -2572,9 +3902,19 @@ async function softNavigate(href, { push = true, navIndex = null } = {}) {
             credentials: 'same-origin',
         });
 
-        main.classList.add('is-leaving');
+        // Artikel detail (and similar): instant swap — no leave fade / loading-screen feel
+        const skipPageAnim =
+            shouldSkipPageLoadingFeel(url.pathname) ||
+            shouldSkipPageLoadingFeel(window.location.pathname);
 
-        const [res] = await Promise.all([fetchPromise, wait(340)]);
+        if (!skipPageAnim) {
+            main.classList.add('is-leaving');
+        }
+
+        const [res] = await Promise.all([
+            fetchPromise,
+            wait(skipPageAnim ? 0 : 340),
+        ]);
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -2642,21 +3982,22 @@ async function softNavigate(href, { push = true, navIndex = null } = {}) {
             }
 
             main.classList.remove('is-leaving');
-            main.classList.add('is-entering');
+            if (!skipPageAnim) {
+                main.classList.add('is-entering');
+            }
         };
 
-        if (document.startViewTransition) {
+        if (!skipPageAnim && document.startViewTransition) {
             await document.startViewTransition(apply).finished.catch(() => {});
         } else {
             apply();
         }
 
         await waitFrames(2);
-        // Soft enter: allow one frame then animate in
         requestAnimationFrame(() => {
             main.classList.remove('is-entering');
         });
-        await wait(420);
+        await wait(skipPageAnim ? 0 : 420);
         // Re-measure pill after layout settles
         if (nav) {
             nav.moveIndicator(nav.activeIndex, true);
@@ -2696,12 +4037,12 @@ function syncNavFromPath(pathname, hash = '') {
         return;
     }
 
-    let best = 0;
+    const p = pathname.replace(/\/$/, '') || '/';
+    let best = -1;
     track.querySelectorAll('[data-nav-index]').forEach((el) => {
         const match = el.dataset.navMatch || '';
         const i = Number(el.dataset.navIndex);
         if (match === '#about') return;
-        const p = pathname.replace(/\/$/, '') || '/';
         // Checkout is part of belanja flow — keep Belanja active
         if (match === '/belanja' && (p.startsWith('/belanja') || p.startsWith('/checkout'))) {
             best = i;
@@ -2710,7 +4051,12 @@ function syncNavFromPath(pathname, hash = '') {
         if (match === '/' && (p === '/' || p === '')) best = i;
         if (match !== '/' && match !== '#about' && match !== '/belanja' && p.startsWith(match)) best = i;
     });
-    nav.setActive(best, true);
+
+    if (best < 0) {
+        nav.clearActive(true);
+    } else {
+        nav.setActive(best, true);
+    }
 }
 
 function bindSoftLinks(root = document) {
@@ -2738,13 +4084,237 @@ function bindSoftLinks(root = document) {
     });
 }
 
+/* ——— Dashboard: client-side menu switching (parity with Next.js <Link>) ———
+ * The shell (sidebar, theme, locale, auth gate) stays mounted; only #admin-page
+ * swaps, so switching menus never re-runs the access check or flashes the layout.
+ */
+const ADMIN_NAV_ACTIVE = ['admin-nav-active', 'bg-gray-900', 'text-white', 'shadow-md', 'shadow-gray-900/10'];
+const ADMIN_NAV_IDLE = ['text-gray-500', 'hover:bg-gray-50', 'hover:text-gray-700'];
+const ADMIN_PILL_ACTIVE = ['bg-gray-900', 'text-white'];
+const ADMIN_PILL_IDLE = ['bg-gray-100', 'text-gray-600'];
+
+let adminNavToken = 0;
+const adminPageCache = new Map();
+
+function adminMenuKeyFromPath(pathname) {
+    const p = (pathname || '').replace(/\/$/, '') || '/';
+    if (p === '/dashboard') return 'dashboard';
+    return p.match(/^\/dashboard\/([^/]+)/)?.[1] || 'dashboard';
+}
+
+/** Centered spinner while the next menu loads, mirroring the Next.js page loading state */
+function showAdminPageLoader(page) {
+    page.classList.add('is-hidden');
+    document.getElementById('admin-page-loading')?.classList.add('is-visible');
+    document.querySelector('.admin-shell main')?.setAttribute('aria-busy', 'true');
+}
+
+function hideAdminPageLoader(page) {
+    document.getElementById('admin-page-loading')?.classList.remove('is-visible');
+    page.classList.remove('is-hidden');
+    document.querySelector('.admin-shell main')?.removeAttribute('aria-busy');
+}
+
+/**
+ * A page's own loading block is still on: Alpine writes the inline display on
+ * x-show elements, which stays readable while #admin-page is hidden.
+ */
+function adminPageStillLoading(page) {
+    for (const el of page.querySelectorAll('[x-show="loading"]')) {
+        if (el.style.display !== 'none') return true;
+    }
+    for (const tpl of page.querySelectorAll('template[x-if="loading"]')) {
+        if (tpl.nextElementSibling?.querySelector?.('.animate-spin')) return true;
+    }
+    return false;
+}
+
+/**
+ * Hold the centered spinner until the freshly mounted page finished its own
+ * initial fetch, so a menu switch never shows two spinners in a row.
+ */
+async function waitForAdminPageData(page, token, timeout = 4000) {
+    // Components flip `loading` inside init(), which may run on the next tick
+    await waitFrames(2);
+    await wait(40);
+
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline && token === adminNavToken) {
+        if (!adminPageStillLoading(page)) return;
+        await wait(60);
+    }
+}
+
+function setAdminActiveMenu(key, { scrollPill = true } = {}) {
+    document.querySelectorAll('[data-admin-nav-desktop] a[data-admin-nav]').forEach((el) => {
+        const active = el.dataset.adminNav === key;
+        el.classList.remove(...(active ? ADMIN_NAV_IDLE : ADMIN_NAV_ACTIVE));
+        el.classList.add(...(active ? ADMIN_NAV_ACTIVE : ADMIN_NAV_IDLE));
+        if (active) el.setAttribute('aria-current', 'page');
+        else el.removeAttribute('aria-current');
+
+        const icon = el.querySelector('svg');
+        if (icon) {
+            icon.classList.toggle('text-white', active);
+            icon.classList.toggle('text-gray-400', !active);
+        }
+    });
+
+    document.querySelectorAll('[data-admin-nav-mobile] a[data-admin-nav]').forEach((el) => {
+        const active = el.dataset.adminNav === key;
+        el.classList.remove(...(active ? ADMIN_PILL_IDLE : ADMIN_PILL_ACTIVE));
+        el.classList.add(...(active ? ADMIN_PILL_ACTIVE : ADMIN_PILL_IDLE));
+        if (active) {
+            el.setAttribute('aria-current', 'page');
+            if (scrollPill) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        } else {
+            el.removeAttribute('aria-current');
+        }
+    });
+}
+
+function fetchAdminPage(href) {
+    const cached = adminPageCache.get(href);
+    if (cached) return cached;
+
+    const request = fetch(href, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' },
+        credentials: 'same-origin',
+    }).then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+    });
+
+    adminPageCache.set(href, request);
+    request.catch(() => adminPageCache.delete(href));
+    // Blade only ships the shell (data arrives via API), so a short-lived cache is safe
+    setTimeout(() => adminPageCache.delete(href), 30000);
+
+    return request;
+}
+
+async function adminSoftNavigate(href, { push = true } = {}) {
+    const url = new URL(href, window.location.origin);
+    const page = document.getElementById('admin-page');
+
+    if (url.origin !== window.location.origin || !isDashboardPath(url.pathname) || !page) {
+        window.location.href = href;
+        return;
+    }
+
+    const targetKey = adminMenuKeyFromPath(url.pathname);
+
+    if (pathKey(url) === pathKey(window.location.href) && url.search === window.location.search) {
+        setAdminActiveMenu(targetKey);
+        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        return;
+    }
+
+    const token = ++adminNavToken;
+    setAdminActiveMenu(targetKey);
+
+    const request = fetchAdminPage(url.href);
+    page.classList.add('is-leaving');
+
+    try {
+        await wait(100);
+        if (token !== adminNavToken) return;
+
+        showAdminPageLoader(page);
+        window.scrollTo({ top: 0, left: 0 });
+
+        // Floor the spinner time so a fast/prefetched page never flashes it
+        const [html] = await Promise.all([request, wait(200)]);
+        if (token !== adminNavToken) return;
+
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const nextPage = doc.getElementById('admin-page');
+        if (!nextPage) throw new Error('admin soft-nav fallback');
+
+        const nextTitle = doc.querySelector('title')?.textContent;
+
+        if (window.Alpine?.destroyTree) Alpine.destroyTree(page);
+        page.innerHTML = nextPage.innerHTML;
+        page.dataset.adminPage = nextPage.dataset.adminPage || targetKey;
+        if (nextTitle) document.title = nextTitle;
+        // A modal on the previous page may have locked scrolling
+        document.body.style.overflow = '';
+
+        if (window.Alpine?.initTree) Alpine.initTree(page);
+
+        await waitForAdminPageData(page, token);
+        if (token !== adminNavToken) return;
+
+        page.classList.add('is-entering');
+        page.classList.remove('is-leaving');
+        hideAdminPageLoader(page);
+
+        setAdminActiveMenu(page.dataset.adminPage);
+
+        if (push) {
+            history.pushState({ admin: true }, nextTitle || '', url.pathname + url.search + url.hash);
+        }
+
+        window.scrollTo({ top: 0, left: 0 });
+
+        await waitFrames(2);
+        requestAnimationFrame(() => page.classList.remove('is-entering'));
+    } catch (err) {
+        if (token !== adminNavToken) return;
+        console.warn(err);
+        hideAdminPageLoader(page);
+        window.location.href = url.pathname + url.search + url.hash;
+    }
+}
+
+window.adminSoftNavigate = adminSoftNavigate;
+
+function bindAdminNav() {
+    const page = document.getElementById('admin-page');
+    if (!page) return;
+
+    setAdminActiveMenu(page.dataset.adminPage || adminMenuKeyFromPath(window.location.pathname), {
+        scrollPill: false,
+    });
+
+    const linkFrom = (event) =>
+        event.target?.closest?.('a[data-admin-nav], a[data-admin-nav-link]') || null;
+
+    document.addEventListener('pointerenter', (e) => {
+        const link = linkFrom(e);
+        const href = link?.getAttribute('href');
+        if (href) fetchAdminPage(new URL(href, window.location.origin).href).catch(() => {});
+    }, true);
+
+    document.addEventListener('click', (e) => {
+        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+
+        const link = linkFrom(e);
+        const href = link?.getAttribute('href');
+        if (!href || link.target === '_blank') return;
+
+        const url = new URL(href, window.location.origin);
+        if (url.origin !== window.location.origin || !isDashboardPath(url.pathname)) return;
+
+        e.preventDefault();
+        adminSoftNavigate(url.href);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     setSurfaceForPath(window.location.pathname);
     bindSoftLinks(document);
     initBerandaMotion(document);
+    bindAdminNav();
 });
 
 window.addEventListener('popstate', () => {
+    if (isDashboardPath(window.location.pathname) && document.getElementById('admin-page')) {
+        adminSoftNavigate(window.location.href, { push: false });
+        return;
+    }
     softNavigate(window.location.href, { push: false });
 });
 
@@ -2780,10 +4350,64 @@ function initBerandaMotion(root = document) {
 
     if (prefersReducedMotion()) {
         scope.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('is-revealed'));
+        if (hero) {
+            hero.classList.add('is-hero-ready', 'is-hero-float-live');
+        }
         return;
     }
 
     const cleanups = [];
+
+    // Entrance after loading screen (or immediately on soft-nav back to beranda)
+    if (hero) {
+        let floatTimer = 0;
+        let startTimer = 0;
+        let played = false;
+
+        const playEntrance = () => {
+            if (played) return;
+            played = true;
+            hero.classList.add('is-hero-resetting');
+            hero.classList.remove('is-hero-ready', 'is-hero-float-live');
+            // Force reflow so entrance restarts from opacity 0 / offset transform
+            void hero.offsetWidth;
+            requestAnimationFrame(() => {
+                hero.classList.remove('is-hero-resetting');
+                void hero.offsetWidth;
+                requestAnimationFrame(() => {
+                    hero.classList.add('is-hero-ready');
+                    floatTimer = window.setTimeout(() => {
+                        hero.classList.add('is-hero-float-live');
+                    }, 1600);
+                });
+            });
+        };
+
+        const loader = document.getElementById('evomi-loader');
+        const loaderDone =
+            !loader ||
+            loader.classList.contains('is-hidden') ||
+            loader.classList.contains('is-fading') ||
+            !document.documentElement.classList.contains('evomi-loading');
+
+        if (loaderDone) {
+            // Soft-nav / already past loader — slight beat then stagger in
+            startTimer = window.setTimeout(playEntrance, 80);
+        } else {
+            const onLoaderDone = () => playEntrance();
+            window.addEventListener('evomi:loader-done', onLoaderDone, { once: true });
+            // Safety if the event was missed (e.g. race with module load)
+            startTimer = window.setTimeout(() => {
+                if (!hero.classList.contains('is-hero-ready')) playEntrance();
+            }, LOADER_MAX_MS + 400);
+            cleanups.push(() => window.removeEventListener('evomi:loader-done', onLoaderDone));
+        }
+
+        cleanups.push(() => {
+            window.clearTimeout(floatTimer);
+            window.clearTimeout(startTimer);
+        });
+    }
 
     // Hero: Next useScroll — progress 0→0.6 → opacity 1→0, y 0→-50
     const layer = hero?.querySelector('.hero-parallax-layer');
