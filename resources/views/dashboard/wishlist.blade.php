@@ -23,34 +23,35 @@
             <table class="w-full border-collapse min-w-[760px]">
                 <thead>
                     <tr class="bg-gray-50/80 border-b border-gray-100">
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-left" x-text="t('wishlist','col_customer')"></th>
                         <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-left" x-text="common().product"></th>
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center" x-text="common().price"></th>
+                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-left" x-text="t('wishlist','col_customer')"></th>
                         <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center" x-text="common().actions"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
                     <template x-if="pagedItems().length === 0">
-                        <tr><td colspan="4" class="px-6 py-12 text-center text-sm text-gray-400" x-text="t('wishlist','empty')"></td></tr>
+                        <tr><td colspan="3" class="px-6 py-12 text-center text-sm text-gray-400" x-text="t('wishlist','empty')"></td></tr>
                     </template>
                     <template x-for="w in pagedItems()" :key="w.id">
-                        <tr class="hover:bg-gray-50/40">
+                        <tr class="hover:bg-gray-50/40 transition-colors">
                             <td class="px-6 py-4">
-                                <p class="text-sm font-semibold text-gray-900" x-text="w.user?.name || w.name || '-'"></p>
-                                <p class="text-xs text-gray-400 mt-0.5" x-text="w.user?.email || w.email || ''"></p>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
+                                <div class="flex items-start gap-3 min-w-0">
                                     @include('partials.admin-thumb', [
                                         'src' => 'productThumb(w.product)',
                                         'alt' => "w.product?.title || ''",
                                         'size' => 'h-12 w-12',
                                         'fit' => 'contain',
                                     ])
-                                    <span class="text-sm font-semibold text-gray-900 truncate max-w-[240px]" x-text="w.product?.title || w.product_title || '-'"></span>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-gray-900 truncate max-w-[240px]" x-text="w.product?.title || w.product_title || t('orders','no_name','Tanpa Nama','No Name')"></p>
+                                        <p class="mt-1 text-[11px] font-bold text-gray-500" x-text="formatRupiah(w.product?.price ?? 0)"></p>
+                                    </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 text-center text-sm font-bold text-gray-900" x-text="formatRupiah(w.product?.price ?? 0)"></td>
+                            <td class="px-6 py-4">
+                                <p class="text-sm font-semibold text-gray-900" x-text="w.user?.name || w.name || '-'"></p>
+                                <p class="text-xs text-gray-400 mt-0.5" x-text="w.user?.email || w.email || ''"></p>
+                            </td>
                             <td class="px-6 py-4 text-center">
                                 <button type="button" class="admin-btn-icon admin-btn-icon--danger" :title="common().delete" @click="remove(w.id)">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>

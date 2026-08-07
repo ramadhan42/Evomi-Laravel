@@ -14,17 +14,19 @@ class NewsletterController extends Controller
     public function index()
     {
         try {
-            // Mengambil semua subscriber, diurutkan dari yang terbaru
-            $subscribers = Subscriber::orderBy('created_at', 'desc')->get();
+            // values() memastikan JSON array (bukan object), agar admin unwrapList selalu berhasil
+            $subscribers = Subscriber::orderByDesc('created_at')->get()->values();
 
             return response()->json([
+                'success' => true,
                 'status' => 'success',
                 'message' => 'Berhasil mengambil daftar subscriber.',
-                'data' => $subscribers
+                'data' => $subscribers,
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
+                'success' => false,
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan saat mengambil data.',
                 'error' => $e->getMessage()

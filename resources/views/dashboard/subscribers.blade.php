@@ -34,16 +34,14 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
-                    <template x-if="pagedItems().length === 0">
-                        <tr>
-                            <td colspan="2" class="px-6 py-14 text-center">
-                                <p class="text-sm font-semibold text-gray-500" x-text="t('subscribers','empty_title')"></p>
-                                <p class="text-xs text-gray-400 mt-1" x-text="t('subscribers','empty_desc')"></p>
-                            </td>
-                        </tr>
-                    </template>
+                    <tr x-show="pagedItems().length === 0">
+                        <td colspan="2" class="px-6 py-14 text-center">
+                            <p class="text-sm font-semibold text-gray-500" x-text="t('subscribers','empty_title')"></p>
+                            <p class="text-xs text-gray-400 mt-1" x-text="t('subscribers','empty_desc')"></p>
+                        </td>
+                    </tr>
                     <template x-for="s in pagedItems()" :key="s.id || s.email">
-                        <tr class="hover:bg-gray-50/40">
+                        <tr class="hover:bg-gray-50/40 transition-colors">
                             <td class="px-6 py-4 text-sm font-semibold text-gray-900" x-text="s.email"></td>
                             <td class="px-6 py-4 text-center text-sm text-gray-600" x-text="formatDate(s.created_at)"></td>
                         </tr>

@@ -1,15 +1,19 @@
 @php
     // $countExpr : Alpine expression rendering the "N items" label
     // $wrapper   : override outer padding/border when the host card differs
+    // $showCount : show range + item count (default true)
     $countExpr = $countExpr ?? "filteredItems().length + ' item'";
     $wrapper = $wrapper ?? 'px-5 sm:px-6 py-3.5 border-t border-gray-100 bg-gray-50/70';
+    $showCount = ($showCount ?? true) !== false;
 @endphp
-<div class="{{ $wrapper }} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+<div class="{{ $wrapper }} flex flex-col gap-3 sm:flex-row sm:items-center {{ $showCount ? 'sm:justify-between' : 'sm:justify-end' }}">
+    @if ($showCount)
     <p class="text-sm text-gray-500">
         <span class="font-semibold text-gray-800" x-text="rangeStart() + '–' + rangeEnd()"></span>
         <span class="text-gray-400">/</span>
         <span x-text="{{ $countExpr }}"></span>
     </p>
+    @endif
 
     <nav class="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm" aria-label="Pagination">
         <button

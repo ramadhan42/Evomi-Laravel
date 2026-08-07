@@ -23,6 +23,10 @@ import {
 function unwrapList(payload) {
     if (Array.isArray(payload)) return payload;
     if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.data?.data)) return payload.data.data;
+    if (payload?.data && typeof payload.data === 'object') {
+        return Object.values(payload.data);
+    }
     return [];
 }
 
@@ -580,7 +584,16 @@ export function registerAdminCrud(Alpine, deps) {
     Alpine.data('evomiAdminOrders', () => ({
         ...listMixin(5),
         editOpen: false,
-        edit: { id: null, status: '', payment_status: '' },
+        edit: {
+            id: null,
+            status: '',
+            payment_status: '',
+            imageUrl: '',
+            productTitle: '',
+            customerName: '',
+            totalLabel: '',
+        },
+        originalEdit: { status: '', payment_status: '' },
         statusOptions: [
             'menunggu_konfirmasi',
             'pengemasan',
@@ -595,17 +608,228 @@ export function registerAdminCrud(Alpine, deps) {
             this.load();
         },
 
+        get statusCards() {
+            const icon = {
+                dibatalkan:
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+                menunggu_konfirmasi:
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+                pengemasan:
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>',
+                dalam_perjalanan:
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>',
+                diterima:
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>',
+                selesai:
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>',
+            };
+
+            return [
+                {
+                    id: 'dibatalkan',
+                    label: this.t('orders', 'status_dibatalkan', 'Order Dibatalkan', 'Order Cancelled'),
+                    desc: this.t(
+                        'orders',
+                        'status_dibatalkan_desc',
+                        'Pesanan telah dibatalkan',
+                        'The order has been cancelled',
+                    ),
+                    activeClass: 'ring-2 ring-red-500 bg-red-50 border-red-500',
+                    iconClass: 'text-red-600',
+                    icon: icon.dibatalkan,
+                },
+                {
+                    id: 'menunggu_konfirmasi',
+                    label: this.t(
+                        'orders',
+                        'status_menunggu_konfirmasi',
+                        'Menunggu Konfirmasi',
+                        'Awaiting Confirmation',
+                    ),
+                    desc: this.t(
+                        'orders',
+                        'status_menunggu_konfirmasi_desc',
+                        'Pesanan baru masuk dan perlu divalidasi',
+                        'New order received and needs to be validated',
+                    ),
+                    activeClass: 'ring-2 ring-amber-500 bg-amber-50 border-amber-500',
+                    iconClass: 'text-amber-600',
+                    icon: icon.menunggu_konfirmasi,
+                },
+                {
+                    id: 'pengemasan',
+                    label: this.t('orders', 'status_pengemasan', 'Pengemasan', 'Packaging'),
+                    desc: this.t(
+                        'orders',
+                        'status_pengemasan_desc',
+                        'Produk sedang disiapkan dan dibungkus',
+                        'The product is being prepared and packed',
+                    ),
+                    activeClass: 'ring-2 ring-blue-500 bg-blue-50 border-blue-500',
+                    iconClass: 'text-blue-600',
+                    icon: icon.pengemasan,
+                },
+                {
+                    id: 'dalam_perjalanan',
+                    label: this.t(
+                        'orders',
+                        'status_dalam_perjalanan',
+                        'Dalam Perjalanan',
+                        'In Transit',
+                    ),
+                    desc: this.t(
+                        'orders',
+                        'status_dalam_perjalanan_desc',
+                        'Pesanan telah diserahkan ke kurir logistik',
+                        'The order has been handed over to the courier',
+                    ),
+                    activeClass: 'ring-2 ring-violet-500 bg-violet-50 border-violet-500',
+                    iconClass: 'text-violet-600',
+                    icon: icon.dalam_perjalanan,
+                },
+                {
+                    id: 'diterima',
+                    label: this.t(
+                        'orders',
+                        'status_diterima',
+                        'Diterima Pelanggan',
+                        'Received by Customer',
+                    ),
+                    desc: this.t(
+                        'orders',
+                        'status_diterima_desc',
+                        'Pesanan telah diterima oleh pelanggan dengan baik',
+                        'The order has been successfully received by the customer',
+                    ),
+                    activeClass: 'ring-2 ring-emerald-500 bg-emerald-50 border-emerald-500',
+                    iconClass: 'text-emerald-600',
+                    icon: icon.diterima,
+                },
+                {
+                    id: 'selesai',
+                    label: this.t('orders', 'status_selesai', 'Selesai', 'Completed'),
+                    desc: this.t(
+                        'orders',
+                        'status_selesai_desc',
+                        'Pesanan selesai dan ditutup',
+                        'The order is completed and closed',
+                    ),
+                    activeClass: 'ring-2 ring-emerald-500 bg-emerald-50 border-emerald-500',
+                    iconClass: 'text-emerald-600',
+                    icon: icon.selesai,
+                },
+            ];
+        },
+
+        get paymentCards() {
+            return [
+                {
+                    id: 'success',
+                    label: this.t('orders', 'payment_success', 'Pembayaran berhasil', 'Payment successful'),
+                    desc: this.t(
+                        'orders',
+                        'payment_success_desc',
+                        'Masuk ke total pendapatan',
+                        'Counts toward total revenue',
+                    ),
+                    badge: 'success',
+                },
+                {
+                    id: 'pending',
+                    label: this.t('orders', 'payment_pending', 'Pembayaran pending', 'Payment pending'),
+                    desc: this.t(
+                        'orders',
+                        'payment_pending_desc',
+                        'Belum masuk total pendapatan',
+                        'Not counted in revenue yet',
+                    ),
+                    badge: 'pending',
+                },
+                {
+                    id: 'cancelled',
+                    label: this.t(
+                        'orders',
+                        'payment_cancelled',
+                        'Pembayaran dibatalkan',
+                        'Payment cancelled',
+                    ),
+                    desc: this.t(
+                        'orders',
+                        'payment_cancelled_desc',
+                        'Tidak masuk total pendapatan',
+                        'Excluded from revenue',
+                    ),
+                    badge: 'cancelled',
+                },
+            ];
+        },
+
+        get canSaveEdit() {
+            return (
+                !!this.edit.id &&
+                (this.edit.status !== this.originalEdit.status ||
+                    this.edit.payment_status !== this.originalEdit.payment_status)
+            );
+        },
+
         statusLabel(s) {
             return fulfillmentStatusConfig(s).label;
         },
         statusClass(s) {
             return fulfillmentStatusConfig(s).class;
         },
+        statusBadgeClass(s) {
+            const key = String(s || '').toLowerCase();
+            switch (key) {
+                case 'dibatalkan':
+                    return 'bg-red-50 text-red-700 border-red-200';
+                case 'menunggu_konfirmasi':
+                    return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                case 'pengemasan':
+                    return 'bg-blue-50 text-blue-700 border-blue-200';
+                case 'dalam_perjalanan':
+                    return 'bg-purple-50 text-purple-700 border-purple-200';
+                case 'diterima':
+                case 'selesai':
+                    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                default:
+                    return 'bg-gray-50 text-gray-600 border-gray-200';
+            }
+        },
+        statusIcon(s) {
+            const key = String(s || '').toLowerCase();
+            const icons = {
+                dibatalkan:
+                    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+                menunggu_konfirmasi:
+                    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+                pengemasan:
+                    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>',
+                dalam_perjalanan:
+                    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>',
+                diterima:
+                    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>',
+                selesai:
+                    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>',
+            };
+            return (
+                icons[key] ||
+                '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg>'
+            );
+        },
+        statusDisplay(s) {
+            return String(s || '')
+                .replace(/_/g, ' ')
+                .trim();
+        },
         payLabel(s) {
             return paymentStatusLabel(normalizePaymentStatus(s));
         },
         payClass(s) {
             return paymentStatusBadgeClass(normalizePaymentStatus(s));
+        },
+        isPaid(o) {
+            return normalizePaymentStatus(o?.payment_status) === 'success';
         },
         total(o) {
             return formatRupiah(orderGrandTotal(o));
@@ -626,6 +850,18 @@ export function registerAdminCrud(Alpine, deps) {
         productImage(o) {
             return this.productThumb(o.product);
         },
+        /** Next.js orders table uses product.image_1 */
+        orderProductImage(o) {
+            if (!o?.product) return '';
+            return mediaUrl(
+                o.product.image_1 ||
+                    o.product.gambar_1 ||
+                    o.product.image_2 ||
+                    o.product.gambar_2 ||
+                    o.product.image_produk_belanja ||
+                    o.product.image,
+            );
+        },
 
         async load() {
             this.loading = true;
@@ -640,12 +876,34 @@ export function registerAdminCrud(Alpine, deps) {
             }
         },
 
+        selectStatus(statusId) {
+            this.edit.status = statusId;
+            if (statusId === 'dibatalkan') {
+                this.edit.payment_status = 'cancelled';
+                return;
+            }
+            if (
+                this.edit.payment_status === 'pending' &&
+                ['pengemasan', 'dalam_perjalanan', 'diterima', 'selesai'].includes(statusId)
+            ) {
+                this.edit.payment_status = 'success';
+            }
+        },
+
         openEdit(o) {
+            const status = o.status || 'menunggu_konfirmasi';
+            const payment = normalizePaymentStatus(o.payment_status);
             this.edit = {
                 id: o.id,
-                status: o.status || 'menunggu_konfirmasi',
-                payment_status: normalizePaymentStatus(o.payment_status),
+                status,
+                payment_status: payment,
+                imageUrl: this.orderProductImage(o) || this.productThumb(o.product) || '',
+                productTitle:
+                    o.product?.title || this.t('orders', 'no_name', 'Tanpa Nama', 'No Name'),
+                customerName: this.customerName(o),
+                totalLabel: formatRupiah(orderGrandTotal(o)),
             };
+            this.originalEdit = { status, payment_status: payment };
             this.editOpen = true;
             document.body.style.overflow = 'hidden';
         },
@@ -656,7 +914,7 @@ export function registerAdminCrud(Alpine, deps) {
         },
 
         async saveStatus() {
-            if (this.saving) return;
+            if (this.saving || !this.canSaveEdit) return;
             this.saving = true;
             try {
                 const fd = new FormData();
@@ -668,7 +926,14 @@ export function registerAdminCrud(Alpine, deps) {
                     body: fd,
                     json: false,
                 });
-                this.notify('Status pesanan diperbarui');
+                this.notify(
+                    this.t(
+                        'orders',
+                        'status_updated_success',
+                        'Status pesanan berhasil diperbarui.',
+                        'Order status updated successfully.',
+                    ),
+                );
                 this.closeEdit();
                 await this.load();
             } catch (e) {
@@ -2117,8 +2382,10 @@ export function registerAdminCrud(Alpine, deps) {
             try {
                 const data = await adminJson('/api/admin/subscribers');
                 this.items = unwrapList(data);
+                this.page = 1;
             } catch (e) {
                 this.error = e.message || this.t('subscribers', 'load_error');
+                this.items = [];
             } finally {
                 this.loading = false;
             }

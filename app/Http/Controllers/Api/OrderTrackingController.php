@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\OrderTracking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -29,6 +30,38 @@ class OrderTrackingController extends Controller
     }
 
     /**
+     * Resolve product for a tracking row (order_id may be invoice or line item id).
+     */
+    private function resolveOrderProduct(string $orderId): ?array
+    {
+        $order = Order::with('product')
+            ->where('id', $orderId)
+            ->first();
+
+        if (! $order) {
+            $order = Order::with('product')
+                ->where('id', 'like', $orderId.'-%')
+                ->orderBy('id')
+                ->first();
+        }
+
+        $product = $order?->product;
+        if (! $product) {
+            return null;
+        }
+
+        return [
+            'id' => $product->id,
+            'title' => $product->title,
+            'image_1' => $product->image_1,
+            'image_2' => $product->image_2 ?? null,
+            'gambar_1' => $product->gambar_1 ?? null,
+            'gambar_2' => $product->gambar_2 ?? null,
+            'image_produk_belanja' => $product->image_produk_belanja ?? null,
+        ];
+    }
+
+    /**
      * 1. READ (All): Mengambil daftar semua pelacakan pesanan
      */
     public function index()
@@ -36,6 +69,7 @@ class OrderTrackingController extends Controller
         $trackings = OrderTracking::latest()->get()->map(function (OrderTracking $tracking) {
             $row = $tracking->toArray();
             $row['timeline'] = $this->normalizeTimeline($tracking->timeline);
+            $row['product'] = $this->resolveOrderProduct((string) $tracking->order_id);
 
             return $row;
         });

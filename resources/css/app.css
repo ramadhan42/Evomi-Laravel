@@ -1437,9 +1437,30 @@ body.evomi-admin-mode textarea::placeholder {
         box-shadow 0.15s ease;
 }
 
+select.admin-field-input {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    cursor: pointer;
+}
+
 .admin-field-input:focus {
     border-color: #9ca3af;
     box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+.admin-order-status-card:active,
+.admin-order-pay-card:active {
+    transform: scale(0.985);
+}
+
+.admin-order-status-card:focus-visible,
+.admin-order-pay-card:focus-visible {
+    outline: 2px solid #111827;
+    outline-offset: 2px;
 }
 
 .admin-field-textarea {
@@ -2847,6 +2868,72 @@ body.evomi-admin-mode textarea::placeholder {
 [data-admin-theme="dark"] .admin-sidebar .admin-nav-item:not(.admin-nav-active):hover {
   background-color: rgba(255, 255, 255, 0.06) !important;
   color: #f1f5f9 !important;
+}
+
+/* Alpine sales chart (Recharts look-alike) */
+.admin-sales-chart-svg {
+    display: block;
+    overflow: visible;
+}
+
+.admin-sales-chart-svg .admin-chart-tick {
+    font-family: inherit;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    user-select: none;
+}
+
+.admin-sales-chart-svg .admin-chart-area {
+    animation: admin-chart-fade-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.admin-sales-chart-svg .admin-chart-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: admin-chart-draw 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.08s forwards;
+}
+
+.admin-sales-chart-svg .admin-chart-dot {
+    opacity: 0;
+    animation: admin-chart-fade-in 0.35s ease-out 0.55s forwards;
+    transition: r 0.15s ease, opacity 0.15s ease;
+}
+
+.admin-chart-tooltip {
+    transition:
+        left 0.12s ease-out,
+        top 0.12s ease-out,
+        opacity 0.15s ease;
+}
+
+@keyframes admin-chart-draw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes admin-chart-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-sales-chart-svg .admin-chart-area,
+    .admin-sales-chart-svg .admin-chart-line,
+    .admin-sales-chart-svg .admin-chart-dot {
+        animation: none !important;
+        stroke-dasharray: none !important;
+        stroke-dashoffset: 0 !important;
+        opacity: 1 !important;
+    }
+
+    .admin-chart-tooltip {
+        transition: none !important;
+    }
 }
 
 /* Chart tooltip dark */

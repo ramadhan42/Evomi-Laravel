@@ -6,6 +6,11 @@ import {
     writeAdminLocale,
 } from './admin-i18n';
 import { L as storefrontL, currentLocale, registerStorefrontI18n } from './storefront-i18n';
+import {
+    buildSalesChartModel,
+    salesChartHoverAt,
+    salesChartClearHover,
+} from './admin-sales-chart.js';
 
 window.Alpine = Alpine;
 registerStorefrontI18n(Alpine);
@@ -359,6 +364,190 @@ function orderGrandTotal(order) {
     return Math.max(0, product + shipping - promo);
 }
 
+/** Local calendar day YYYY-MM-DD (bukan UTC — penting untuk WIB). */
+function localDayKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function parseLocalDayKey(dayKey) {
+    const [y, m, d] = String(dayKey)
+        .split('-')
+        .map((part) => Number(part));
+    return new Date(y, m - 1, d);
+}
+
+function startOfLocalWeek(date) {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    // Senin sebagai awal minggu (umum di ID)
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    return d;
+}
+
+function salesPeriodKey(date, period) {
+    if (period === 'month') {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        return `${y}-${m}`;
+    }
+    if (period === 'week') {
+        return localDayKey(startOfLocalWeek(date));
+    }
+    return localDayKey(date);
+}
+
+function formatSalesPeriodLabel(periodKey, period) {
+    if (period === 'month') {
+        const [y, m] = periodKey.split('-').map(Number);
+        return new Date(y, m - 1, 1).toLocaleDateString('id-ID', {
+            month: 'short',
+            year: 'numeric',
+        });
+    }
+    if (period === 'week') {
+        const start = parseLocalDayKey(periodKey);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        const a = start.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+        const b = end.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+        return `${a} – ${b}`;
+    }
+    return parseLocalDayKey(periodKey).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+    });
+}
+
+function nextSalesPeriodCursor(cursor, period) {
+    if (period === 'month') {
+        cursor.setMonth(cursor.getMonth() + 1);
+        return;
+    }
+    if (period === 'week') {
+        cursor.setDate(cursor.getDate() + 7);
+        return;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+}
+
+function salesPeriodUnitLabel(period, count) {
+    if (period === 'month') return `${count} bulan`;
+    if (period === 'week') return `${count} minggu`;
+    return `${count} hari`;
+}
+
+function startOfLocalDay(date = new Date()) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function startOfLocalMonth(date = new Date()) {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+/** Rentang sumbu X: selalu banyak titik tanggal (mirip tren Next.js), berakhir hari ini. */
+function salesChartRange(mode, salesKeys) {
+    const today = startOfLocalDay();
+    let end;
+    let start;
+
+    if (mode === 'month') {
+        end = startOfLocalMonth(today);
+        start = new Date(end);
+        start.setMonth(start.getMonth() - 5); // 6 bulan
+        if (salesKeys.length) {
+            const [y, m] = salesKeys[0].split('-').map(Number);
+            const first = new Date(y, m - 1, 1);
+            if (first < start) start = first;
+        }
+    } else if (mode === 'week') {
+        end = startOfLocalWeek(today);
+        start = new Date(end);
+        start.setDate(start.getDate() - 7 * 7); // 8 minggu
+        if (salesKeys.length) {
+            const first = startOfLocalWeek(parseLocalDayKey(salesKeys[0]));
+            if (first < start) start = first;
+        }
+    } else {
+        end = today;
+        start = new Date(today);
+        start.setDate(start.getDate() - 13); // 14 hari
+        if (salesKeys.length) {
+            const first = parseLocalDayKey(salesKeys[0]);
+            if (first < start) start = first;
+        }
+        // Minimal 7 titik supaya garis tidak pernah “datar 1 titik”
+        const minStart = new Date(today);
+        minStart.setDate(minStart.getDate() - 6);
+        if (start > minStart) start = minStart;
+    }
+
+    return { start, end };
+}
+
+/**
+ * Agregasi pendapatan berhasil per hari / minggu / bulan (tanggal lokal).
+ * Sumbu X diisi rentang tanggal berurutan (termasuk 0) agar grafik dinamis.
+ * Total = seluruh pembayaran berhasil (sinkron kartu pendapatan).
+ */
+function buildSalesSeries(ordersList, period = 'day') {
+    const mode = period === 'week' || period === 'month' ? period : 'day';
+    const salesByPeriod = {};
+    let totalRevenue = 0;
+
+    for (const order of ordersList) {
+        if (!isSuccessfulPayment(order.payment_status)) continue;
+        const created = new Date(order.created_at);
+        if (Number.isNaN(created.getTime())) continue;
+
+        const key = salesPeriodKey(created, mode);
+        const amount = orderGrandTotal(order);
+        if (!salesByPeriod[key]) salesByPeriod[key] = 0;
+        salesByPeriod[key] += amount;
+        totalRevenue += amount;
+    }
+
+    const keys = Object.keys(salesByPeriod).sort();
+    if (!keys.length) {
+        return { chartData: [], tableRows: [], totalRevenue: 0, period: mode };
+    }
+
+    const { start, end } = salesChartRange(mode, keys);
+    const endKey = salesPeriodKey(end, mode);
+    const cursor = new Date(start.getTime());
+    const chartData = [];
+
+    while (salesPeriodKey(cursor, mode) <= endKey) {
+        const key = salesPeriodKey(cursor, mode);
+        chartData.push({
+            name: formatSalesPeriodLabel(key, mode),
+            dayKey: key,
+            total: Number(salesByPeriod[key] || 0),
+        });
+        nextSalesPeriodCursor(cursor, mode);
+        if (chartData.length > 800) break;
+    }
+
+    const tableRows = [...chartData]
+        .filter((row) => row.total > 0)
+        .reverse()
+        .map((row) => ({
+            name: row.name,
+            dayKey: row.dayKey,
+            total: row.total,
+        }));
+
+    return {
+        chartData,
+        tableRows,
+        totalRevenue: Math.round(totalRevenue),
+        period: mode,
+    };
+}
+
 function normalizePaymentStatus(value) {
     const v = String(value || '')
         .toLowerCase()
@@ -386,23 +575,29 @@ function formatRupiah(value) {
 function fulfillmentStatusConfig(status) {
     const normalizedStatus = String(status || '').toLowerCase();
     switch (normalizedStatus) {
+        case 'dibatalkan':
+            return {
+                label: storefrontL('Dibatalkan', 'Cancelled'),
+                class: 'bg-red-50 text-red-700 border-red-200',
+                dot: 'bg-red-500',
+            };
         case 'menunggu_konfirmasi':
             return {
                 label: storefrontL('Menunggu Konfirmasi', 'Awaiting Confirmation'),
-                class: 'bg-orange-50 text-orange-600 border-orange-200',
-                dot: 'bg-orange-500',
+                class: 'bg-amber-50 text-amber-700 border-amber-200',
+                dot: 'bg-amber-500',
             };
         case 'pengemasan':
             return {
-                label: storefrontL('Dikemas', 'Packing'),
-                class: 'bg-purple-50 text-purple-600 border-purple-200',
-                dot: 'bg-purple-500',
+                label: storefrontL('Pengemasan', 'Packaging'),
+                class: 'bg-blue-50 text-blue-700 border-blue-200',
+                dot: 'bg-blue-500',
             };
         case 'dalam_perjalanan':
             return {
                 label: storefrontL('Dalam Perjalanan', 'In Transit'),
-                class: 'bg-gray-100 text-gray-700 border-gray-300',
-                dot: 'bg-gray-500',
+                class: 'bg-violet-50 text-violet-700 border-violet-200',
+                dot: 'bg-violet-500',
             };
         case 'diterima':
             return {
@@ -2009,23 +2204,88 @@ document.addEventListener('alpine:init', () => {
             activeUsers: 0,
             totalRevenue: 0,
         },
+        chartPeriod: 'day',
+        chartPeriodOptions: [
+            { id: 'day', label: 'Hari' },
+            { id: 'week', label: 'Minggu' },
+            { id: 'month', label: 'Bulan' },
+        ],
+        chartOrders: [],
         chartData: [],
+        chartTable: [],
+        chartPeriodLabel: 'hari',
+        salesChart: null,
+        chartHover: null,
         recentOrders: [],
 
         async init() {
             await this.load();
         },
 
+        applyChartPeriod(period = this.chartPeriod) {
+            const mode = period === 'week' || period === 'month' ? period : 'day';
+            this.chartPeriod = mode;
+            this.chartHover = null;
+
+            const { chartData, tableRows, totalRevenue, period: resolved } = buildSalesSeries(
+                this.chartOrders,
+                mode,
+            );
+            this.chartData = chartData;
+            this.chartTable = tableRows.map((row) => ({
+                ...row,
+                totalLabel: formatRupiah(row.total),
+            }));
+            this.stats.totalRevenue = totalRevenue;
+            this.chartPeriodLabel =
+                resolved === 'month' ? 'bulan' : resolved === 'week' ? 'minggu' : 'hari';
+            this.salesChart = buildSalesChartModel(this.chartData, formatRupiah, 'Pendapatan');
+
+            this.$nextTick(() => {
+                requestAnimationFrame(() => this.paintSalesChart());
+            });
+        },
+
+        setChartPeriod(period) {
+            if (this.chartPeriod === period) return;
+            this.applyChartPeriod(period);
+        },
+
+        paintSalesChart(attempt = 0) {
+            const mount = this.$refs?.salesChartMount;
+            if (!mount) {
+                if (attempt < 12) {
+                    requestAnimationFrame(() => this.paintSalesChart(attempt + 1));
+                }
+                return;
+            }
+
+            this.chartHover = null;
+            salesChartClearHover(this.$refs?.salesChartBox);
+
+            if (!this.chartData.length || !this.salesChart?.svg) {
+                mount.innerHTML =
+                    '<div class="w-full h-full flex items-center justify-center text-gray-400 text-sm">Belum ada data penjualan.</div>';
+                return;
+            }
+
+            mount.innerHTML = this.salesChart.svg;
+        },
+
         async load() {
             this.loading = true;
             this.error = '';
+            this.chartHover = null;
+            this.salesChart = null;
+            this.chartData = [];
+            this.chartTable = [];
+            this.chartOrders = [];
             try {
                 const headers = authHeaders(true);
-                const [productsRes, ordersRes, usersRes, revenueRes] = await Promise.all([
+                const [productsRes, ordersRes, usersRes] = await Promise.all([
                     fetch('/api/products', { headers: { Accept: 'application/json' } }),
                     fetch('/api/admin/orders', { headers }),
                     fetch('/api/admin/users', { headers }),
-                    fetch('/api/admin/revenue', { headers }),
                 ]);
 
                 if (ordersRes.status === 401 || ordersRes.status === 403) {
@@ -2037,36 +2297,29 @@ document.addEventListener('alpine:init', () => {
                 const products = await readApiJson(productsRes);
                 const orders = await readApiJson(ordersRes);
                 const users = await readApiJson(usersRes);
-                const revenue = await readApiJson(revenueRes);
 
                 if (!ordersRes.ok) {
                     throw new Error(apiErrorMessage(orders, 'Gagal memuat pesanan admin.'));
                 }
 
                 const productsList = products?.data || products || [];
-                const ordersList = orders?.data || orders || [];
+                const ordersRaw = orders?.data || orders || [];
+                const ordersList = Array.isArray(ordersRaw)
+                    ? ordersRaw
+                    : Array.isArray(ordersRaw?.data)
+                      ? ordersRaw.data
+                      : [];
                 const usersList = users?.data || users || [];
 
                 this.stats = {
                     totalProducts: Array.isArray(productsList) ? productsList.length : 0,
-                    totalOrders: Array.isArray(ordersList) ? ordersList.length : 0,
+                    totalOrders: ordersList.length,
                     activeUsers: Array.isArray(usersList) ? usersList.length : 0,
-                    totalRevenue: Number(revenue?.data?.total_revenue || 0) || 0,
+                    totalRevenue: 0,
                 };
 
-                const salesByDate = {};
-                for (const order of ordersList) {
-                    if (!isSuccessfulPayment(order.payment_status)) continue;
-                    const date = new Date(order.created_at).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'short',
-                    });
-                    salesByDate[date] = (salesByDate[date] || 0) + orderGrandTotal(order);
-                }
-                this.chartData = Object.keys(salesByDate).map((name) => ({
-                    name,
-                    total: salesByDate[name],
-                }));
+                this.chartOrders = ordersList;
+                this.applyChartPeriod(this.chartPeriod);
 
                 this.recentOrders = [...ordersList]
                     .sort(
@@ -2101,43 +2354,31 @@ document.addEventListener('alpine:init', () => {
                     err instanceof Error ? err.message : 'Gagal mengambil data dashboard.';
             } finally {
                 this.loading = false;
+                this.$nextTick(() => {
+                    requestAnimationFrame(() => this.paintSalesChart());
+                });
             }
         },
 
+        onChartMove(event) {
+            if (!this.salesChart?.coords?.length || !this.$refs?.salesChartBox) {
+                this.chartHover = null;
+                return;
+            }
+            this.chartHover = salesChartHoverAt(
+                this.salesChart,
+                event.clientX,
+                this.$refs.salesChartBox,
+            );
+        },
+
+        onChartLeave() {
+            this.chartHover = null;
+            salesChartClearHover(this.$refs?.salesChartBox);
+        },
+
         formatRupiah,
-        chartMax() {
-            if (!this.chartData.length) return 1;
-            return Math.max(...this.chartData.map((d) => d.total), 1);
-        },
-        chartPath() {
-            const data = this.chartData;
-            if (!data.length) return '';
-            const max = this.chartMax();
-            const w = 100;
-            const h = 100;
-            const step = data.length === 1 ? 0 : w / (data.length - 1);
-            return data
-                .map((d, i) => {
-                    const x = data.length === 1 ? w / 2 : i * step;
-                    const y = h - (d.total / max) * (h * 0.85) - h * 0.05;
-                    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-                })
-                .join(' ');
-        },
-        chartArea() {
-            const data = this.chartData;
-            if (!data.length) return '';
-            const max = this.chartMax();
-            const w = 100;
-            const h = 100;
-            const step = data.length === 1 ? 0 : w / (data.length - 1);
-            const points = data.map((d, i) => {
-                const x = data.length === 1 ? w / 2 : i * step;
-                const y = h - (d.total / max) * (h * 0.85) - h * 0.05;
-                return `${x.toFixed(2)},${y.toFixed(2)}`;
-            });
-            return `M 0,${h} L ${points.join(' L ')} L ${w},${h} Z`;
-        },
+        salesPeriodUnitLabel,
     }));
 
     Alpine.data('evomiProfileShell', (initialKey = 'settings') => ({

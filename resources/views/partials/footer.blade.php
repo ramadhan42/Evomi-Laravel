@@ -30,15 +30,38 @@
                 class="flex flex-row gap-2 w-full mt-3"
                 x-data="{ email: '', submitting: false, toast: null }"
                 @submit.prevent="
-                    if (!email) { toast = { type: 'error', title: $L('Perhatian', 'Notice'), message: $L('Harap masukkan alamat email Anda terlebih dahulu.', 'Please enter your email address first.') }; setTimeout(() => toast = null, 3000); return; }
+                    const value = (email || '').trim();
+                    if (!value) {
+                        toast = { type: 'error', title: $L('Perhatian', 'Notice'), message: $L('Harap masukkan alamat email Anda terlebih dahulu.', 'Please enter your email address first.') };
+                        setTimeout(() => toast = null, 3000);
+                        return;
+                    }
                     submitting = true;
                     toast = { type: 'loading', title: $L('Memproses...', 'Processing...'), message: $L('Sedang mendaftarkan email Anda ke Buletin Evomi.', 'Subscribing your email to Evomi Bulletin.') };
-                    setTimeout(() => {
-                        submitting = false;
+                    try {
+                        const res = await fetch('/api/newsletter/subscribe', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify({ email: value }),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                            throw new Error(data.message || $L('Gagal mendaftar buletin.', 'Failed to subscribe to the bulletin.'));
+                        }
                         toast = { type: 'success', title: $L('Berhasil!', 'Success!'), message: $L('Terima kasih telah berlangganan Buletin Evomi.', 'Thanks for subscribing to Evomi Bulletin.') };
                         email = '';
-                        setTimeout(() => toast = null, 3000);
-                    }, 800);
+                    } catch (err) {
+                        toast = {
+                            type: 'error',
+                            title: $L('Pendaftaran Gagal', 'Subscription Failed'),
+                            message: (err && err.message) ? err.message : $L('Terjadi kesalahan pada server. Coba lagi nanti.', 'A server error occurred. Please try again later.'),
+                        };
+                    } finally {
+                        submitting = false;
+                        setTimeout(() => {
+                            if (toast && (toast.type === 'success' || toast.type === 'error')) toast = null;
+                        }, 3000);
+                    }
                 "
             >
                 <input

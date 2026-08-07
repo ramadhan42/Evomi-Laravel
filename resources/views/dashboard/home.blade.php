@@ -19,8 +19,8 @@
         <div class="bg-red-50 border border-red-100 text-red-700 rounded-2xl px-5 py-4 text-sm" x-text="error"></div>
     </template>
 
-    <template x-if="!loading && !error">
-        <div class="space-y-6">
+    {{-- x-show (bukan x-if) agar x-ref chart tetap ada di DOM saat paintSalesChart() --}}
+    <div x-show="!loading && !error" x-cloak class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <a href="{{ route('dashboard.page', 'products') }}" class="relative bg-white p-6 rounded-2xl shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-50/50 hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)] hover:border-gray-200 transition-all">
                     <div class="flex justify-between items-start gap-3">
@@ -85,32 +85,87 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2">
                 <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-50/50 min-h-[400px] flex flex-col">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-6">Grafik Penjualan</h2>
-                    <div class="flex-1 w-full min-h-[280px] relative">
-                        <template x-if="chartData.length === 0">
-                            <div class="w-full h-full min-h-[280px] flex items-center justify-center text-gray-400 text-sm">
-                                Belum ada data penjualan.
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Grafik Penjualan</h2>
+                            <p class="text-xs text-gray-400 mt-1">
+                                Tren pendapatan per
+                                <span x-text="chartPeriodLabel"></span>
+                                <span x-show="chartData.length" x-cloak>
+                                    · total
+                                    <span class="font-semibold text-gray-600" x-text="formatRupiah(stats.totalRevenue)"></span>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1 shrink-0" role="tablist" aria-label="Periode grafik">
+                            <template x-for="opt in chartPeriodOptions" :key="opt.id">
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                                    :class="chartPeriod === opt.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                    :aria-selected="chartPeriod === opt.id"
+                                    @click="setChartPeriod(opt.id)"
+                                    x-text="opt.label"
+                                ></button>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="flex-1 w-full min-h-[300px]">
+                        {{-- SVG di-paint via JS (bukan x-html): x-html + template x-if sering gagal mount di soft-nav admin --}}
+                        <div
+                            class="relative w-full h-[300px] select-none"
+                            x-ref="salesChartBox"
+                            @mousemove="onChartMove($event)"
+                            @mouseleave="onChartLeave()"
+                        >
+                            <div class="w-full h-full" x-ref="salesChartMount"></div>
+
+                            <div
+                                x-show="chartHover"
+                                x-cloak
+                                class="admin-chart-tooltip pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[120%] rounded-2xl border border-slate-200/90 bg-slate-900 px-3.5 py-3 shadow-[0_18px_40px_-16px_rgba(15,23,42,0.55)] min-w-[10.5rem]"
+                                :style="chartHover ? { left: chartHover.leftPct + '%', top: chartHover.topPct + '%' } : {}"
+                            >
+                                <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400" x-text="chartHover?.name"></p>
+                                <p class="mt-1.5 text-[15px] font-semibold text-white tabular-nums tracking-tight" x-text="chartHover?.label"></p>
+                                <p class="mt-1 text-[11px] text-slate-400">Pendapatan</p>
                             </div>
-                        </template>
-                        <template x-if="chartData.length > 0">
-                            <div class="h-full flex flex-col">
-                                <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="w-full flex-1 min-h-[220px]">
-                                    <defs>
-                                        <linearGradient id="evomiSalesGrad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stop-color="#10B981" stop-opacity="0.18"></stop>
-                                            <stop offset="95%" stop-color="#10B981" stop-opacity="0"></stop>
-                                        </linearGradient>
-                                    </defs>
-                                    <path :d="chartArea()" fill="url(#evomiSalesGrad)"></path>
-                                    <path :d="chartPath()" fill="none" stroke="#10B981" stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
-                                </svg>
-                                <div class="flex justify-between gap-1 pt-3 text-[10px] sm:text-xs text-gray-400">
-                                    <template x-for="(point, idx) in chartData" :key="idx">
-                                        <span class="truncate" x-text="point.name"></span>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 border-t border-gray-100 pt-4" x-show="chartTable.length" x-cloak>
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Ringkasan
+                                <span class="font-medium text-gray-500" x-text="'per ' + chartPeriodLabel"></span>
+                            </h3>
+                            <span class="text-[11px] text-gray-400" x-text="salesPeriodUnitLabel(chartPeriod, chartTable.length)"></span>
+                        </div>
+                        <div class="overflow-x-auto rounded-xl border border-gray-100">
+                            <table class="min-w-full text-sm">
+                                <thead class="bg-gray-50 text-left text-[11px] uppercase tracking-wider text-gray-400">
+                                    <tr>
+                                        <th class="px-3.5 py-2.5 font-semibold">Periode</th>
+                                        <th class="px-3.5 py-2.5 font-semibold text-right">Pendapatan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="row in chartTable" :key="row.dayKey">
+                                        <tr class="border-t border-gray-50">
+                                            <td class="px-3.5 py-2.5 text-gray-700" x-text="row.name"></td>
+                                            <td class="px-3.5 py-2.5 text-right font-semibold tabular-nums text-gray-900" x-text="row.totalLabel"></td>
+                                        </tr>
                                     </template>
-                                </div>
-                            </div>
-                        </template>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="border-t border-gray-200 bg-gray-50/80">
+                                        <td class="px-3.5 py-2.5 text-xs font-semibold uppercase tracking-wider text-gray-500">Total</td>
+                                        <td class="px-3.5 py-2.5 text-right text-sm font-bold tabular-nums text-gray-900" x-text="formatRupiah(stats.totalRevenue)"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -157,7 +212,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </template>
+    </div>
 </div>
 @endsection

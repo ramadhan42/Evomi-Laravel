@@ -23,7 +23,7 @@
             <table class="w-full border-collapse min-w-[900px]">
                 <thead>
                     <tr class="bg-gray-50/80 border-b border-gray-100">
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Order ID</th>
+                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-left" x-text="common().product"></th>
                         <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-left" x-text="t('trackings','col_recipient','Penerima','Recipient')"></th>
                         <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-left" x-text="t('trackings','col_resi','No. Resi','Tracking No.')"></th>
                         <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-left" x-text="t('trackings','col_courier','Kurir','Courier')"></th>
@@ -36,8 +36,21 @@
                         <tr><td colspan="6" class="px-6 py-14 text-center text-sm text-gray-400" x-text="t('trackings','empty','Belum ada data pelacakan.','No tracking data yet.')"></td></tr>
                     </template>
                     <template x-for="trk in pagedItems()" :key="trk.order_id || trk.id">
-                        <tr>
-                            <td class="px-6 py-4 text-center"><span class="text-xs font-bold font-mono bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg" x-text="'#' + trk.order_id"></span></td>
+                        <tr class="hover:bg-gray-50/40 transition-colors">
+                            <td class="px-6 py-4">
+                                <div class="flex items-start gap-3 min-w-0">
+                                    @include('partials.admin-thumb', [
+                                        'src' => 'productThumb(trk.product)',
+                                        'alt' => "trk.product?.title || ''",
+                                        'size' => 'h-12 w-12',
+                                        'fit' => 'contain',
+                                    ])
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-gray-900 truncate max-w-[240px]" x-text="trk.product?.title || t('orders','no_name','Tanpa Nama','No Name')"></p>
+                                        <p class="mt-1 text-[11px] font-bold font-mono text-gray-500 truncate" x-text="'#' + trk.order_id"></p>
+                                    </div>
+                                </div>
+                            </td>
                             <td class="px-6 py-4"><p class="font-bold text-gray-900" x-text="trk.recipient_name || '-'"></p><p class="text-xs text-gray-500 mt-1 max-w-[260px] truncate" x-text="trk.recipient_address || '-'"></p></td>
                             <td class="px-6 py-4"><span class="text-xs font-mono font-semibold px-2.5 py-1.5 rounded-lg border" :class="trk.tracking_number ? 'bg-gray-100 border-gray-200 text-gray-900' : 'bg-amber-50 border-amber-100 text-amber-700'" x-text="trk.tracking_number || t('trackings','no_tracking_number','Belum ada no resi','No tracking number yet')"></span></td>
                             <td class="px-6 py-4 font-semibold text-sm" x-text="trk.courier || '-'"></td>
