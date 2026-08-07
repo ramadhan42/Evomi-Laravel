@@ -41,9 +41,10 @@
     @php
         $route = request()->route()?->getName();
         $path = trim(request()->path(), '/');
-        $skipFullLoader = in_array($route, ['profile.history.show', 'artikel.show'], true)
+        $skipFullLoader = in_array($route, ['profile.history.show', 'artikel.show', 'checkout'], true)
             || (bool) preg_match('#^artikel/[^/]+$#', $path)
-            || (bool) preg_match('#^profile/history/[^/]+$#', $path);
+            || (bool) preg_match('#^profile/history/[^/]+$#', $path)
+            || $path === 'checkout';
         $surfaceBlue = in_array($route, ['beranda', 'belanja', 'artikel', 'artikel.show', 'login', 'register'], true)
             || $path === 'artikel'
             || str_starts_with($path, 'artikel/');

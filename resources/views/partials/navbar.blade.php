@@ -426,30 +426,99 @@
         </div>
     </nav>
 
-    {{-- Konfirmasi logout --}}
-    <div
-        x-show="logoutConfirmOpen"
-        x-cloak
-        class="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-        @keydown.escape.window="cancelLogout()"
-    >
-        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4" @click.stop>
-            <h3 class="text-lg font-bold text-gray-900">{{ evomi_l('Konfirmasi Keluar', 'Confirm Logout') }}</h3>
-            <p class="text-sm text-gray-500">{{ evomi_l('Yakin ingin keluar dari akun Evomi?', 'Are you sure you want to log out of Evomi?') }}</p>
-            <div class="flex gap-3">
-                <button
-                    type="button"
-                    class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                    @click="cancelLogout()"
-                >{{ evomi_l('Batal', 'Cancel') }}</button>
-                <button
-                    type="button"
-                    class="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800"
-                    @click="confirmLogout()"
-                >{{ evomi_l('Keluar', 'Log Out') }}</button>
+    {{-- Logout modal teleported to body (header transform would break fixed positioning) --}}
+    <template x-teleport="body">
+        <div
+            x-show="logoutModal.open"
+            x-cloak
+            class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @keydown.escape.window="cancelLogout()"
+            @click.self="logoutModal.type === 'confirm' && cancelLogout()"
+            role="dialog"
+            aria-modal="true"
+            :aria-labelledby="logoutModal.open ? 'evomi-logout-title' : null"
+        >
+            <div
+                class="nav-logout-modal relative bg-white rounded-[20px] md:rounded-[24px] p-5 md:p-8 max-w-[280px] md:max-w-[340px] w-full text-center shadow-2xl overflow-hidden"
+                x-show="logoutModal.open"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95 translate-y-3"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                @click.stop
+            >
+                <div
+                    class="mx-auto flex items-center justify-center h-14 w-14 md:h-20 md:w-20 rounded-full mb-3 md:mb-5 transition-colors duration-300"
+                    :class="{
+                        'bg-amber-50 text-amber-500': logoutModal.type === 'confirm',
+                        'bg-blue-50 text-[#1172BA]': logoutModal.type === 'loading',
+                        'bg-green-50 text-green-500': logoutModal.type === 'success',
+                    }"
+                >
+                    <template x-if="logoutModal.type === 'confirm'">
+                        <svg class="h-7 w-7 md:h-10 md:w-10 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </template>
+                    <template x-if="logoutModal.type === 'loading'">
+                        <svg class="h-7 w-7 md:h-10 md:w-10 animate-spin text-[#1172BA]" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </template>
+                    <template x-if="logoutModal.type === 'success'">
+                        <svg class="h-7 w-7 md:h-10 md:w-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </template>
+                </div>
+
+                <div class="space-y-1.5 md:space-y-3">
+                    <h3 id="evomi-logout-title" class="text-[16px] md:text-[20px] font-bold text-gray-800 tracking-wide" x-text="
+                        logoutModal.type === 'loading'
+                            ? $L('Memproses...', 'Processing...')
+                            : logoutModal.type === 'success'
+                                ? $L('Berhasil Keluar', 'Logged Out Successfully')
+                                : $L('Konfirmasi Keluar', 'Confirm Logout')
+                    "></h3>
+                    <p class="text-[11px] md:text-[12px] text-gray-500 leading-relaxed px-1" x-text="
+                        logoutModal.type === 'loading'
+                            ? $L('Sedang mengeluarkan akun Anda...', 'Logging you out...')
+                            : logoutModal.type === 'success'
+                                ? $L('Sampai jumpa kembali di Evomi!', 'See you again at Evomi!')
+                                : $L('Apakah Anda yakin ingin keluar dari akun Evomi?', 'Are you sure you want to log out of your Evomi account?')
+                    "></p>
+                </div>
+
+                <div class="flex space-x-2 md:space-x-3 mt-4 md:mt-6" x-show="logoutModal.type === 'confirm'" x-cloak>
+                    <button
+                        type="button"
+                        class="w-full font-bold py-2 md:py-3 rounded-xl text-[11px] md:text-[12px] bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                        @click="cancelLogout()"
+                    >{{ evomi_l('Batal', 'Cancel') }}</button>
+                    <button
+                        type="button"
+                        class="w-full font-bold py-2 md:py-3 rounded-xl text-[11px] md:text-[12px] bg-red-500 text-white hover:bg-red-600 transition-colors"
+                        @click="confirmLogout()"
+                    >{{ evomi_l('Ya, Keluar', 'Yes, Log Out') }}</button>
+                </div>
+
+                <div
+                    x-show="logoutModal.type === 'success'"
+                    x-cloak
+                    class="absolute bottom-0 left-0 h-[4px] bg-green-500 nav-logout-success-bar"
+                ></div>
             </div>
         </div>
-    </div>
+    </template>
 </header>
 {{-- Spacer so fixed header doesn't cover content --}}
 <div id="evomi-header-spacer" class="w-full" style="background-color: {{ $navAccent }}" aria-hidden="true"></div>

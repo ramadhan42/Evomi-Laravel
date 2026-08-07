@@ -1457,9 +1457,28 @@ export function registerAdminCrud(Alpine, deps) {
             if (this.saving) return;
             this.saving = true;
             try {
+                const trimOrNull = (v) => {
+                    const s = String(v ?? '').trim();
+                    return s === '' ? null : s;
+                };
+                const payload = {
+                    provider: this.form.provider,
+                    midtrans: {
+                        is_production: !!this.form.midtrans.is_production,
+                        merchant_id: trimOrNull(this.form.midtrans.merchant_id),
+                        client_key: trimOrNull(this.form.midtrans.client_key),
+                        server_key: trimOrNull(this.form.midtrans.server_key),
+                    },
+                    xendit: {
+                        is_production: !!this.form.xendit.is_production,
+                        merchant_id: trimOrNull(this.form.xendit.merchant_id),
+                        callback_token: trimOrNull(this.form.xendit.callback_token),
+                        secret_key: trimOrNull(this.form.xendit.secret_key),
+                    },
+                };
                 const data = await adminJson('/api/admin/payment-settings', {
                     method: 'PUT',
-                    body: this.form,
+                    body: payload,
                 });
                 this.applySettings(unwrapData(data) || this.form);
                 this.showNotice('success', this.t('payment', 'saved'));

@@ -268,6 +268,8 @@
 
                         <button
                             type="button"
+                            x-show="qrisAvailable"
+                            x-cloak
                             @click="paymentMethod = 'qris'"
                             class="w-full flex items-center gap-3 p-3 rounded-xl border transition text-left"
                             :class="paymentMethod === 'qris' ? 'border-transparent' : 'border-gray-100 hover:border-gray-200'"
@@ -278,7 +280,7 @@
                             </span>
                             <span class="flex-1 min-w-0">
                                 <span class="block text-sm font-bold text-gray-900">QRIS</span>
-                                <span class="block text-[11px] text-gray-500 truncate">Bayar dengan QRIS</span>
+                                <span class="block text-[11px] text-gray-500 truncate" x-text="qrisDesc"></span>
                             </span>
                             <span
                                 class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
@@ -335,6 +337,56 @@
             </div>
         </div>
     </div>
+
+    <template x-teleport="body">
+        <div
+            x-show="qrisModal.open && qrisData"
+            x-cloak
+            class="fixed inset-0 z-[210] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            @keydown.escape.window="closeQrisModal()"
+        >
+            <div class="absolute inset-0" @click="closeQrisModal()"></div>
+            <div class="relative bg-white rounded-[24px] w-full max-w-sm p-6 shadow-xl text-center">
+                <button
+                    type="button"
+                    @click="closeQrisModal()"
+                    class="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 bg-gray-100 rounded-full transition-colors"
+                    aria-label="Close"
+                >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                </button>
+
+                <h3 class="text-lg font-bold font-nohemi mb-1" :style="{ color: brand }">
+                    {{ evomi_l('Selesaikan Pembayaran', 'Complete Payment') }}
+                </h3>
+                <p class="text-xs text-gray-500 font-parkinsans mb-4"
+                   x-text="(qrisData?.provider === 'xendit')
+                        ? $L('Scan QRIS Xendit dengan e-wallet / mobile banking kamu.', 'Scan this Xendit QRIS with your e-wallet / mobile banking app.')
+                        : $L('Scan QRIS ini dengan e-wallet / mobile banking kamu.', 'Scan this QRIS with your e-wallet / mobile banking app.')"></p>
+
+                <div class="bg-white p-3 rounded-2xl border-2 border-gray-100 inline-block shadow-sm">
+                    <img
+                        :src="qrisImageUrl"
+                        alt="QRIS Payment"
+                        class="w-40 h-40 mx-auto"
+                        width="160"
+                        height="160"
+                    >
+                </div>
+
+                <div
+                    class="mt-4 p-3 rounded-xl text-xs font-parkinsans flex items-center justify-center gap-2"
+                    :style="{ backgroundColor: brand + '12', color: brand }"
+                >
+                    <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    {{ evomi_l('Menunggu pembayaran…', 'Waiting for payment…') }}
+                </div>
+            </div>
+        </div>
+    </template>
 
     <template x-teleport="body">
         <div x-show="modal.open" x-cloak class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">

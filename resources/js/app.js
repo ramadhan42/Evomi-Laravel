@@ -239,9 +239,14 @@ function isArtikelDetailPath(pathname) {
     return /^\/artikel\/[^/]+$/.test(p);
 }
 
+function isCheckoutPath(pathname) {
+    const p = (pathname || '').replace(/\/$/, '') || '/';
+    return p === '/checkout';
+}
+
 /** Soft-nav / hard-load routes that should feel instant (no leave fade / full loader). */
 function shouldSkipPageLoadingFeel(pathname) {
-    return isArtikelDetailPath(pathname) || isHistoryDetailPath(pathname);
+    return isArtikelDetailPath(pathname) || isHistoryDetailPath(pathname) || isCheckoutPath(pathname);
 }
 
 const HISTORY_GROUPS_CACHE_KEY = 'evomi_history_groups_v1';
@@ -728,7 +733,10 @@ document.addEventListener('alpine:init', () => {
         userAvatar: null,
         accountMenuOpen: false,
         logoutLoading: false,
-        logoutConfirmOpen: false,
+        logoutModal: {
+            open: false,
+            type: 'confirm', // confirm | loading | success
+        },
         badges: { cart: 0, wishlist: 0, history: 0, unread: 0 },
         locale: 'id',
         _localeRevealTimer: null,
@@ -886,17 +894,18 @@ document.addEventListener('alpine:init', () => {
         askLogout() {
             this.open = false;
             this.accountMenuOpen = false;
-            this.logoutConfirmOpen = true;
+            this.logoutModal = { open: true, type: 'confirm' };
         },
 
         cancelLogout() {
-            this.logoutConfirmOpen = false;
+            if (this.logoutModal.type === 'loading') return;
+            this.logoutModal = { open: false, type: 'confirm' };
         },
 
         async confirmLogout() {
             if (this.logoutLoading) return;
             this.logoutLoading = true;
-            this.logoutConfirmOpen = false;
+            this.logoutModal = { open: true, type: 'loading' };
             try {
                 const token = getAuthToken();
                 if (token) {
@@ -912,7 +921,11 @@ document.addEventListener('alpine:init', () => {
                 clearAuthSession();
                 this.readAuth();
                 this.logoutLoading = false;
-                softNavigate('/');
+                this.logoutModal = { open: true, type: 'success' };
+                window.setTimeout(() => {
+                    this.logoutModal = { open: false, type: 'confirm' };
+                    softNavigate('/');
+                }, 1200);
             }
         },
 
@@ -1266,16 +1279,27 @@ document.addEventListener('alpine:init', () => {
 
         buyNow() {
             if (this.isOutOfStock) return;
+            const productId = Number(this.id);
+            if (!Number.isFinite(productId) || productId <= 0) {
+                this.requireLogin(storefrontL('Produk tidak valid untuk checkout.', 'Invalid product for checkout.'));
+                return;
+            }
             const kurirId = this.selectedKurir?.id || '';
             const params = new URLSearchParams({
                 type: 'buynow',
-                productId: String(this.id),
+                productId: String(productId),
                 qty: String(this.quantity),
                 unitPrice: String(this.price),
                 productDiscount: String(this.promo || 0),
             });
             if (kurirId) params.set('kurirId', String(kurirId));
-            window.location.href = `/checkout?${params.toString()}`;
+            const qs = params.toString();
+            try {
+                sessionStorage.setItem('evomi_checkout_qs', qs);
+            } catch {
+                /* ignore */
+            }
+            softNavigate(`/checkout?${qs}`);
         },
 
         async addToCart() {
@@ -2558,10 +2582,13 @@ document.addEventListener('alpine:init', () => {
                 this.showToast(storefrontL('Keranjang masih kosong.', 'Cart is still empty.'));
                 return;
             }
-            this.showToast(storefrontL('Mengalihkan ke checkout...', 'Redirecting to checkout...'));
-            window.setTimeout(() => {
-                window.location.href = '/checkout?type=cart';
-            }, 500);
+            const qs = 'type=cart';
+            try {
+                sessionStorage.setItem('evomi_checkout_qs', qs);
+            } catch {
+                /* ignore */
+            }
+            softNavigate(`/checkout?${qs}`);
         },
     }));
 
@@ -3306,6 +3333,12 @@ document.addEventListener('alpine:init', () => {
         kurirs: [],
         selectedKurir: null,
         paymentMethod: 'cod',
+        paymentSettings: null,
+        qrisAvailable: false,
+        qrisDesc: 'Bayar dengan QRIS',
+        qrisModal: { open: false },
+        qrisData: null,
+        _qrisPollTimer: null,
         promoDiscount: 0,
         orderNote: '',
         editingAddress: false,
@@ -3314,6 +3347,12 @@ document.addEventListener('alpine:init', () => {
         draft: { name: '', email: '', phone: '', address: '' },
         modal: { open: false, type: 'success', title: '', message: '' },
         completedOrderId: '',
+
+        get qrisImageUrl() {
+            const raw = this.qrisData?.qr_string;
+            if (!raw) return '';
+            return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(raw)}`;
+        },
 
         get hasAddress() {
             return Boolean(
@@ -3402,19 +3441,87 @@ document.addEventListener('alpine:init', () => {
             return Number(item.price) || 0;
         },
 
+        resolveCheckoutParams() {
+            let params = new URLSearchParams(window.location.search);
+            const hasIntent =
+                params.get('type') === 'cart' ||
+                Boolean(params.get('productId') || params.get('product_id'));
+            if (!hasIntent) {
+                try {
+                    const cached = sessionStorage.getItem('evomi_checkout_qs');
+                    if (cached) {
+                        params = new URLSearchParams(cached);
+                        const next = `${window.location.pathname}?${params.toString()}`;
+                        history.replaceState({ soft: true }, document.title, next);
+                    }
+                } catch {
+                    /* ignore */
+                }
+            }
+            return params;
+        },
+
+        destroy() {
+            this.stopQrisPolling();
+        },
+
         async boot() {
-            const params = new URLSearchParams(window.location.search);
+            const params = this.resolveCheckoutParams();
             this.type = (params.get('type') || 'buynow').toLowerCase();
             this.promoDiscount = Math.max(0, Number(params.get('productDiscount') || 0));
 
             try {
-                await Promise.all([this.loadKurirs(params.get('kurirId')), this.loadItems(params)]);
+                await Promise.all([
+                    this.loadKurirs(params.get('kurirId')),
+                    this.loadItems(params),
+                    this.loadPaymentSettings(),
+                ]);
                 await this.prefillProfile();
+                try {
+                    sessionStorage.removeItem('evomi_checkout_qs');
+                } catch {
+                    /* ignore */
+                }
             } catch (err) {
                 this.fatalError = err instanceof Error ? err.message : storefrontL('Gagal memuat checkout.', 'Failed to load checkout.');
             } finally {
                 this.loading = false;
                 applyProductTheme(this.brand);
+            }
+        },
+
+        async loadPaymentSettings() {
+            try {
+                const res = await fetch('/api/payment-settings', {
+                    headers: { Accept: 'application/json' },
+                });
+                const data = await readApiJson(res);
+                const settings = data?.data || data || {};
+                this.paymentSettings = settings;
+                const provider = String(settings.provider || 'manual').toLowerCase();
+                const configured = Boolean(settings.configured);
+                this.qrisAvailable =
+                    (provider === 'midtrans' || provider === 'xendit') && configured;
+
+                if (provider === 'xendit') {
+                    this.qrisDesc = storefrontL(
+                        'Bayar dengan QRIS melalui Xendit',
+                        'Pay with QRIS via Xendit',
+                    );
+                } else if (provider === 'midtrans') {
+                    this.qrisDesc = storefrontL(
+                        'Bayar dengan QRIS melalui Midtrans',
+                        'Pay with QRIS via Midtrans',
+                    );
+                } else {
+                    this.qrisDesc = storefrontL('Bayar dengan QRIS', 'Pay with QRIS');
+                }
+
+                this.paymentMethod = this.qrisAvailable ? 'qris' : 'cod';
+            } catch {
+                this.paymentSettings = { provider: 'manual', configured: true };
+                this.qrisAvailable = false;
+                this.paymentMethod = 'cod';
             }
         },
 
@@ -3460,10 +3567,12 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
-            const productId = Number(params.get('productId'));
+            const productId = Number(params.get('productId') || params.get('product_id') || 0);
             const qty = Math.max(1, Number(params.get('qty') || 1));
             const unitPrice = Number(params.get('unitPrice') || 0);
-            if (!productId) throw new Error(storefrontL('Produk checkout tidak valid.', 'Invalid checkout product.'));
+            if (!Number.isFinite(productId) || productId <= 0) {
+                throw new Error(storefrontL('Produk checkout tidak valid.', 'Invalid checkout product.'));
+            }
 
             const res = await fetch(`/api/products/${productId}`, { headers: { Accept: 'application/json' } });
             const data = await readApiJson(res);
@@ -3639,9 +3748,227 @@ document.addEventListener('alpine:init', () => {
             return `INV-${Date.now()}-${Math.floor(Math.random() * 9000 + 1000)}`;
         },
 
+        stopQrisPolling() {
+            if (this._qrisPollTimer) {
+                window.clearInterval(this._qrisPollTimer);
+                this._qrisPollTimer = null;
+            }
+        },
+
+        startQrisPolling() {
+            this.stopQrisPolling();
+            // Immediate check, then every 3s — same feel as Next.js checkout
+            this.checkQrisStatus();
+            this._qrisPollTimer = window.setInterval(() => {
+                this.checkQrisStatus();
+            }, 3000);
+        },
+
+        closeQrisModal() {
+            this.qrisModal.open = false;
+            this.stopQrisPolling();
+        },
+
         async submitCheckout() {
             if (this.processing) return;
             if (!(await this.validateForm())) return;
+
+            const token = getAuthToken();
+            if (this.type === 'cart' && !token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const invoiceId = this.makeInvoiceId();
+            const useQris =
+                this.paymentMethod === 'qris' &&
+                this.qrisAvailable &&
+                ['midtrans', 'xendit'].includes(
+                    String(this.paymentSettings?.provider || '').toLowerCase(),
+                );
+
+            if (useQris) {
+                await this.startQrisPayment(invoiceId);
+                return;
+            }
+
+            await this.processInternalCheckout(invoiceId);
+        },
+
+        async startQrisPayment(invoiceId) {
+            this.processing = true;
+            this.formError = '';
+            const provider = String(this.paymentSettings?.provider || '').toLowerCase();
+
+            try {
+                if (provider === 'midtrans') {
+                    const first = this.items[0];
+                    const res = await fetch('/api/payments/midtrans/qris', {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            order_id: invoiceId,
+                            amount: this.total,
+                            customer_name: this.form.name,
+                            customer_email: this.form.email,
+                            customer_phone: this.form.phone,
+                            item_name: first?.title
+                                ? `Evomi — ${first.title}`
+                                : 'Pesanan Evomi',
+                            item_id: first?.product_id
+                                ? String(first.product_id)
+                                : 'evomi-order',
+                        }),
+                    });
+                    const json = await readApiJson(res);
+                    if (!res.ok || json?.success === false) {
+                        throw new Error(
+                            apiErrorMessage(
+                                json,
+                                storefrontL(
+                                    'Gagal membuat QRIS Midtrans.',
+                                    'Failed to create Midtrans QRIS.',
+                                ),
+                            ),
+                        );
+                    }
+                    const data = json?.data || json;
+                    if (!data?.qr_string) {
+                        throw new Error(
+                            storefrontL(
+                                'Respons QRIS Midtrans tidak lengkap.',
+                                'Incomplete Midtrans QRIS response.',
+                            ),
+                        );
+                    }
+                    this.qrisData = {
+                        id: data.order_id || invoiceId,
+                        qr_string: data.qr_string,
+                        invoice_id: invoiceId,
+                        provider: 'midtrans',
+                    };
+                } else if (provider === 'xendit') {
+                    const expiresAt = new Date(Date.now() + 15 * 60000).toISOString();
+                    const res = await fetch('/api/payments/xendit/qr', {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            reference_id: invoiceId,
+                            amount: this.total,
+                            expires_at: expiresAt,
+                        }),
+                    });
+                    const json = await readApiJson(res);
+                    if (!res.ok || json?.success === false) {
+                        throw new Error(
+                            apiErrorMessage(
+                                json,
+                                storefrontL(
+                                    'Gagal membuat QRIS Xendit.',
+                                    'Failed to create Xendit QRIS.',
+                                ),
+                            ),
+                        );
+                    }
+                    const data = json?.data || json;
+                    if (!data?.id || !data?.qr_string) {
+                        throw new Error(
+                            storefrontL(
+                                'Respons QRIS Xendit tidak lengkap.',
+                                'Incomplete Xendit QRIS response.',
+                            ),
+                        );
+                    }
+                    this.qrisData = {
+                        id: data.id,
+                        qr_string: data.qr_string,
+                        invoice_id: invoiceId,
+                        provider: 'xendit',
+                    };
+                } else {
+                    throw new Error(
+                        storefrontL(
+                            'Provider pembayaran QRIS belum dikonfigurasi.',
+                            'QRIS payment provider is not configured.',
+                        ),
+                    );
+                }
+
+                this.qrisModal.open = true;
+                this.startQrisPolling();
+            } catch (err) {
+                this.modal = {
+                    open: true,
+                    type: 'error',
+                    title: storefrontL('Checkout Gagal', 'Checkout Failed'),
+                    message:
+                        err instanceof Error
+                            ? err.message
+                            : storefrontL(
+                                  'Gagal menggenerate QRIS dari sistem',
+                                  'Failed to generate QRIS from the system',
+                              ),
+                };
+            } finally {
+                this.processing = false;
+            }
+        },
+
+        async checkQrisStatus() {
+            if (!this.qrisData || !this.qrisModal.open || this.processing) return;
+
+            try {
+                if (this.qrisData.provider === 'midtrans') {
+                    const res = await fetch(
+                        `/api/payments/midtrans/qris/${encodeURIComponent(this.qrisData.id)}`,
+                        { headers: { Accept: 'application/json' } },
+                    );
+                    const json = await readApiJson(res);
+                    if (!res.ok || json?.success === false) return;
+                    const data = json?.data || json;
+                    const status = String(data?.status || '').toLowerCase();
+                    const paid =
+                        status === 'settlement' ||
+                        status === 'capture' ||
+                        status === 'success';
+                    if (!paid) return;
+
+                    this.stopQrisPolling();
+                    this.qrisModal.open = false;
+                    await this.processInternalCheckout(this.qrisData.invoice_id);
+                    return;
+                }
+
+                const res = await fetch(
+                    `/api/payments/xendit/qr/${encodeURIComponent(this.qrisData.id)}`,
+                    { headers: { Accept: 'application/json' } },
+                );
+                const json = await readApiJson(res);
+                if (!res.ok || json?.success === false) return;
+                const data = json?.data || json;
+                const status = String(data?.status || '').toUpperCase();
+                const paid =
+                    status === 'INACTIVE' ||
+                    status === 'COMPLETED' ||
+                    status === 'SUCCEEDED';
+                if (!paid) return;
+
+                this.stopQrisPolling();
+                this.qrisModal.open = false;
+                await this.processInternalCheckout(this.qrisData.invoice_id);
+            } catch (err) {
+                console.error('Gagal mengecek status QRIS:', err);
+            }
+        },
+
+        async processInternalCheckout(invoiceId) {
+            if (this.processing) return;
 
             const token = getAuthToken();
             const isGuestBuyNow = this.type === 'buynow' && !token;
@@ -3651,7 +3978,6 @@ document.addEventListener('alpine:init', () => {
             }
 
             this.processing = true;
-            const invoiceId = this.makeInvoiceId();
             const paymentLabel = this.paymentMethod === 'qris' ? 'QRIS' : 'Cash on Delivery';
 
             const payload = {
@@ -3677,7 +4003,12 @@ document.addEventListener('alpine:init', () => {
             try {
                 if (isGuestBuyNow) {
                     if (payload.items.length !== 1) {
-                        throw new Error(storefrontL('Checkout tamu hanya untuk 1 produk (beli langsung).', 'Guest checkout is only for single-product buy now.'));
+                        throw new Error(
+                            storefrontL(
+                                'Checkout tamu hanya untuk 1 produk (beli langsung).',
+                                'Guest checkout is only for single-product buy now.',
+                            ),
+                        );
                     }
                     const res = await fetch('/api/checkout/guest', {
                         method: 'POST',
@@ -3691,7 +4022,14 @@ document.addEventListener('alpine:init', () => {
                         }),
                     });
                     const data = await readApiJson(res);
-                    if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Checkout gagal.', 'Checkout failed.')));
+                    if (!res.ok) {
+                        throw new Error(
+                            apiErrorMessage(
+                                data,
+                                storefrontL('Checkout gagal.', 'Checkout failed.'),
+                            ),
+                        );
+                    }
                 } else {
                     const res = await fetch('/api/checkout', {
                         method: 'POST',
@@ -3703,7 +4041,14 @@ document.addEventListener('alpine:init', () => {
                         }),
                     });
                     const data = await readApiJson(res);
-                    if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Checkout gagal.', 'Checkout failed.')));
+                    if (!res.ok) {
+                        throw new Error(
+                            apiErrorMessage(
+                                data,
+                                storefrontL('Checkout gagal.', 'Checkout failed.'),
+                            ),
+                        );
+                    }
 
                     try {
                         await fetch('/api/trackings', {
@@ -3712,7 +4057,10 @@ document.addEventListener('alpine:init', () => {
                             credentials: 'same-origin',
                             body: JSON.stringify({
                                 order_id: invoiceId,
-                                status: storefrontL('Menunggu Konfirmasi', 'Awaiting Confirmation'),
+                                status: storefrontL(
+                                    'Menunggu Konfirmasi',
+                                    'Awaiting Confirmation',
+                                ),
                                 courier: this.courierLabel,
                                 recipient_name: this.form.name,
                                 recipient_phone: this.form.phone,
@@ -3725,12 +4073,16 @@ document.addEventListener('alpine:init', () => {
                     emitEvomiEvent('cart_updated');
                 }
 
+                emitEvomiEvent('history_updated');
                 this.completedOrderId = invoiceId;
                 this.modal = {
                     open: true,
                     type: 'success',
                     title: storefrontL('Checkout Berhasil!', 'Checkout Successful!'),
-                    message: `Pesanan ${invoiceId} sudah dibuat. Kamu akan kembali ke beranda.`,
+                    message: storefrontL(
+                        `Pesanan ${invoiceId} sudah dibuat. Notifikasi email telah dikirim. Kamu akan kembali ke beranda.`,
+                        `Order ${invoiceId} has been created. An email notification was sent. You will return to home.`,
+                    ),
                 };
             } catch (err) {
                 this.modal = {
@@ -3748,7 +4100,11 @@ document.addEventListener('alpine:init', () => {
             const wasSuccess = this.modal.type === 'success';
             this.modal.open = false;
             if (wasSuccess) {
-                window.location.href = '/';
+                if (typeof window.softNavigate === 'function') {
+                    window.softNavigate('/');
+                } else {
+                    window.location.href = '/';
+                }
             }
         },
     }));
@@ -3787,7 +4143,13 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
     }
 
     // Same full URL — no-op (unless force, e.g. locale switch)
-    if (!force && samePath && !url.hash && !window.location.hash) {
+    if (
+        !force &&
+        samePath &&
+        !url.hash &&
+        !window.location.hash &&
+        url.search === window.location.search
+    ) {
         if (nav && navIndex !== null && !Number.isNaN(navIndex)) {
             nav.setActive(navIndex, true);
         }
@@ -3856,6 +4218,13 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
             if (nextTitle) document.title = nextTitle;
             profileShell.setAttribute('data-active-menu', nextMenu);
 
+            // URL must update BEFORE Alpine init — checkout/boot reads location.search
+            if (push) {
+                history.pushState({ soft: true }, nextTitle || '', url.pathname + url.search + url.hash);
+            } else {
+                history.replaceState({ soft: true }, nextTitle || '', url.pathname + url.search + url.hash);
+            }
+
             if (window.Alpine?.initTree) {
                 Alpine.initTree(content);
             }
@@ -3863,10 +4232,6 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
 
             if (window.__evomiProfileShell) {
                 window.__evomiProfileShell.setActive(nextMenu, true);
-            }
-
-            if (push) {
-                history.pushState({ soft: true }, nextTitle || '', url.pathname + url.search + url.hash);
             }
 
             window.scrollTo({ top: 0, left: 0 });
@@ -3950,6 +4315,13 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
 
             document.body?.style.setProperty('--evomi-theme', nextTheme);
 
+            // URL must update BEFORE Alpine init — checkout boot() reads window.location.search
+            if (push) {
+                history.pushState({ soft: true }, nextTitle || '', url.pathname + url.search + url.hash);
+            } else {
+                history.replaceState({ soft: true }, nextTitle || '', url.pathname + url.search + url.hash);
+            }
+
             if (window.Alpine?.initTree) {
                 Alpine.initTree(main);
                 if (footerWrap) Alpine.initTree(footerWrap);
@@ -3957,10 +4329,6 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
 
             bindSoftLinks(footerWrap || document);
             bindSoftLinks(main);
-
-            if (push) {
-                history.pushState({ soft: true }, nextTitle || '', url.pathname + url.search + url.hash);
-            }
 
             if (nav && (navIndex === null || Number.isNaN(navIndex))) {
                 syncNavFromPath(url.pathname, url.hash);

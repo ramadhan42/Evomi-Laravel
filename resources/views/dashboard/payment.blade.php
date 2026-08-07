@@ -131,7 +131,7 @@
                                 : 'border border-amber-100 bg-amber-50 text-amber-700'"
                             x-text="configured.xendit ? t('payment','configured','Configured','Configured') : t('payment','incomplete','Belum lengkap','Incomplete')"
                         ></span>
-                        <span class="text-[11px] text-gray-400">Webhook: /api/payments/xendit/callback</span>
+                        <span class="text-[11px] text-gray-400">Callback: /api/payments/xendit/notification</span>
                     </div>
                     <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-700">
                         <input type="checkbox" x-model="form.xendit.is_production" class="rounded border-gray-300">
@@ -141,18 +141,38 @@
                 <div class="grid gap-3 sm:grid-cols-2">
                     <label class="block min-w-0">
                         <span class="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500">Business / Merchant ID</span>
-                        <input x-model="form.xendit.merchant_id" class="mt-1.5 w-full h-10 px-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10">
-                        <p class="mt-1 text-[11px] text-gray-400" x-text="t('payment','optional')"></p>
+                        <input
+                            x-model="form.xendit.merchant_id"
+                            placeholder="opsional"
+                            class="mt-1.5 w-full h-10 px-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+                        >
+                        <p class="mt-1 text-[11px] text-gray-400" x-text="t('payment','optional','Opsional','Optional')"></p>
                     </label>
                     <label class="block min-w-0">
-                        <span class="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500">Callback Token</span>
-                        <input x-model="form.xendit.callback_token" autocomplete="off" class="mt-1.5 w-full h-10 px-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10">
+                        <span class="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500">Callback verification token</span>
+                        <input
+                            x-model="form.xendit.callback_token"
+                            placeholder="token dari Xendit"
+                            autocomplete="off"
+                            class="mt-1.5 w-full h-10 px-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+                        >
                     </label>
                     <label class="block min-w-0 sm:col-span-2">
                         <span class="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500">Secret Key</span>
                         <div class="relative mt-1.5">
-                            <input :type="show.xenditSecret ? 'text' : 'password'" x-model="form.xendit.secret_key" autocomplete="off" class="w-full h-10 px-3 pr-10 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10">
-                            <button type="button" class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-50" @click="show.xenditSecret = !show.xenditSecret">
+                            <input
+                                :type="show.xenditSecret ? 'text' : 'password'"
+                                x-model="form.xendit.secret_key"
+                                placeholder="xnd_development_... / xnd_production_..."
+                                autocomplete="off"
+                                class="w-full h-10 px-3 pr-10 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+                            >
+                            <button
+                                type="button"
+                                class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                                @click="show.xenditSecret = !show.xenditSecret"
+                                :aria-label="show.xenditSecret ? 'Hide' : 'Show'"
+                            >
                                 <svg x-show="!show.xenditSecret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                                 <svg x-show="show.xenditSecret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                             </button>

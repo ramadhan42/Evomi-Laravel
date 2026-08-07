@@ -208,6 +208,25 @@ class PaymentSettingController extends Controller
                 $settings->xendit_secret_key = $secret;
             }
         }
+
+        $secret = (string) ($settings->xenditSecretKey() ?? '');
+        if ($secret === '') {
+            return;
+        }
+
+        $dev = str_starts_with($secret, 'xnd_development_');
+        $live = str_starts_with($secret, 'xnd_production_');
+
+        if (! $dev && ! $live) {
+            throw ValidationException::withMessages([
+                'xendit.secret_key' => [
+                    'Secret Key Xendit tidak valid. Gunakan xnd_development_... atau xnd_production_...',
+                ],
+            ]);
+        }
+
+        // Samakan mode Production dengan jenis key (seperti Midtrans SB-/live).
+        $settings->xendit_is_production = $live;
     }
 
     private function adminPayload(PaymentSetting $settings): array

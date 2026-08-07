@@ -325,6 +325,7 @@ class OrderController extends Controller
 
             $product = Product::find($item['product_id']);
             $mailItems = [[
+                'product_id' => (int) $item['product_id'],
                 'title' => $item['title'] ?? ($product?->title ?? 'Produk Evomi'),
                 'quantity' => $item['quantity'],
                 'price' => $item['price'],

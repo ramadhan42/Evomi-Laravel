@@ -877,6 +877,20 @@ body,
     flex-shrink: 0;
 }
 
+.nav-logout-success-bar {
+    width: 100%;
+    animation: nav-logout-success-shrink 1.2s linear forwards;
+}
+
+@keyframes nav-logout-success-shrink {
+    from {
+        width: 100%;
+    }
+    to {
+        width: 0%;
+    }
+}
+
 /* Profile account area */
 .evomi-profile-shell {
     color: #111827;
