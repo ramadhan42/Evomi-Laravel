@@ -2,6 +2,7 @@
     $detailPayload = [
         'id' => $product['id'],
         'title' => $product['title'],
+        'description' => $product['description'] ?? '',
         'accent' => $product['accent'],
         'price' => $product['price'],
         'stock' => $product['stock'],
@@ -11,6 +12,7 @@
         'promo' => $promo,
         'loginUrl' => route('login'),
         'applyTheme' => $applyTheme ?? true,
+        'shareImage' => $gallery[0] ?? ($product['img'] ?? ''),
     ];
     $detailCms = \App\Support\CmsStorefront::forPage('belanja_details');
     $lbl = fn (string $key, string $id, string $en = '') => $detailCms->get('labels', $key, $en !== '' ? evomi_l($id, $en) : evomi_l($id, $id));
@@ -427,13 +429,14 @@
                             </div>
                             <span class="text-[12px] font-parkinsans text-[#6A7282]">Twitter</span>
                         </a>
-                        <button type="button" @click="copyLink()" class="flex flex-col items-center gap-2 group">
+                        <button type="button" @click="shareInstagram()" class="flex flex-col items-center gap-2 group">
                             <div class="w-12 h-12 bg-pink-50 text-pink-500 rounded-full flex items-center justify-center group-hover:bg-pink-500 group-hover:text-white transition-colors">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
                             </div>
                             <span class="text-[12px] font-parkinsans text-[#6A7282]">Instagram</span>
                         </button>
                     </div>
+                    <p class="text-[12px] text-center text-[#99A1AF] font-parkinsans mb-4 leading-relaxed" x-show="shareHint" x-text="shareHint" x-cloak></p>
                     <div class="flex items-center gap-2 bg-[#F8F9FA] p-1.5 rounded-[12px] border border-[#E5E7EB]">
                         <input type="text" :value="productUrl" readonly class="bg-transparent outline-none flex-1 text-[13px] text-[#6A7282] font-parkinsans px-3 overflow-hidden text-ellipsis whitespace-nowrap">
                         <button type="button" @click="copyLink()" class="px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-[8px] text-[13px] font-semibold shrink-0" :style="isCopied ? accentTextStyle : {}" x-text="isCopied ? $L('Disalin', 'Copied') : $L('Salin', 'Copy')"></button>

@@ -107,4 +107,19 @@ class Product extends Model
         $this->applyStockStatusFromQuantity();
         $this->save();
     }
+
+    /**
+     * Kembalikan stok jika pesanan dibatalkan / pembayaran kedaluwarsa.
+     */
+    public function restoreStock(int $qty): void
+    {
+        $qty = max(0, $qty);
+        if ($qty <= 0) {
+            return;
+        }
+
+        $this->quantity = (int) $this->quantity + $qty;
+        $this->applyStockStatusFromQuantity();
+        $this->save();
+    }
 }

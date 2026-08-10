@@ -110,6 +110,123 @@ class MidtransClient
     }
 
     /**
+     * Create Virtual Account / bank transfer via Core API: POST /v2/charge
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array{
+     *   transaction_id: string,
+     *   order_id: string,
+     *   bank: string,
+     *   va_number: string,
+     *   status?: string|null,
+     *   expiry_time?: string|null,
+     *   payment_type?: string|null
+     * }
+     */
+    public function createBankTransferCharge(array $payload): array
+    {
+        $settings = $this->settings();
+        $serverKey = trim((string) ($settings->midtransServerKey() ?? ''));
+
+        if (! $settings->usesMidtrans() || ! $settings->isConfigured() || $serverKey === '') {
+            throw ValidationException::withMessages([
+                'payment' => ['Midtrans belum dikonfigurasi. Isi kredensial di Pengaturan Pembayaran.'],
+            ]);
+        }
+
+        try {
+            $response = Http::withBasicAuth($serverKey, '')
+                ->acceptJson()
+                ->asJson()
+                ->timeout(30)
+                ->post($this->apiBaseUrl().'/v2/charge', $payload)
+                ->throw()
+                ->json();
+        } catch (RequestException $exception) {
+            $rawMessage = data_get($exception->response?->json(), 'status_message')
+                ?? data_get($exception->response?->json(), 'error_messages.0')
+                ?? 'Gagal membuat Virtual Account Midtrans.';
+            $message = is_string($rawMessage) ? $rawMessage : 'Gagal membuat Virtual Account Midtrans.';
+
+            if (
+                $exception->response?->status() === 401
+                || str_contains(strtolower($message), 'unknown merchant')
+            ) {
+                $message = $this->isProductionEnvironment()
+                    ? 'Server Key Production tidak dikenali Midtrans. Pastikan Server Key Production benar, atau matikan Mode production untuk Sandbox.'
+                    : 'Server Key Sandbox tidak dikenali Midtrans. Tempel ulang Server Key Midtrans Sandbox.';
+            }
+
+            throw ValidationException::withMessages([
+                'payment' => [$message],
+            ]);
+        }
+
+        $transactionId = $response['transaction_id'] ?? null;
+        $orderId = $response['order_id'] ?? null;
+        $statusCode = (string) ($response['status_code'] ?? '');
+        $paymentType = strtolower((string) ($response['payment_type'] ?? $payload['payment_type'] ?? ''));
+
+        $bank = '';
+        $vaNumber = '';
+
+        if ($paymentType === 'echannel') {
+            $bank = 'mandiri';
+            $billerCode = (string) ($response['biller_code'] ?? '');
+            $billKey = (string) ($response['bill_key'] ?? '');
+            $vaNumber = trim($billerCode.' '.$billKey);
+        } else {
+            $vaList = is_array($response['va_numbers'] ?? null) ? $response['va_numbers'] : [];
+            $firstVa = is_array($vaList[0] ?? null) ? $vaList[0] : [];
+            $bank = strtolower((string) ($firstVa['bank'] ?? data_get($payload, 'bank_transfer.bank') ?? ''));
+            $vaNumber = (string) ($firstVa['va_number'] ?? '');
+
+            if ($vaNumber === '' && isset($response['permata_va_number'])) {
+                $bank = 'permata';
+                $vaNumber = (string) $response['permata_va_number'];
+            }
+        }
+
+        if (
+            ! is_string($transactionId) || $transactionId === ''
+            || ! is_string($orderId) || $orderId === ''
+            || $vaNumber === ''
+        ) {
+            throw new RuntimeException(
+                is_string($response['status_message'] ?? null)
+                    ? $response['status_message']
+                    : 'Respons Virtual Account Midtrans tidak lengkap.'
+            );
+        }
+
+        if ($statusCode !== '' && ! in_array($statusCode, ['200', '201'], true)) {
+            throw ValidationException::withMessages([
+                'payment' => [
+                    is_string($response['status_message'] ?? null)
+                        ? $response['status_message']
+                        : 'Gagal membuat Virtual Account Midtrans.',
+                ],
+            ]);
+        }
+
+        return [
+            'transaction_id' => $transactionId,
+            'order_id' => $orderId,
+            'bank' => $bank !== '' ? $bank : 'bank',
+            'va_number' => $vaNumber,
+            'status' => is_string($response['transaction_status'] ?? null)
+                ? $response['transaction_status']
+                : null,
+            'expiry_time' => is_string($response['expiry_time'] ?? null)
+                ? $response['expiry_time']
+                : null,
+            'payment_type' => $paymentType !== '' ? $paymentType : 'bank_transfer',
+            'biller_code' => is_string($response['biller_code'] ?? null) ? $response['biller_code'] : null,
+            'bill_key' => is_string($response['bill_key'] ?? null) ? $response['bill_key'] : null,
+        ];
+    }
+
+    /**
      * GET /v2/{order_id}/status
      *
      * @return array<string, mixed>

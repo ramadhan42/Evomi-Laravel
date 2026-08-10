@@ -1168,6 +1168,16 @@ body.evomi-auth-mode #evomi-main {
     min-height: 100dvh;
 }
 
+/* Payment page: compact cards, footer tetap tampil */
+body.evomi-payment-mode #evomi-main {
+    display: flex;
+    flex-direction: column;
+}
+
+body.evomi-payment-mode .evomi-payment-page {
+    width: 100%;
+}
+
 /* Auth floating characters — subtle idle motion */
 @keyframes auth-char-float {
     0%,

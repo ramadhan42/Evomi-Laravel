@@ -108,6 +108,24 @@ class OrderController extends Controller
             $metodePembayaran,
             $request->input('payment_status'),
         );
+        $paymentChannel = strtolower((string) $request->input('payment_channel', ''));
+        $paymentProvider = strtolower((string) $request->input('payment_provider', ''));
+        if (! in_array($paymentChannel, ['qris', 'va', 'cod'], true)) {
+            $paymentChannel = str_contains(strtolower($metodePembayaran), 'qris')
+                ? 'qris'
+                : (str_contains(strtolower($metodePembayaran), 'bank transfer') ? 'va' : 'cod');
+        }
+        if (! in_array($paymentProvider, ['midtrans', 'xendit'], true)) {
+            $paymentProvider = null;
+        }
+        $paymentExpiresAt = null;
+        if (
+            $paymentStatus === Order::PAYMENT_PENDING
+            && in_array($paymentChannel, ['qris', 'va'], true)
+        ) {
+            $hours = max(1, min(48, (int) $request->input('payment_window_hours', 24)));
+            $paymentExpiresAt = now()->addHours($hours);
+        }
 
         if (empty($items) || ! is_array($items)) {
             return response()->json([
@@ -137,6 +155,9 @@ class OrderController extends Controller
                 $now,
                 $metodePembayaran,
                 $paymentStatus,
+                $paymentChannel,
+                $paymentProvider,
+                $paymentExpiresAt,
                 $guestEmailFromRequest,
                 $shippingCost,
                 $promoDiscount,
@@ -171,6 +192,9 @@ class OrderController extends Controller
                         'status' => 'menunggu_konfirmasi',
                         'metode_pembayaran' => $metodePembayaran,
                         'payment_status' => $paymentStatus,
+                        'payment_channel' => $paymentChannel !== '' ? $paymentChannel : null,
+                        'payment_provider' => $paymentProvider,
+                        'payment_expires_at' => $paymentExpiresAt,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ]);
@@ -201,6 +225,11 @@ class OrderController extends Controller
                 'message' => 'Checkout berhasil!',
                 'data' => [
                     'order_id' => $invoiceId,
+                    'payment_status' => $paymentStatus,
+                    'payment_expires_at' => optional($paymentExpiresAt)?->toIso8601String(),
+                    'payment_url' => in_array($paymentChannel, ['qris', 'va'], true)
+                        ? url('/pembayaran/'.$invoiceId)
+                        : null,
                 ],
             ], 200);
 
@@ -263,6 +292,24 @@ class OrderController extends Controller
             $metodePembayaran,
             $data['payment_status'] ?? null,
         );
+        $paymentChannel = strtolower((string) $request->input('payment_channel', ''));
+        $paymentProvider = strtolower((string) $request->input('payment_provider', ''));
+        if (! in_array($paymentChannel, ['qris', 'va', 'cod'], true)) {
+            $paymentChannel = str_contains(strtolower($metodePembayaran), 'qris')
+                ? 'qris'
+                : (str_contains(strtolower($metodePembayaran), 'bank transfer') ? 'va' : 'cod');
+        }
+        if (! in_array($paymentProvider, ['midtrans', 'xendit'], true)) {
+            $paymentProvider = null;
+        }
+        $paymentExpiresAt = null;
+        if (
+            $paymentStatus === Order::PAYMENT_PENDING
+            && in_array($paymentChannel, ['qris', 'va'], true)
+        ) {
+            $hours = max(1, min(48, (int) $request->input('payment_window_hours', 24)));
+            $paymentExpiresAt = now()->addHours($hours);
+        }
         $shippingCost = max(0, (float) ($data['shipping_cost'] ?? 0));
         $promoDiscount = max(0, (float) ($data['promo_discount'] ?? 0));
         $now = now();
@@ -277,6 +324,9 @@ class OrderController extends Controller
                 $guestEmail,
                 $metodePembayaran,
                 $paymentStatus,
+                $paymentChannel,
+                $paymentProvider,
+                $paymentExpiresAt,
                 $shippingCost,
                 $promoDiscount,
                 $now,
@@ -303,20 +353,28 @@ class OrderController extends Controller
                     'status' => 'menunggu_konfirmasi',
                     'metode_pembayaran' => $metodePembayaran,
                     'payment_status' => $paymentStatus,
+                    'payment_channel' => $paymentChannel !== '' ? $paymentChannel : null,
+                    'payment_provider' => $paymentProvider,
+                    'payment_expires_at' => $paymentExpiresAt,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
 
+                $awaitingPay = $paymentStatus === Order::PAYMENT_PENDING
+                    && in_array($paymentChannel, ['qris', 'va'], true);
+
                 OrderTracking::create([
                     'order_id' => $invoiceId,
-                    'status' => 'Menunggu Konfirmasi',
+                    'status' => $awaitingPay ? 'Menunggu Pembayaran' : 'Menunggu Konfirmasi',
                     'courier' => $data['courier'] ?? null,
                     'recipient_name' => $data['recipient_name'],
                     'recipient_phone' => $data['recipient_phone'],
                     'recipient_address' => $data['recipient_address'],
                     'timeline' => [
                         [
-                            'status' => 'Pesanan dibuat',
+                            'status' => $awaitingPay
+                                ? 'Pesanan dibuat — menunggu pembayaran (batas 24 jam)'
+                                : 'Pesanan dibuat',
                             'date' => $now->toIso8601String(),
                         ],
                     ],
@@ -355,6 +413,11 @@ class OrderController extends Controller
                 'message' => 'Checkout berhasil!',
                 'data' => [
                     'order_id' => $invoiceId,
+                    'payment_status' => $paymentStatus,
+                    'payment_expires_at' => optional($paymentExpiresAt)?->toIso8601String(),
+                    'payment_url' => in_array($paymentChannel, ['qris', 'va'], true)
+                        ? url('/pembayaran/'.$invoiceId)
+                        : null,
                     'tracking_url_hint' => $frontend.'/pengiriman/'.$invoiceId,
                 ],
             ], 200);
@@ -426,6 +489,9 @@ class OrderController extends Controller
                     'price' => (float) $item['price'],
                     'image_url' => $imageUrl,
                     'image_path' => $imageLocalPath,
+                    'color' => is_string($product?->color) && trim($product->color) !== ''
+                        ? trim($product->color)
+                        : null,
                 ];
             }, $items);
 

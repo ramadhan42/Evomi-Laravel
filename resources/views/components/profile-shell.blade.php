@@ -4,6 +4,7 @@
     $activeMenu = $activeMenu
         ?? (request()->routeIs('profile.chat') ? 'chat' : null)
         ?? (request()->routeIs('profile.cart') ? 'cart' : null)
+        ?? (request()->routeIs('profile.payments') ? 'payments' : null)
         ?? (request()->routeIs('profile.history*') ? 'history' : null)
         ?? (request()->routeIs('profile.wishlist') ? 'wishlist' : null)
         ?? 'settings';
@@ -12,6 +13,7 @@
         ['key' => 'settings', 'href' => route('profile.index'), 'label' => evomi_l('Pengaturan Profil', 'Profile Settings'), 'badge' => null, 'color' => '#1172BA'],
         ['key' => 'chat', 'href' => route('profile.chat'), 'label' => evomi_l('Pesan Anda', 'Your Messages'), 'badge' => 'unread', 'color' => '#0EA5E9'],
         ['key' => 'cart', 'href' => route('profile.cart'), 'label' => evomi_l('Keranjang Belanja', 'Shopping Cart'), 'badge' => 'cart', 'color' => '#1172BA'],
+        ['key' => 'payments', 'href' => route('profile.payments'), 'label' => evomi_l('Menunggu Pembayaran', 'Pending Payments'), 'badge' => 'payments', 'color' => '#F59E0B'],
         ['key' => 'history', 'href' => route('profile.history'), 'label' => evomi_l('Riwayat Belanja', 'Order History'), 'badge' => 'history', 'color' => '#5EA14A'],
         ['key' => 'wishlist', 'href' => route('profile.wishlist'), 'label' => evomi_l('Wishlist', 'Wishlist'), 'badge' => 'wishlist', 'color' => '#DD74A5'],
     ];

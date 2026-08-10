@@ -251,6 +251,12 @@ class UserController extends Controller
                 'cart' => $user->carts()->count(),
                 'wishlist' => $user->wishlists()->count(),
                 'history' => $user->orders()->count(),
+                'payments' => $user->orders()
+                    ->awaitingOnlinePayment()
+                    ->get()
+                    ->map(fn (Order $o) => preg_match('/^(INV-\d+-\d+)-\d+$/', (string) $o->id, $m) ? $m[1] : (string) $o->id)
+                    ->unique()
+                    ->count(),
                 'unread' => $unread,
             ],
         ]);

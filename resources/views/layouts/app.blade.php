@@ -3,10 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Temukan keharuman eksklusif Evomi yang mencerminkan kepribadian Anda.">
+    <meta name="description" content="@yield('meta_description', 'Temukan keharuman eksklusif Evomi yang mencerminkan kepribadian Anda.')">
     <title>@yield('title', 'Evomi | Premium Fragrance & Perfume')</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('favicon.png') }}">
+    @stack('head')
     <script>
         (function () {
             try {
@@ -41,14 +42,16 @@
     @php
         $route = request()->route()?->getName();
         $path = trim(request()->path(), '/');
-        $skipFullLoader = in_array($route, ['profile.history.show', 'artikel.show', 'checkout'], true)
+        $skipFullLoader = in_array($route, ['profile.history.show', 'artikel.show', 'checkout', 'pembayaran'], true)
             || (bool) preg_match('#^artikel/[^/]+$#', $path)
             || (bool) preg_match('#^profile/history/[^/]+$#', $path)
+            || (bool) preg_match('#^pembayaran/#', $path)
             || $path === 'checkout';
         $surfaceBlue = in_array($route, ['beranda', 'belanja', 'artikel', 'artikel.show', 'login', 'register'], true)
             || $path === 'artikel'
             || str_starts_with($path, 'artikel/');
         $authMode = in_array($route, ['login', 'register'], true);
+        $paymentMode = $route === 'pembayaran' || str_starts_with($path, 'pembayaran/');
         $themeAccent = $themeAccent ?? '#1172BA';
         $footerSeamless = $route === 'belanja.show';
     @endphp
@@ -60,7 +63,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body
-    class="font-nohemi antialiased bg-white text-[#1172BA] overflow-x-hidden{{ $surfaceBlue ? ' evomi-surface-blue' : '' }}{{ $authMode ? ' evomi-auth-mode' : '' }}{{ $footerSeamless ? ' evomi-detail-seamless' : '' }}"
+    class="font-nohemi antialiased bg-white text-[#1172BA] overflow-x-hidden{{ $surfaceBlue ? ' evomi-surface-blue' : '' }}{{ $authMode ? ' evomi-auth-mode' : '' }}{{ $paymentMode ? ' evomi-payment-mode' : '' }}{{ $footerSeamless ? ' evomi-detail-seamless' : '' }}"
     style="--evomi-theme: {{ $themeAccent }}"
 >
     @unless ($skipFullLoader)
@@ -68,7 +71,7 @@
     @endunless
     <div class="evomi-site min-h-screen w-full flex flex-col">
         @include('partials.navbar')
-        <main id="evomi-main" class="page-shell w-full flex-1{{ $footerSeamless ? ' overflow-visible' : ' overflow-x-hidden' }}">
+        <main id="evomi-main" class="page-shell w-full flex-1{{ $footerSeamless ? ' overflow-visible' : ' overflow-x-hidden' }}{{ $paymentMode ? ' min-h-0' : '' }}">
             @yield('content')
         </main>
         <div

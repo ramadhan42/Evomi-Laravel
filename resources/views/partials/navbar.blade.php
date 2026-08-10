@@ -220,6 +220,18 @@
                                         ></span>
                                     </a>
 
+                                    <a href="{{ route('profile.payments') }}" role="menuitem" class="nav-account-item" data-soft-nav @click="closeAccountMenu()">
+                                        <div class="min-w-0">
+                                            <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Menunggu pembayaran', 'Pending payments') }}</p>
+                                            <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('payments', $L('Selesaikan dalam 24 jam', 'Complete within 24 hours'), $L('Tidak ada tagihan', 'No pending bills'))"></p>
+                                        </div>
+                                        <span
+                                            class="shrink-0 flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full text-[11px] font-bold"
+                                            :class="badges.payments > 0 ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-400'"
+                                            x-text="badgeLabel('payments') || '0'"
+                                        ></span>
+                                    </a>
+
                                     <a href="{{ route('profile.history') }}" role="menuitem" class="nav-account-item" data-soft-nav @click="closeAccountMenu()">
                                         <div class="min-w-0">
                                             <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Riwayat belanja', 'Order history') }}</p>
@@ -376,6 +388,10 @@
                     <a href="{{ route('profile.cart') }}" data-soft-nav class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false">
                         <span>{{ evomi_l('Keranjang', 'Cart') }}</span>
                         <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('cart') || '0'"></span>
+                    </a>
+                    <a href="{{ route('profile.payments') }}" data-soft-nav class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false">
+                        <span>{{ evomi_l('Pembayaran', 'Payments') }}</span>
+                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('payments') || '0'"></span>
                     </a>
                     <a href="{{ route('profile.history') }}" data-soft-nav class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false">
                         <span>{{ evomi_l('Riwayat', 'History') }}</span>

@@ -107,6 +107,16 @@
                                     </span>
                                 </div>
 
+                                <a
+                                    x-show="group.isAwaitingPayment && group.paymentUrl"
+                                    x-cloak
+                                    :href="group.paymentUrl"
+                                    data-soft-nav
+                                    class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white hover:bg-amber-600 rounded-xl text-xs font-bold transition-colors"
+                                >
+                                    {{ evomi_l('Bayar', 'Pay') }}
+                                </a>
+
                                 <button
                                     type="button"
                                     x-show="group.canConfirm"

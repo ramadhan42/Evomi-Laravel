@@ -101,19 +101,24 @@ function setSurfaceForPath(pathname) {
     const blue = isBlueSurfacePath(pathname);
     const auth = isAuthPath(pathname);
     const detail = isBelanjaDetailPath(pathname);
+    const payment = isPaymentPath(pathname);
 
     document.body.classList.toggle('evomi-surface-blue', blue);
     document.body.classList.toggle('evomi-auth-mode', auth);
     document.body.classList.toggle('evomi-detail-seamless', detail);
+    document.body.classList.toggle('evomi-payment-mode', payment);
 
     const main = document.getElementById('evomi-main');
     const footerWrap = document.getElementById('evomi-footer-wrap');
     if (main) {
         main.classList.toggle('overflow-visible', detail);
         main.classList.toggle('overflow-x-hidden', !detail);
+        main.classList.toggle('min-h-0', payment);
     }
     if (footerWrap) {
         footerWrap.classList.toggle('belanja-detail-footer-seam', detail);
+        footerWrap.classList.remove('hidden');
+        footerWrap.removeAttribute('hidden');
     }
 
     if (auth) {
@@ -249,9 +254,19 @@ function isCheckoutPath(pathname) {
     return p === '/checkout';
 }
 
+function isPaymentPath(pathname) {
+    const p = (pathname || '').replace(/\/$/, '') || '/';
+    return p === '/pembayaran' || p.startsWith('/pembayaran/');
+}
+
 /** Soft-nav / hard-load routes that should feel instant (no leave fade / full loader). */
 function shouldSkipPageLoadingFeel(pathname) {
-    return isArtikelDetailPath(pathname) || isHistoryDetailPath(pathname) || isCheckoutPath(pathname);
+    return (
+        isArtikelDetailPath(pathname) ||
+        isHistoryDetailPath(pathname) ||
+        isCheckoutPath(pathname) ||
+        isPaymentPath(pathname)
+    );
 }
 
 const HISTORY_GROUPS_CACHE_KEY = 'evomi_history_groups_v1';
@@ -791,6 +806,11 @@ function groupOrdersByCreatedAt(orders) {
             const extraCount = Math.max(0, items.length - 1);
             const idStr = String(first.id);
             const invoice = /^\d+$/.test(idStr) ? `#INV-${idStr}` : `#${idStr.toUpperCase()}`;
+            const invoiceRoot = (() => {
+                const m = idStr.match(/^(INV-\d+-\d+)(?:-\d+)?$/);
+                return m ? m[1] : idStr;
+            })();
+            const awaitingPay = Boolean(first.is_awaiting_payment);
 
             return {
                 groupId: first.id,
@@ -840,9 +860,17 @@ function groupOrdersByCreatedAt(orders) {
                 statusLabel: fulfill.label,
                 statusClass: fulfill.class,
                 statusDot: fulfill.dot,
-                paymentLabel: paymentStatusLabel(pay),
-                paymentClass: paymentStatusBadgeClass(pay),
+                paymentLabel: awaitingPay
+                    ? storefrontL('Menunggu pembayaran', 'Awaiting payment')
+                    : paymentStatusLabel(pay),
+                paymentClass: awaitingPay
+                    ? 'bg-amber-50 text-amber-700'
+                    : paymentStatusBadgeClass(pay),
                 paymentMethod: first.metode_pembayaran || '',
+                isAwaitingPayment: awaitingPay,
+                paymentUrl: awaitingPay
+                    ? `/pembayaran/${encodeURIComponent(invoiceRoot)}`
+                    : null,
                 canConfirm: String(status).toLowerCase() === 'dalam_perjalanan',
                 canDelete: ['diterima', 'selesai'].includes(String(status).toLowerCase()),
             };
@@ -856,23 +884,24 @@ function groupOrdersByCreatedAt(orders) {
 async function fetchBadgeCounts() {
     const token = getAuthToken();
     if (!token) {
-        return { cart: 0, wishlist: 0, history: 0, unread: 0 };
+        return { cart: 0, wishlist: 0, history: 0, payments: 0, unread: 0 };
     }
     try {
         const res = await fetch('/api/badges', {
             headers: authHeaders(true),
             credentials: 'same-origin',
         });
-        if (!res.ok) return { cart: 0, wishlist: 0, history: 0, unread: 0 };
+        if (!res.ok) return { cart: 0, wishlist: 0, history: 0, payments: 0, unread: 0 };
         const data = await readApiJson(res);
         return {
-            cart: Number(data?.data?.cart || 0) || 0,
-            wishlist: Number(data?.data?.wishlist || 0) || 0,
-            history: Number(data?.data?.history || 0) || 0,
-            unread: Number(data?.data?.unread || 0) || 0,
+            cart: Number(data?.data?.cart || 0),
+            wishlist: Number(data?.data?.wishlist || 0),
+            history: Number(data?.data?.history || 0),
+            payments: Number(data?.data?.payments || 0),
+            unread: Number(data?.data?.unread || 0),
         };
     } catch {
-        return { cart: 0, wishlist: 0, history: 0, unread: 0 };
+        return { cart: 0, wishlist: 0, history: 0, payments: 0, unread: 0 };
     }
 }
 
@@ -932,7 +961,7 @@ document.addEventListener('alpine:init', () => {
             open: false,
             type: 'confirm', // confirm | loading | success
         },
-        badges: { cart: 0, wishlist: 0, history: 0, unread: 0 },
+        badges: { cart: 0, wishlist: 0, history: 0, payments: 0, unread: 0 },
         locale: 'id',
         _localeRevealTimer: null,
 
@@ -1164,8 +1193,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         setActive(index, animate = true) {
-            // Tentang (#about) keeps Beranda pill active — same as Next isActive
-            const pillIndex = index === 1 ? 0 : Number(index);
+            const pillIndex = Number(index);
             if (Number.isNaN(pillIndex) || pillIndex < 0) {
                 this.clearActive(animate);
                 return;
@@ -1249,11 +1277,13 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('evomiProductDetail', (payload = {}) => ({
         id: payload.id,
         title: payload.title || '',
+        description: payload.description || '',
         accent: payload.accent || DEFAULT_THEME_BLUE,
         price: Number(payload.price) || 0,
         stock: Math.max(0, Number(payload.stock) || 0),
         gallery: Array.isArray(payload.gallery) ? payload.gallery : [],
         characterUrl: payload.characterUrl || '',
+        shareImage: payload.shareImage || '',
         kurirs: Array.isArray(payload.kurirs) ? payload.kurirs : [],
         promo: Math.max(0, Number(payload.promo) || 0),
         loginUrl: payload.loginUrl || '/login',
@@ -1266,6 +1296,7 @@ document.addEventListener('alpine:init', () => {
         showShareModal: false,
         isChatOpen: false,
         isCopied: false,
+        shareHint: '',
         isWishlisted: false,
         statusMessage: '',
         statusTone: 'success',
@@ -1319,16 +1350,46 @@ document.addEventListener('alpine:init', () => {
         },
 
         get productUrl() {
-            return typeof window !== 'undefined' ? window.location.href : '';
+            return typeof window !== 'undefined' ? window.location.href.split('#')[0] : '';
+        },
+
+        get shareImageUrl() {
+            const raw = this.shareImage || this.gallery?.[0] || '';
+            if (!raw) return '';
+            try {
+                return new URL(raw, window.location.origin).href;
+            } catch {
+                return raw;
+            }
+        },
+
+        get shareCaption() {
+            const title = (this.title || 'Evomi').trim();
+            const desc = String(this.description || '')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            const shortDesc = desc.length > 180 ? `${desc.slice(0, 177)}…` : desc;
+            const lines = [title];
+            if (shortDesc) lines.push('', shortDesc);
+            lines.push('', this.productUrl);
+            return lines.join('\n');
         },
 
         get shareLinks() {
-            const text = encodeURIComponent(`Cek produk keren ini: ${this.title}`);
+            const title = (this.title || 'Evomi').trim();
+            const desc = String(this.description || '')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            const shortDesc = desc.length > 140 ? `${desc.slice(0, 137)}…` : desc;
+            const waBody = [title, shortDesc, this.productUrl].filter(Boolean).join('\n\n');
+            const twBody = [title, shortDesc].filter(Boolean).join(' — ');
             const url = encodeURIComponent(this.productUrl);
             return {
-                whatsapp: `https://api.whatsapp.com/send?text=${text}%20${url}`,
+                whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(waBody)}`,
                 facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
-                twitter: `https://twitter.com/intent/tweet?url=${url}&text=${text}`,
+                twitter: `https://twitter.com/intent/tweet?url=${url}&text=${encodeURIComponent(twBody)}`,
             };
         },
 
@@ -1648,14 +1709,48 @@ document.addEventListener('alpine:init', () => {
 
         async copyLink() {
             try {
-                await navigator.clipboard.writeText(this.productUrl);
+                await navigator.clipboard.writeText(this.shareCaption);
                 this.isCopied = true;
+                this.shareHint = storefrontL(
+                    'Judul, deskripsi, dan link produk disalin.',
+                    'Product title, description, and link copied.',
+                );
                 window.setTimeout(() => {
                     this.isCopied = false;
-                }, 2000);
+                    this.shareHint = '';
+                }, 2500);
             } catch {
                 this.isCopied = false;
+                this.shareHint = '';
             }
+        },
+
+        async shareInstagram() {
+            const payload = {
+                title: this.title || 'Evomi',
+                text: this.shareCaption,
+                url: this.productUrl,
+            };
+            if (navigator.share) {
+                try {
+                    await navigator.share(payload);
+                    this.shareHint = storefrontL(
+                        'Bagikan ke Instagram dari menu share perangkat.',
+                        'Share to Instagram from your device share sheet.',
+                    );
+                    window.setTimeout(() => {
+                        this.shareHint = '';
+                    }, 2500);
+                    return;
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                }
+            }
+            await this.copyLink();
+            this.shareHint = storefrontL(
+                'Caption + link disalin. Tempel di Instagram (preview gambar muncul dari link).',
+                'Caption + link copied. Paste in Instagram (image preview comes from the link).',
+            );
         },
     }));
 
@@ -2384,7 +2479,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('evomiProfileShell', (initialKey = 'settings') => ({
         ready: false,
         activeKey: initialKey || 'settings',
-        badges: { cart: 0, wishlist: 0, history: 0, unread: 0 },
+        badges: { cart: 0, wishlist: 0, history: 0, payments: 0, unread: 0 },
         indicator: { top: 0, height: 0, opacity: 0, color: '#1172BA' },
 
         get indicatorStyle() {
@@ -3580,6 +3675,21 @@ document.addEventListener('alpine:init', () => {
         qrisModal: { open: false },
         qrisData: null,
         _qrisPollTimer: null,
+        bankTransferAvailable: false,
+        bankTransferDesc: 'Transfer via Virtual Account',
+        selectedBank: 'bca',
+        vaBanks: [
+            { id: 'bca', label: 'BCA' },
+            { id: 'bni', label: 'BNI' },
+            { id: 'bri', label: 'BRI' },
+            { id: 'mandiri', label: 'Mandiri' },
+            { id: 'permata', label: 'Permata' },
+        ],
+        vaModal: { open: false },
+        vaData: null,
+        vaCopied: false,
+        _vaPollTimer: null,
+        _vaCopyTimer: null,
         promoDiscount: 0,
         orderNote: '',
         editingAddress: false,
@@ -3704,6 +3814,11 @@ document.addEventListener('alpine:init', () => {
 
         destroy() {
             this.stopQrisPolling();
+            this.stopVaPolling();
+            if (this._vaCopyTimer) {
+                window.clearTimeout(this._vaCopyTimer);
+                this._vaCopyTimer = null;
+            }
         },
 
         async boot() {
@@ -3743,25 +3858,39 @@ document.addEventListener('alpine:init', () => {
                 const configured = Boolean(settings.configured);
                 this.qrisAvailable =
                     (provider === 'midtrans' || provider === 'xendit') && configured;
+                this.bankTransferAvailable = this.qrisAvailable;
 
                 if (provider === 'xendit') {
                     this.qrisDesc = storefrontL(
                         'Bayar dengan QRIS melalui Xendit',
                         'Pay with QRIS via Xendit',
                     );
+                    this.bankTransferDesc = storefrontL(
+                        'Virtual Account melalui Xendit',
+                        'Virtual Account via Xendit',
+                    );
                 } else if (provider === 'midtrans') {
                     this.qrisDesc = storefrontL(
                         'Bayar dengan QRIS melalui Midtrans',
                         'Pay with QRIS via Midtrans',
                     );
+                    this.bankTransferDesc = storefrontL(
+                        'Virtual Account melalui Midtrans',
+                        'Virtual Account via Midtrans',
+                    );
                 } else {
                     this.qrisDesc = storefrontL('Bayar dengan QRIS', 'Pay with QRIS');
+                    this.bankTransferDesc = storefrontL(
+                        'Transfer via Virtual Account',
+                        'Pay via Virtual Account',
+                    );
                 }
 
                 this.paymentMethod = this.qrisAvailable ? 'qris' : 'cod';
             } catch {
                 this.paymentSettings = { provider: 'manual', configured: true };
                 this.qrisAvailable = false;
+                this.bankTransferAvailable = false;
                 this.paymentMethod = 'cod';
             }
         },
@@ -3981,6 +4110,14 @@ document.addEventListener('alpine:init', () => {
                 this.formError = storefrontL('Tidak ada item untuk di-checkout.', 'No items to checkout.');
                 return false;
             }
+            if (
+                this.paymentMethod === 'bank_transfer' &&
+                this.bankTransferAvailable &&
+                !this.selectedBank
+            ) {
+                this.formError = storefrontL('Pilih bank untuk transfer.', 'Select a bank for transfer.');
+                return false;
+            }
             this.formError = '';
             return true;
         },
@@ -4010,6 +4147,46 @@ document.addEventListener('alpine:init', () => {
             this.stopQrisPolling();
         },
 
+        stopVaPolling() {
+            if (this._vaPollTimer) {
+                window.clearInterval(this._vaPollTimer);
+                this._vaPollTimer = null;
+            }
+        },
+
+        startVaPolling() {
+            this.stopVaPolling();
+            this.checkVaStatus();
+            this._vaPollTimer = window.setInterval(() => {
+                this.checkVaStatus();
+            }, 3000);
+        },
+
+        closeVaModal() {
+            this.vaModal.open = false;
+            this.stopVaPolling();
+        },
+
+        async copyVaNumber() {
+            const value = String(this.vaData?.va_number || '').trim();
+            if (!value) return;
+            try {
+                await navigator.clipboard.writeText(value.replace(/\s+/g, ''));
+                this.vaCopied = true;
+                if (this._vaCopyTimer) window.clearTimeout(this._vaCopyTimer);
+                this._vaCopyTimer = window.setTimeout(() => {
+                    this.vaCopied = false;
+                }, 1800);
+            } catch {
+                /* ignore */
+            }
+        },
+
+        bankLabel(bankId) {
+            const found = this.vaBanks.find((b) => b.id === bankId);
+            return found?.label || String(bankId || '').toUpperCase();
+        },
+
         async submitCheckout() {
             if (this.processing) return;
             if (!(await this.validateForm())) return;
@@ -4021,19 +4198,385 @@ document.addEventListener('alpine:init', () => {
             }
 
             const invoiceId = this.makeInvoiceId();
-            const useQris =
-                this.paymentMethod === 'qris' &&
-                this.qrisAvailable &&
-                ['midtrans', 'xendit'].includes(
-                    String(this.paymentSettings?.provider || '').toLowerCase(),
-                );
+            const provider = String(this.paymentSettings?.provider || '').toLowerCase();
+            const gatewayReady =
+                this.qrisAvailable && ['midtrans', 'xendit'].includes(provider);
 
-            if (useQris) {
-                await this.startQrisPayment(invoiceId);
+            if (this.paymentMethod === 'qris' && gatewayReady) {
+                await this.startOnlineCheckout(invoiceId, 'qris', provider);
+                return;
+            }
+
+            if (this.paymentMethod === 'bank_transfer' && gatewayReady) {
+                await this.startOnlineCheckout(invoiceId, 'va', provider);
                 return;
             }
 
             await this.processInternalCheckout(invoiceId);
+        },
+
+        async createPendingOrder(invoiceId, { paymentLabel, channel, provider }) {
+            const token = getAuthToken();
+            const isGuestBuyNow = this.type === 'buynow' && !token;
+            const payload = {
+                invoice_id: invoiceId,
+                payment_method: paymentLabel,
+                payment_status: 'pending',
+                payment_channel: channel,
+                payment_provider: provider,
+                payment_window_hours: 24,
+                total: this.total,
+                shipping_cost: this.shippingCost,
+                promo_discount: this.promoDiscount,
+                recipient_name: this.form.name,
+                recipient_phone: this.form.phone,
+                recipient_address: this.form.address,
+                courier: this.courierLabel,
+                note: this.orderNote || undefined,
+                items: this.items.map((item) => ({
+                    product_id: Number(item.product_id),
+                    quantity: Number(item.quantity),
+                    price: Number(item.price),
+                    title: item.title,
+                })),
+            };
+
+            if (isGuestBuyNow) {
+                if (payload.items.length !== 1) {
+                    throw new Error(
+                        storefrontL(
+                            'Checkout tamu hanya untuk 1 produk (beli langsung).',
+                            'Guest checkout is only for single-product buy now.',
+                        ),
+                    );
+                }
+                const res = await fetch('/api/checkout/guest', {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ...payload,
+                        guest_email: this.form.email,
+                    }),
+                });
+                const data = await readApiJson(res);
+                if (!res.ok) {
+                    throw new Error(
+                        apiErrorMessage(data, storefrontL('Checkout gagal.', 'Checkout failed.')),
+                    );
+                }
+                return data;
+            }
+
+            const res = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: authHeaders(true),
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    ...payload,
+                    guest_email: this.form.email,
+                }),
+            });
+            const data = await readApiJson(res);
+            if (!res.ok) {
+                throw new Error(
+                    apiErrorMessage(data, storefrontL('Checkout gagal.', 'Checkout failed.')),
+                );
+            }
+
+            try {
+                await fetch('/api/trackings', {
+                    method: 'POST',
+                    headers: authHeaders(true),
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        order_id: invoiceId,
+                        status: storefrontL('Menunggu Pembayaran', 'Awaiting Payment'),
+                        courier: this.courierLabel,
+                        recipient_name: this.form.name,
+                        recipient_phone: this.form.phone,
+                        recipient_address: this.form.address,
+                    }),
+                });
+            } catch {
+                /* optional */
+            }
+            emitEvomiEvent('cart_updated');
+            return data;
+        },
+
+        async attachPaymentIntent(invoiceId, { provider, channel, paymentRef, meta }) {
+            const headers = getAuthToken()
+                ? authHeaders(true)
+                : {
+                      Accept: 'application/json',
+                      'Content-Type': 'application/json',
+                  };
+            const res = await fetch(
+                `/api/orders/${encodeURIComponent(invoiceId)}/payment-intent`,
+                {
+                    method: 'POST',
+                    headers,
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        provider,
+                        channel,
+                        payment_ref: paymentRef,
+                        meta,
+                    }),
+                },
+            );
+            const json = await readApiJson(res);
+            if (!res.ok || json?.success === false) {
+                throw new Error(
+                    apiErrorMessage(
+                        json,
+                        storefrontL(
+                            'Gagal menyimpan detail pembayaran.',
+                            'Failed to save payment details.',
+                        ),
+                    ),
+                );
+            }
+            return json;
+        },
+
+        async startOnlineCheckout(invoiceId, channel, provider) {
+            this.processing = true;
+            this.formError = '';
+            const paymentLabel =
+                channel === 'qris'
+                    ? 'QRIS'
+                    : `Bank Transfer · ${this.bankLabel(this.selectedBank)}`;
+
+            try {
+                await this.createPendingOrder(invoiceId, {
+                    paymentLabel,
+                    channel,
+                    provider,
+                });
+
+                let paymentRef = '';
+                let meta = {};
+
+                if (channel === 'qris') {
+                    if (provider === 'midtrans') {
+                        const first = this.items[0];
+                        const res = await fetch('/api/payments/midtrans/qris', {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                order_id: invoiceId,
+                                amount: this.total,
+                                customer_name: this.form.name,
+                                customer_email: this.form.email,
+                                customer_phone: this.form.phone,
+                                item_name: first?.title
+                                    ? `Evomi — ${first.title}`
+                                    : 'Pesanan Evomi',
+                                item_id: first?.product_id
+                                    ? String(first.product_id)
+                                    : 'evomi-order',
+                            }),
+                        });
+                        const json = await readApiJson(res);
+                        if (!res.ok || json?.success === false) {
+                            throw new Error(
+                                apiErrorMessage(
+                                    json,
+                                    storefrontL(
+                                        'Gagal membuat QRIS Midtrans.',
+                                        'Failed to create Midtrans QRIS.',
+                                    ),
+                                ),
+                            );
+                        }
+                        const data = json?.data || json;
+                        if (!data?.qr_string) {
+                            throw new Error(
+                                storefrontL(
+                                    'Respons QRIS Midtrans tidak lengkap.',
+                                    'Incomplete Midtrans QRIS response.',
+                                ),
+                            );
+                        }
+                        paymentRef = data.order_id || invoiceId;
+                        meta = { qr_string: data.qr_string };
+                    } else {
+                        const expiresAt = new Date(
+                            Date.now() + 24 * 60 * 60 * 1000,
+                        ).toISOString();
+                        const res = await fetch('/api/payments/xendit/qr', {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                reference_id: invoiceId,
+                                amount: this.total,
+                                expires_at: expiresAt,
+                            }),
+                        });
+                        const json = await readApiJson(res);
+                        if (!res.ok || json?.success === false) {
+                            throw new Error(
+                                apiErrorMessage(
+                                    json,
+                                    storefrontL(
+                                        'Gagal membuat QRIS Xendit.',
+                                        'Failed to create Xendit QRIS.',
+                                    ),
+                                ),
+                            );
+                        }
+                        const data = json?.data || json;
+                        if (!data?.id || !data?.qr_string) {
+                            throw new Error(
+                                storefrontL(
+                                    'Respons QRIS Xendit tidak lengkap.',
+                                    'Incomplete Xendit QRIS response.',
+                                ),
+                            );
+                        }
+                        paymentRef = data.id;
+                        meta = { qr_string: data.qr_string };
+                    }
+                } else {
+                    const bank = String(this.selectedBank || 'bca').toLowerCase();
+                    if (provider === 'midtrans') {
+                        const first = this.items[0];
+                        const res = await fetch('/api/payments/midtrans/va', {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                order_id: invoiceId,
+                                amount: this.total,
+                                bank,
+                                customer_name: this.form.name,
+                                customer_email: this.form.email,
+                                customer_phone: this.form.phone,
+                                item_name: first?.title
+                                    ? `Evomi — ${first.title}`
+                                    : 'Pesanan Evomi',
+                                item_id: first?.product_id
+                                    ? String(first.product_id)
+                                    : 'evomi-order',
+                            }),
+                        });
+                        const json = await readApiJson(res);
+                        if (!res.ok || json?.success === false) {
+                            throw new Error(
+                                apiErrorMessage(
+                                    json,
+                                    storefrontL(
+                                        'Gagal membuat Virtual Account Midtrans.',
+                                        'Failed to create Midtrans Virtual Account.',
+                                    ),
+                                ),
+                            );
+                        }
+                        const data = json?.data || json;
+                        if (!data?.va_number) {
+                            throw new Error(
+                                storefrontL(
+                                    'Respons Virtual Account Midtrans tidak lengkap.',
+                                    'Incomplete Midtrans Virtual Account response.',
+                                ),
+                            );
+                        }
+                        paymentRef = data.order_id || invoiceId;
+                        meta = {
+                            va_number: data.va_number,
+                            bank: data.bank || bank,
+                            biller_code: data.biller_code || null,
+                            bill_key: data.bill_key || null,
+                        };
+                    } else {
+                        const expiresAt = new Date(
+                            Date.now() + 24 * 60 * 60 * 1000,
+                        ).toISOString();
+                        const res = await fetch('/api/payments/xendit/va', {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                external_id: invoiceId,
+                                amount: this.total,
+                                bank,
+                                customer_name: this.form.name,
+                                expires_at: expiresAt,
+                            }),
+                        });
+                        const json = await readApiJson(res);
+                        if (!res.ok || json?.success === false) {
+                            throw new Error(
+                                apiErrorMessage(
+                                    json,
+                                    storefrontL(
+                                        'Gagal membuat Virtual Account Xendit.',
+                                        'Failed to create Xendit Virtual Account.',
+                                    ),
+                                ),
+                            );
+                        }
+                        const data = json?.data || json;
+                        if (!data?.id || !data?.va_number) {
+                            throw new Error(
+                                storefrontL(
+                                    'Respons Virtual Account Xendit tidak lengkap.',
+                                    'Incomplete Xendit Virtual Account response.',
+                                ),
+                            );
+                        }
+                        paymentRef = data.id;
+                        meta = {
+                            va_number: data.va_number,
+                            bank: data.bank || bank,
+                        };
+                    }
+                }
+
+                await this.attachPaymentIntent(invoiceId, {
+                    provider,
+                    channel,
+                    paymentRef,
+                    meta,
+                });
+
+                emitEvomiEvent('history_updated');
+                const payUrl = `/pembayaran/${encodeURIComponent(invoiceId)}`;
+                if (typeof window.softNavigate === 'function') {
+                    window.softNavigate(payUrl);
+                } else {
+                    window.location.href = payUrl;
+                }
+            } catch (err) {
+                this.modal = {
+                    open: true,
+                    type: 'error',
+                    title: storefrontL('Checkout Gagal', 'Checkout Failed'),
+                    message:
+                        err instanceof Error
+                            ? err.message
+                            : storefrontL(
+                                  'Gagal memulai pembayaran',
+                                  'Failed to start payment',
+                              ),
+                };
+            } finally {
+                this.processing = false;
+            }
         },
 
         async startQrisPayment(invoiceId) {
@@ -4161,6 +4704,140 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        async startBankTransferPayment(invoiceId) {
+            this.processing = true;
+            this.formError = '';
+            this.vaCopied = false;
+            const provider = String(this.paymentSettings?.provider || '').toLowerCase();
+            const bank = String(this.selectedBank || 'bca').toLowerCase();
+
+            try {
+                if (provider === 'midtrans') {
+                    const first = this.items[0];
+                    const res = await fetch('/api/payments/midtrans/va', {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            order_id: invoiceId,
+                            amount: this.total,
+                            bank,
+                            customer_name: this.form.name,
+                            customer_email: this.form.email,
+                            customer_phone: this.form.phone,
+                            item_name: first?.title
+                                ? `Evomi — ${first.title}`
+                                : 'Pesanan Evomi',
+                            item_id: first?.product_id
+                                ? String(first.product_id)
+                                : 'evomi-order',
+                        }),
+                    });
+                    const json = await readApiJson(res);
+                    if (!res.ok || json?.success === false) {
+                        throw new Error(
+                            apiErrorMessage(
+                                json,
+                                storefrontL(
+                                    'Gagal membuat Virtual Account Midtrans.',
+                                    'Failed to create Midtrans Virtual Account.',
+                                ),
+                            ),
+                        );
+                    }
+                    const data = json?.data || json;
+                    if (!data?.va_number) {
+                        throw new Error(
+                            storefrontL(
+                                'Respons Virtual Account Midtrans tidak lengkap.',
+                                'Incomplete Midtrans Virtual Account response.',
+                            ),
+                        );
+                    }
+                    this.vaData = {
+                        id: data.order_id || invoiceId,
+                        va_number: data.va_number,
+                        bank: data.bank || bank,
+                        biller_code: data.biller_code || null,
+                        bill_key: data.bill_key || null,
+                        invoice_id: invoiceId,
+                        provider: 'midtrans',
+                    };
+                } else if (provider === 'xendit') {
+                    const expiresAt = new Date(Date.now() + 24 * 60 * 60000).toISOString();
+                    const res = await fetch('/api/payments/xendit/va', {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            external_id: invoiceId,
+                            amount: this.total,
+                            bank,
+                            customer_name: this.form.name,
+                            expires_at: expiresAt,
+                        }),
+                    });
+                    const json = await readApiJson(res);
+                    if (!res.ok || json?.success === false) {
+                        throw new Error(
+                            apiErrorMessage(
+                                json,
+                                storefrontL(
+                                    'Gagal membuat Virtual Account Xendit.',
+                                    'Failed to create Xendit Virtual Account.',
+                                ),
+                            ),
+                        );
+                    }
+                    const data = json?.data || json;
+                    if (!data?.id || !data?.va_number) {
+                        throw new Error(
+                            storefrontL(
+                                'Respons Virtual Account Xendit tidak lengkap.',
+                                'Incomplete Xendit Virtual Account response.',
+                            ),
+                        );
+                    }
+                    this.vaData = {
+                        id: data.id,
+                        va_number: data.va_number,
+                        bank: data.bank || bank,
+                        invoice_id: invoiceId,
+                        provider: 'xendit',
+                    };
+                } else {
+                    throw new Error(
+                        storefrontL(
+                            'Provider transfer bank belum dikonfigurasi.',
+                            'Bank transfer provider is not configured.',
+                        ),
+                    );
+                }
+
+                this.vaModal.open = true;
+                this.startVaPolling();
+            } catch (err) {
+                this.modal = {
+                    open: true,
+                    type: 'error',
+                    title: storefrontL('Checkout Gagal', 'Checkout Failed'),
+                    message:
+                        err instanceof Error
+                            ? err.message
+                            : storefrontL(
+                                  'Gagal membuat Virtual Account dari sistem',
+                                  'Failed to create Virtual Account from the system',
+                              ),
+                };
+            } finally {
+                this.processing = false;
+            }
+        },
+
         async checkQrisStatus() {
             if (!this.qrisData || !this.qrisModal.open || this.processing) return;
 
@@ -4208,6 +4885,51 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        async checkVaStatus() {
+            if (!this.vaData || !this.vaModal.open || this.processing) return;
+
+            try {
+                if (this.vaData.provider === 'midtrans') {
+                    const res = await fetch(
+                        `/api/payments/midtrans/va/${encodeURIComponent(this.vaData.id)}`,
+                        { headers: { Accept: 'application/json' } },
+                    );
+                    const json = await readApiJson(res);
+                    if (!res.ok || json?.success === false) return;
+                    const data = json?.data || json;
+                    const status = String(data?.status || '').toLowerCase();
+                    const paid =
+                        status === 'settlement' ||
+                        status === 'capture' ||
+                        status === 'success';
+                    if (!paid) return;
+
+                    this.stopVaPolling();
+                    this.vaModal.open = false;
+                    await this.processInternalCheckout(this.vaData.invoice_id);
+                    return;
+                }
+
+                const res = await fetch(
+                    `/api/payments/xendit/va/${encodeURIComponent(this.vaData.id)}`,
+                    { headers: { Accept: 'application/json' } },
+                );
+                const json = await readApiJson(res);
+                if (!res.ok || json?.success === false) return;
+                const data = json?.data || json;
+                const status = String(data?.status || '').toUpperCase();
+                // Closed single-use VA becomes INACTIVE after successful payment.
+                const paid = status === 'INACTIVE';
+                if (!paid) return;
+
+                this.stopVaPolling();
+                this.vaModal.open = false;
+                await this.processInternalCheckout(this.vaData.invoice_id);
+            } catch (err) {
+                console.error('Gagal mengecek status VA:', err);
+            }
+        },
+
         async processInternalCheckout(invoiceId) {
             if (this.processing) return;
 
@@ -4219,12 +4941,24 @@ document.addEventListener('alpine:init', () => {
             }
 
             this.processing = true;
-            const paymentLabel = this.paymentMethod === 'qris' ? 'QRIS' : 'Cash on Delivery';
+            let paymentLabel = 'Cash on Delivery';
+            let paymentStatus = 'pending';
+            let paymentChannel = 'cod';
+            if (this.paymentMethod === 'qris') {
+                paymentLabel = 'QRIS';
+                paymentStatus = 'success';
+                paymentChannel = 'qris';
+            } else if (this.paymentMethod === 'bank_transfer') {
+                paymentLabel = `Bank Transfer · ${this.bankLabel(this.vaData?.bank || this.selectedBank)}`;
+                paymentStatus = 'success';
+                paymentChannel = 'va';
+            }
 
             const payload = {
                 invoice_id: invoiceId,
                 payment_method: paymentLabel,
-                payment_status: this.paymentMethod === 'qris' ? 'success' : 'pending',
+                payment_status: paymentStatus,
+                payment_channel: paymentChannel,
                 total: this.total,
                 shipping_cost: this.shippingCost,
                 promo_discount: this.promoDiscount,
@@ -4346,6 +5080,321 @@ document.addEventListener('alpine:init', () => {
                 } else {
                     window.location.href = '/';
                 }
+            }
+        },
+    }));
+
+    Alpine.data('evomiPaymentPage', (invoiceId = '') => ({
+        invoiceId: String(invoiceId || ''),
+        loading: true,
+        error: '',
+        data: null,
+        brand: '#1172BA',
+        brandDark: '#0B4F86',
+        copied: false,
+        _pollTimer: null,
+        _tickTimer: null,
+        secondsLeft: 0,
+
+        get qrisImageUrl() {
+            const raw = this.data?.meta?.qr_string;
+            if (!raw) return '';
+            return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(raw)}`;
+        },
+
+        get isAwaiting() {
+            return Boolean(this.data?.is_awaiting_payment) && this.data?.payment_status === 'pending';
+        },
+
+        get isPaid() {
+            return this.data?.payment_status === 'success';
+        },
+
+        get isExpired() {
+            return (
+                this.data?.payment_status === 'cancelled' ||
+                this.data?.sync_status === 'expired'
+            );
+        },
+
+        get statusTitle() {
+            if (this.isPaid) return storefrontL('Pembayaran berhasil', 'Payment successful');
+            if (this.isExpired) return storefrontL('Pembayaran kedaluwarsa', 'Payment expired');
+            return storefrontL('Menunggu pembayaran', 'Awaiting payment');
+        },
+
+        get statusSubtitle() {
+            if (this.isPaid) {
+                return storefrontL(
+                    'Pesananmu sudah kami terima dan sedang diproses.',
+                    'Your order has been received and is being processed.',
+                );
+            }
+            if (this.isExpired) {
+                return storefrontL(
+                    'Lewat 24 jam tanpa pembayaran — pesanan dibatalkan.',
+                    'No payment within 24 hours — order cancelled.',
+                );
+            }
+            return storefrontL(
+                'Selesaikan pembayaran dalam 24 jam agar pesanan tidak dibatalkan.',
+                'Complete payment within 24 hours so the order is not cancelled.',
+            );
+        },
+
+        get badgeLabel() {
+            if (this.isPaid) return storefrontL('Sudah dibayar', 'Paid');
+            if (this.isExpired) return storefrontL('Dibatalkan', 'Cancelled');
+            return storefrontL('Belum dibayar', 'Unpaid');
+        },
+
+        get badgeClass() {
+            if (this.isPaid) return 'bg-emerald-50 text-emerald-700';
+            if (this.isExpired) return 'bg-rose-50 text-rose-700';
+            return 'bg-amber-50 text-amber-800';
+        },
+
+        get countdownLabel() {
+            const s = Math.max(0, this.secondsLeft);
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = s % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+        },
+
+        get deadlineLabel() {
+            const raw = this.data?.payment_expires_at;
+            if (!raw) return '';
+            try {
+                const d = new Date(raw);
+                return d.toLocaleString('id-ID', {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                });
+            } catch {
+                return '';
+            }
+        },
+
+        get channelLabel() {
+            const ch = String(this.data?.payment_channel || '').toLowerCase();
+            if (ch === 'qris') return 'QRIS';
+            if (ch === 'va') return storefrontL('Transfer Bank (VA)', 'Bank Transfer (VA)');
+            return this.data?.payment_method || '';
+        },
+
+        get hasPaymentDetails() {
+            const meta = this.data?.meta || {};
+            if (this.data?.payment_channel === 'qris') return Boolean(meta.qr_string);
+            if (this.data?.payment_channel === 'va') return Boolean(meta.va_number);
+            return false;
+        },
+
+        formatPrice(value) {
+            return formatRupiah(value);
+        },
+
+        itemImage(item) {
+            const raw = item?.image;
+            if (!raw) return '';
+            if (String(raw).startsWith('http')) return raw;
+            return `/storage/${String(raw).replace(/^\/+/, '')}`;
+        },
+
+        async boot() {
+            if (!this.invoiceId) {
+                this.error = storefrontL('Invoice tidak valid.', 'Invalid invoice.');
+                this.loading = false;
+                return;
+            }
+            await this.load();
+            this.startPolling();
+            this.startTicker();
+        },
+
+        destroy() {
+            if (this._pollTimer) window.clearInterval(this._pollTimer);
+            if (this._tickTimer) window.clearInterval(this._tickTimer);
+        },
+
+        startPolling() {
+            if (this._pollTimer) window.clearInterval(this._pollTimer);
+            this._pollTimer = window.setInterval(() => this.sync(), 4000);
+        },
+
+        startTicker() {
+            if (this._tickTimer) window.clearInterval(this._tickTimer);
+            this._tickTimer = window.setInterval(() => {
+                if (this.secondsLeft > 0) this.secondsLeft -= 1;
+            }, 1000);
+        },
+
+        async load() {
+            this.loading = true;
+            this.error = '';
+            try {
+                const res = await fetch(
+                    `/api/payments/orders/${encodeURIComponent(this.invoiceId)}`,
+                    { headers: { Accept: 'application/json' } },
+                );
+                const json = await readApiJson(res);
+                if (!res.ok || json?.success === false) {
+                    throw new Error(
+                        apiErrorMessage(
+                            json,
+                            storefrontL('Pembayaran tidak ditemukan.', 'Payment not found.'),
+                        ),
+                    );
+                }
+                this.applyData(json.data);
+            } catch (err) {
+                this.error =
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL('Gagal memuat pembayaran.', 'Failed to load payment.');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        applyData(data) {
+            this.data = data;
+            this.brand = data?.brand_color || '#1172BA';
+            this.brandDark = this.mixDark(this.brand);
+            this.secondsLeft = Math.max(0, Number(data?.seconds_remaining || 0));
+            applyProductTheme(this.brand);
+            if (data?.payment_status === 'success' || data?.payment_status === 'cancelled') {
+                if (this._pollTimer) {
+                    window.clearInterval(this._pollTimer);
+                    this._pollTimer = null;
+                }
+            }
+        },
+
+        mixDark(hex) {
+            try {
+                const h = String(hex).replace('#', '');
+                const full =
+                    h.length === 3
+                        ? h
+                              .split('')
+                              .map((c) => c + c)
+                              .join('')
+                        : h;
+                const n = parseInt(full, 16);
+                const r = Math.round(((n >> 16) & 255) * 0.45);
+                const g = Math.round(((n >> 8) & 255) * 0.45);
+                const b = Math.round((n & 255) * 0.45);
+                return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+            } catch {
+                return '#0B4F86';
+            }
+        },
+
+        async sync() {
+            if (!this.data || !this.isAwaiting) return;
+            try {
+                const res = await fetch(
+                    `/api/payments/orders/${encodeURIComponent(this.invoiceId)}/sync`,
+                    {
+                        method: 'POST',
+                        headers: { Accept: 'application/json' },
+                    },
+                );
+                const json = await readApiJson(res);
+                if (!res.ok || json?.success === false) return;
+                const d = json.data || {};
+                if (typeof d.seconds_remaining === 'number') {
+                    this.secondsLeft = Math.max(0, d.seconds_remaining);
+                }
+                if (d.paid || d.expired || d.payment_status !== this.data.payment_status) {
+                    await this.load();
+                    if (d.paid) emitEvomiEvent('history_updated');
+                }
+            } catch (err) {
+                console.error('Payment sync failed', err);
+            }
+        },
+
+        async copyVa() {
+            const value = String(this.data?.meta?.va_number || '').trim();
+            if (!value) return;
+            try {
+                await navigator.clipboard.writeText(value.replace(/\s+/g, ''));
+                this.copied = true;
+                window.setTimeout(() => {
+                    this.copied = false;
+                }, 1600);
+            } catch {
+                /* ignore */
+            }
+        },
+    }));
+
+    Alpine.data('evomiProfilePayments', () => ({
+        loading: true,
+        error: '',
+        items: [],
+
+        formatRupiah,
+
+        imageUrl(raw) {
+            if (!raw) return '';
+            if (String(raw).startsWith('http')) return raw;
+            return `/storage/${String(raw).replace(/^\/+/, '')}`;
+        },
+
+        formatCountdown(seconds) {
+            const s = Math.max(0, Number(seconds) || 0);
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            if (h > 0) return `${h} jam ${m} mnt`;
+            return `${m} mnt`;
+        },
+
+        async init() {
+            await this.load();
+            this._onHist = () => this.load();
+            window.addEventListener('history_updated', this._onHist);
+        },
+
+        destroy() {
+            if (this._onHist) window.removeEventListener('history_updated', this._onHist);
+        },
+
+        async load() {
+            this.loading = true;
+            this.error = '';
+            try {
+                if (!getAuthToken()) {
+                    window.location.replace('/login');
+                    return;
+                }
+                const res = await fetch('/api/payments/pending', {
+                    headers: authHeaders(true),
+                    credentials: 'same-origin',
+                });
+                const json = await readApiJson(res);
+                if (!res.ok) {
+                    throw new Error(
+                        apiErrorMessage(
+                            json,
+                            storefrontL('Gagal memuat tagihan.', 'Failed to load bills.'),
+                        ),
+                    );
+                }
+                this.items = Array.isArray(json?.data) ? json.data : [];
+            } catch (err) {
+                this.error =
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL('Gagal memuat tagihan.', 'Failed to load bills.');
+            } finally {
+                this.loading = false;
             }
         },
     }));
@@ -4952,8 +6001,16 @@ function initBerandaMotion(root = document) {
         ? root
         : document.getElementById('evomi-main') || document;
 
+    const cleanups = [];
+    bindAboutHashNav(scope, cleanups);
+
+    const finish = () => {
+        berandaMotionCleanup = () => cleanups.forEach((fn) => fn());
+    };
+
     const hero = scope.querySelector('.hero-section');
     if (!hero && !scope.querySelector('[data-reveal], [data-parallax]')) {
+        finish();
         return;
     }
 
@@ -4962,10 +6019,9 @@ function initBerandaMotion(root = document) {
         if (hero) {
             hero.classList.add('is-hero-ready', 'is-hero-float-live');
         }
+        finish();
         return;
     }
-
-    const cleanups = [];
 
     // Entrance after loading screen (or immediately on soft-nav back to beranda)
     if (hero) {
@@ -5119,3 +6175,66 @@ function initBerandaMotion(root = document) {
 }
 
 window.initBerandaMotion = initBerandaMotion;
+
+/**
+ * Tentang (#about): move white pill to Tentang while the section is in view,
+ * then return to Beranda once #about leaves the viewport.
+ */
+function bindAboutHashNav(scope, cleanups) {
+    const about = scope?.querySelector?.('#about') || document.querySelector('#about');
+    if (!about) return;
+
+    const sanitizeAboutHash = () => {
+        if (window.location.hash === '#third-section') {
+            window.history.replaceState(
+                null,
+                '',
+                window.location.pathname + window.location.search + '#about',
+            );
+            return;
+        }
+        if (window.location.hash.includes('#about#about')) {
+            window.history.replaceState(
+                null,
+                '',
+                window.location.pathname + window.location.search + '#about',
+            );
+        }
+    };
+
+    const activateTentangIfNeeded = (animate = false) => {
+        sanitizeAboutHash();
+        if (window.location.hash !== '#about') return;
+        if (!isBerandaPath(window.location.pathname)) return;
+        window.__evomiNav?.setActive?.(1, animate);
+    };
+
+    activateTentangIfNeeded(false);
+    // Navbar Alpine may finish measuring one tick later on first paint
+    window.setTimeout(() => activateTentangIfNeeded(false), 80);
+
+    const onHashChange = () => activateTentangIfNeeded(true);
+    window.addEventListener('hashchange', onHashChange);
+    cleanups.push(() => window.removeEventListener('hashchange', onHashChange));
+
+    const observer = new IntersectionObserver(
+        (entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) return;
+                if (window.location.hash !== '#about') return;
+                if (!isBerandaPath(window.location.pathname)) return;
+
+                window.history.replaceState(
+                    null,
+                    '',
+                    window.location.pathname + window.location.search,
+                );
+                window.__evomiNav?.setActive?.(0, true);
+            });
+        },
+        { threshold: 0 },
+    );
+
+    observer.observe(about);
+    cleanups.push(() => observer.disconnect());
+}

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentSetting;
 use App\Services\Midtrans\MidtransClient;
+use App\Services\OrderPaymentService;
 use App\Services\Xendit\XenditClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -35,7 +36,7 @@ class PaymentGatewayController extends Controller
 
         $data = $validator->validated();
         $expiresAt = $data['expires_at']
-            ?? now()->addMinutes(15)->toIso8601String();
+            ?? now()->addHours(24)->toIso8601String();
 
         try {
             $qr = $xendit->createQrCode([
@@ -156,6 +157,10 @@ class PaymentGatewayController extends Controller
                 'qris' => [
                     'acquirer' => 'gopay',
                 ],
+                'custom_expiry' => [
+                    'expiry_duration' => 24,
+                    'unit' => 'hour',
+                ],
             ]);
 
             return response()->json([
@@ -215,6 +220,257 @@ class PaymentGatewayController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengecek status QRIS Midtrans.',
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/payments/midtrans/va
+     * Body: { order_id, amount, bank, customer_name?, customer_email?, customer_phone?, item_name?, item_id? }
+     */
+    public function createMidtransVa(Request $request, MidtransClient $midtrans)
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required|string|max:80',
+            'amount' => 'required|numeric|min:1',
+            'bank' => 'required|string|in:bca,bni,bri,mandiri,permata',
+            'customer_name' => 'nullable|string|max:255',
+            'customer_email' => 'nullable|email|max:255',
+            'customer_phone' => 'nullable|string|max:30',
+            'item_name' => 'nullable|string|max:255',
+            'item_id' => 'nullable|string|max:80',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $validator->validated();
+        $amount = (int) round((float) $data['amount']);
+        $bank = strtolower($data['bank']);
+        $fullName = trim((string) ($data['customer_name'] ?? ''));
+        $nameParts = preg_split('/\s+/', $fullName, 2) ?: [];
+        $firstName = $nameParts[0] ?? 'Customer';
+        $lastName = $nameParts[1] ?? '';
+
+        $basePayload = [
+            'transaction_details' => [
+                'order_id' => $data['order_id'],
+                'gross_amount' => $amount,
+            ],
+            'item_details' => [[
+                'id' => (string) ($data['item_id'] ?? 'evomi-order'),
+                'price' => $amount,
+                'quantity' => 1,
+                'name' => $data['item_name'] ?? 'Pesanan Evomi',
+            ]],
+            'customer_details' => array_filter([
+                'first_name' => $firstName !== '' ? $firstName : 'Customer',
+                'last_name' => $lastName !== '' ? $lastName : null,
+                'email' => $data['customer_email'] ?? null,
+                'phone' => $data['customer_phone'] ?? null,
+            ]),
+        ];
+
+        if ($bank === 'mandiri') {
+            $payload = array_merge($basePayload, [
+                'payment_type' => 'echannel',
+                'echannel' => [
+                    'bill_info1' => 'Payment:',
+                    'bill_info2' => 'Evomi Order',
+                ],
+            ]);
+        } else {
+            $payload = array_merge($basePayload, [
+                'payment_type' => 'bank_transfer',
+                'bank_transfer' => [
+                    'bank' => $bank,
+                ],
+            ]);
+        }
+
+        try {
+            $va = $midtrans->createBankTransferCharge($payload);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $va['order_id'],
+                    'transaction_id' => $va['transaction_id'],
+                    'order_id' => $va['order_id'],
+                    'bank' => $va['bank'],
+                    'va_number' => $va['va_number'],
+                    'biller_code' => $va['biller_code'] ?? null,
+                    'bill_key' => $va['bill_key'] ?? null,
+                    'status' => $va['status'] ?? null,
+                    'expiry_time' => $va['expiry_time'] ?? null,
+                    'invoice_id' => $data['order_id'],
+                    'is_production' => $midtrans->isProductionEnvironment(),
+                ],
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first() ?: 'Gagal membuat Virtual Account Midtrans.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Midtrans VA create failed', ['detail' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat Virtual Account Midtrans.',
+            ], 500);
+        }
+    }
+
+    /** GET /api/payments/midtrans/va/{orderId} */
+    public function showMidtransVa(string $orderId, MidtransClient $midtrans)
+    {
+        try {
+            $status = $midtrans->getTransactionStatus($orderId);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $status['transaction_id'] ?? $orderId,
+                    'order_id' => $status['order_id'] ?? $orderId,
+                    'status' => $status['transaction_status'] ?? null,
+                    'fraud_status' => $status['fraud_status'] ?? null,
+                    'payment_type' => $status['payment_type'] ?? null,
+                ],
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first() ?: 'Gagal cek status VA Midtrans.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Midtrans VA status failed', ['detail' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengecek status Virtual Account Midtrans.',
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/payments/xendit/va
+     * Body: { external_id, amount, bank, customer_name?, expires_at? }
+     */
+    public function createXenditVa(Request $request, XenditClient $xendit)
+    {
+        $validator = Validator::make($request->all(), [
+            'external_id' => 'required|string|max:80',
+            'amount' => 'required|numeric|min:1',
+            'bank' => 'required|string|in:bca,bni,bri,mandiri,permata',
+            'customer_name' => 'nullable|string|max:50',
+            'expires_at' => 'nullable|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $validator->validated();
+        $bankMap = [
+            'bca' => 'BCA',
+            'bni' => 'BNI',
+            'bri' => 'BRI',
+            'mandiri' => 'MANDIRI',
+            'permata' => 'PERMATA',
+        ];
+        $bankCode = $bankMap[strtolower($data['bank'])] ?? 'BCA';
+        $name = trim((string) ($data['customer_name'] ?? 'EVOMI'));
+        if ($name === '') {
+            $name = 'EVOMI';
+        }
+        // Xendit VA name: letters/spaces only, max 50
+        $name = preg_replace('/[^A-Za-z\s]/', '', $name) ?: 'EVOMI';
+        $name = mb_substr($name, 0, 50);
+
+        $expiresAt = $data['expires_at']
+            ?? now()->addHours(24)->toIso8601String();
+
+        try {
+            $va = $xendit->createVirtualAccount([
+                'external_id' => $data['external_id'],
+                'bank_code' => $bankCode,
+                'name' => $name,
+                'expected_amount' => (int) round((float) $data['amount']),
+                'is_closed' => true,
+                'is_single_use' => true,
+                'expiration_date' => $expiresAt,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $va['id'],
+                    'bank' => strtolower($data['bank']),
+                    'bank_code' => $va['bank_code'],
+                    'va_number' => $va['account_number'],
+                    'status' => $va['status'] ?? null,
+                    'external_id' => $va['external_id'] ?? $data['external_id'],
+                    'expiry_time' => $va['expiration_date'] ?? null,
+                    'expected_amount' => $va['expected_amount'] ?? (int) round((float) $data['amount']),
+                    'invoice_id' => $data['external_id'],
+                ],
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first() ?: 'Gagal membuat Virtual Account Xendit.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Xendit VA create failed', ['detail' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat Virtual Account Xendit.',
+            ], 500);
+        }
+    }
+
+    /** GET /api/payments/xendit/va/{id} */
+    public function showXenditVa(string $id, XenditClient $xendit)
+    {
+        try {
+            $va = $xendit->getVirtualAccount($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $va['id'] ?? $id,
+                    'status' => $va['status'] ?? null,
+                    'external_id' => $va['external_id'] ?? null,
+                    'bank_code' => $va['bank_code'] ?? null,
+                    'va_number' => $va['account_number'] ?? null,
+                ],
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first() ?: 'Gagal cek status VA Xendit.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Xendit VA status failed', ['detail' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengecek status Virtual Account Xendit.',
             ], 500);
         }
     }
@@ -289,8 +545,8 @@ class PaymentGatewayController extends Controller
         }
     }
 
-    /** POST /api/payments/midtrans/notification — webhook stub (ack + verify) */
-    public function midtransNotification(Request $request, MidtransClient $midtrans)
+    /** POST /api/payments/midtrans/notification — webhook */
+    public function midtransNotification(Request $request, MidtransClient $midtrans, OrderPaymentService $payments)
     {
         $payload = $request->all();
 
@@ -298,16 +554,33 @@ class PaymentGatewayController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid signature'], 403);
         }
 
+        $orderId = (string) ($payload['order_id'] ?? '');
+        $txStatus = strtolower((string) ($payload['transaction_status'] ?? ''));
+
         Log::info('Midtrans notification received', [
-            'order_id' => $payload['order_id'] ?? null,
-            'transaction_status' => $payload['transaction_status'] ?? null,
+            'order_id' => $orderId,
+            'transaction_status' => $txStatus,
         ]);
+
+        if (
+            $orderId !== ''
+            && in_array($txStatus, ['settlement', 'capture', 'success'], true)
+        ) {
+            $payments->markInvoicePaid($orderId, [
+                'gateway' => 'midtrans',
+                'transaction_status' => $txStatus,
+            ]);
+        }
+
+        if ($orderId !== '' && in_array($txStatus, ['expire', 'cancel', 'deny'], true)) {
+            $payments->expireInvoice($orderId, 'gateway_'.$txStatus);
+        }
 
         return response()->json(['success' => true]);
     }
 
-    /** POST /api/payments/xendit/notification — webhook stub */
-    public function xenditNotification(Request $request, XenditClient $xendit)
+    /** POST /api/payments/xendit/notification — webhook */
+    public function xenditNotification(Request $request, XenditClient $xendit, OrderPaymentService $payments)
     {
         $token = $request->header('x-callback-token');
 
@@ -315,11 +588,32 @@ class PaymentGatewayController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid callback token'], 403);
         }
 
+        $status = strtoupper((string) $request->input('status'));
+        $externalId = (string) (
+            $request->input('external_id')
+            ?: $request->input('reference_id')
+            ?: ''
+        );
+
         Log::info('Xendit notification received', [
             'id' => $request->input('id'),
-            'status' => $request->input('status'),
+            'status' => $status,
+            'external_id' => $externalId,
             'reference_id' => $request->input('reference_id'),
         ]);
+
+        // Prefer explicit paid signals — avoid treating VA expiry INACTIVE as paid.
+        $paidStatuses = ['COMPLETED', 'SUCCEEDED', 'PAID'];
+        $hasPaidAmount = $request->filled('amount') || $request->filled('paid_amount');
+        if (
+            $externalId !== ''
+            && (in_array($status, $paidStatuses, true) || ($hasPaidAmount && $status !== 'EXPIRED'))
+        ) {
+            $payments->markInvoicePaid($externalId, [
+                'gateway' => 'xendit',
+                'status' => $status,
+            ]);
+        }
 
         return response()->json(['success' => true]);
     }

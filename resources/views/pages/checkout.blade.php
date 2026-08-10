@@ -290,6 +290,49 @@
                                 <svg x-show="paymentMethod === 'qris'" class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
                             </span>
                         </button>
+
+                        <button
+                            type="button"
+                            x-show="bankTransferAvailable"
+                            x-cloak
+                            @click="paymentMethod = 'bank_transfer'"
+                            class="w-full flex items-center gap-3 p-3 rounded-xl border transition text-left"
+                            :class="paymentMethod === 'bank_transfer' ? 'border-transparent' : 'border-gray-100 hover:border-gray-200'"
+                            :style="paymentMethod === 'bank_transfer' ? { borderColor: brand, backgroundColor: brand + '0A' } : {}"
+                        >
+                            <span class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" :style="{ backgroundColor: paymentMethod === 'bank_transfer' ? brand : '#F3F4F6', color: paymentMethod === 'bank_transfer' ? '#fff' : '#9CA3AF' }">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/></svg>
+                            </span>
+                            <span class="flex-1 min-w-0">
+                                <span class="block text-sm font-bold text-gray-900">Transfer Bank</span>
+                                <span class="block text-[11px] text-gray-500 truncate" x-text="bankTransferDesc"></span>
+                            </span>
+                            <span
+                                class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                                :class="paymentMethod === 'bank_transfer' ? 'border-transparent' : 'border-gray-300'"
+                                :style="paymentMethod === 'bank_transfer' ? { backgroundColor: brand, borderColor: brand } : {}"
+                            >
+                                <svg x-show="paymentMethod === 'bank_transfer'" class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                            </span>
+                        </button>
+
+                        <div
+                            x-show="paymentMethod === 'bank_transfer' && bankTransferAvailable"
+                            x-cloak
+                            class="grid grid-cols-3 gap-2 pt-1"
+                        >
+                            <template x-for="bank in vaBanks" :key="bank.id">
+                                <button
+                                    type="button"
+                                    @click="selectedBank = bank.id"
+                                    class="px-2 py-2.5 rounded-xl border text-center transition"
+                                    :class="selectedBank === bank.id ? 'border-transparent' : 'border-gray-100 hover:border-gray-200'"
+                                    :style="selectedBank === bank.id ? { borderColor: brand, backgroundColor: brand + '0A' } : {}"
+                                >
+                                    <span class="block text-xs font-bold text-gray-900" x-text="bank.label"></span>
+                                </button>
+                            </template>
+                        </div>
                     </div>
 
                     <div class="h-px bg-gray-100 my-4"></div>
@@ -383,6 +426,73 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
                     {{ evomi_l('Menunggu pembayaran…', 'Waiting for payment…') }}
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template x-teleport="body">
+        <div
+            x-show="vaModal.open && vaData"
+            x-cloak
+            class="fixed inset-0 z-[210] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            @keydown.escape.window="closeVaModal()"
+        >
+            <div class="absolute inset-0" @click="closeVaModal()"></div>
+            <div class="relative bg-white rounded-[24px] w-full max-w-sm p-6 shadow-xl text-center">
+                <button
+                    type="button"
+                    @click="closeVaModal()"
+                    class="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 bg-gray-100 rounded-full transition-colors"
+                    aria-label="Close"
+                >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                </button>
+
+                <h3 class="text-lg font-bold font-nohemi mb-1" :style="{ color: brand }">
+                    {{ evomi_l('Transfer Virtual Account', 'Virtual Account Transfer') }}
+                </h3>
+                <p class="text-xs text-gray-500 font-parkinsans mb-4"
+                   x-text="$L('Transfer tepat sesuai nominal ke nomor VA di bawah.', 'Transfer the exact amount to the VA number below.')"></p>
+
+                <div class="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-left space-y-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="text-[11px] text-gray-500">Bank</span>
+                        <span class="text-sm font-bold text-gray-900 uppercase" x-text="(vaData?.bank || selectedBank || '').toUpperCase()"></span>
+                    </div>
+                    <div>
+                        <span class="block text-[11px] text-gray-500 mb-1">Nomor Virtual Account</span>
+                        <div class="flex items-center gap-2">
+                            <span class="flex-1 text-base font-bold font-nohemi tracking-wide text-gray-900 break-all" x-text="vaData?.va_number || '—'"></span>
+                            <button
+                                type="button"
+                                @click="copyVaNumber()"
+                                class="shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-gray-200 text-gray-600 hover:bg-white"
+                                x-text="vaCopied ? $L('Tersalin', 'Copied') : $L('Salin', 'Copy')"
+                            ></button>
+                        </div>
+                        <p
+                            x-show="vaData?.biller_code && vaData?.bill_key"
+                            x-cloak
+                            class="mt-2 text-[11px] text-gray-500"
+                            x-text="'Kode Perusahaan: ' + (vaData?.biller_code || '') + ' · Bill Key: ' + (vaData?.bill_key || '')"
+                        ></p>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 pt-1 border-t border-gray-200/80">
+                        <span class="text-[11px] text-gray-500">Total</span>
+                        <span class="text-sm font-bold" :style="{ color: brand }" x-text="formatPrice(total)"></span>
+                    </div>
+                </div>
+
+                <div
+                    class="mt-4 p-3 rounded-xl text-xs font-parkinsans flex items-center justify-center gap-2"
+                    :style="{ backgroundColor: brand + '12', color: brand }"
+                >
+                    <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    {{ evomi_l('Menunggu transfer…', 'Waiting for transfer…') }}
                 </div>
             </div>
         </div>

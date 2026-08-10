@@ -1651,8 +1651,8 @@ export function registerAdminCrud(Alpine, deps) {
         configured: { midtrans: false, xendit: false },
         providers: [
             { id: 'manual', title: 'Manual', hint: 'COD' },
-            { id: 'midtrans', title: 'Midtrans', hint: 'QRIS' },
-            { id: 'xendit', title: 'Xendit', hint: 'QRIS' },
+            { id: 'midtrans', title: 'Midtrans', hint: 'QRIS · Transfer Bank' },
+            { id: 'xendit', title: 'Xendit', hint: 'QRIS · Transfer Bank' },
         ],
         form: {
             provider: 'manual',

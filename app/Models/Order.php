@@ -34,6 +34,11 @@ class Order extends Model
         'status',
         'metode_pembayaran',
         'payment_status',
+        'payment_expires_at',
+        'payment_provider',
+        'payment_channel',
+        'payment_ref',
+        'payment_meta',
     ];
 
     /**
@@ -48,10 +53,14 @@ class Order extends Model
         'shipping_cost' => 'decimal:2',
         'promo_discount' => 'decimal:2',
         'quantity' => 'integer',
+        'payment_expires_at' => 'datetime',
+        'payment_meta' => 'array',
     ];
 
     protected $appends = [
         'grand_total',
+        'is_awaiting_payment',
+        'payment_window_seconds',
     ];
 
     public $incrementing = false;
@@ -71,9 +80,40 @@ class Order extends Model
         );
     }
 
+    public function getIsAwaitingPaymentAttribute(): bool
+    {
+        return $this->isAwaitingOnlinePayment();
+    }
+
+    public function getPaymentWindowSecondsAttribute(): int
+    {
+        if (! $this->payment_expires_at || ! $this->isAwaitingOnlinePayment()) {
+            return 0;
+        }
+
+        return max(0, (int) $this->payment_expires_at->getTimestamp() - now()->getTimestamp());
+    }
+
     public function isPaymentSuccessful(): bool
     {
         return $this->payment_status === self::PAYMENT_SUCCESS;
+    }
+
+    public function isAwaitingOnlinePayment(): bool
+    {
+        if ($this->payment_status !== self::PAYMENT_PENDING) {
+            return false;
+        }
+
+        if (! in_array($this->payment_channel, ['qris', 'va'], true)) {
+            return false;
+        }
+
+        if ($this->payment_expires_at && $this->payment_expires_at->isPast()) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -88,8 +128,23 @@ class Order extends Model
     }
 
     /**
+     * @param  Builder<Order>  $query
+     * @return Builder<Order>
+     */
+    public function scopeAwaitingOnlinePayment(Builder $query): Builder
+    {
+        return $query
+            ->where('payment_status', self::PAYMENT_PENDING)
+            ->whereIn('payment_channel', ['qris', 'va'])
+            ->where(function ($q) {
+                $q->whereNull('payment_expires_at')
+                    ->orWhere('payment_expires_at', '>', now());
+            });
+    }
+
+    /**
      * Resolve payment status for a new checkout.
-     * QRIS (already settled on frontend) → success; COD → pending unless explicit.
+     * Online methods stay pending until gateway confirms; COD → pending unless explicit.
      */
     public static function resolveCheckoutPaymentStatus(
         ?string $paymentMethod,
@@ -100,16 +155,6 @@ class Order extends Model
             && in_array($explicitStatus, self::PAYMENT_STATUSES, true)
         ) {
             return $explicitStatus;
-        }
-
-        $method = strtolower((string) $paymentMethod);
-
-        if (
-            str_contains($method, 'qris')
-            || str_contains($method, 'midtrans')
-            || str_contains($method, 'xendit')
-        ) {
-            return self::PAYMENT_SUCCESS;
         }
 
         return self::PAYMENT_PENDING;

@@ -52,6 +52,14 @@ class PageController extends Controller
         ]);
     }
 
+    public function pembayaran(string $invoiceId): View
+    {
+        return view('pages.pembayaran', [
+            'invoiceId' => $invoiceId,
+            'themeAccent' => '#1172BA',
+        ]);
+    }
+
     public function artikel(): View
     {
         $articles = Article::query()

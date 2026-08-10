@@ -21,9 +21,9 @@
       <td align="center">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border-radius:16px;overflow:hidden;">
 
-          {{-- ===== BLUE HEADER ===== --}}
+          {{-- ===== BRAND HEADER (warna produk) ===== --}}
           <tr>
-            <td align="center" style="background-color:#0071BC;padding:28px 24px;">
+            <td align="center" style="background-color:{{ $brandColor }};padding:28px 24px;">
               <p style="margin:0;font-size:13px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.85);font-weight:700;">
                 Konfirmasi Pesanan
               </p>
@@ -46,7 +46,7 @@
                 Tim Evomi sedang memproses pesananmu. Simpan email ini sebagai bukti pemesanan, atau lacak status pengiriman kapan saja.
               </p>
 
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F0F7FC;border-radius:12px;margin-bottom:22px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{{ $brandSoft }};border-radius:12px;margin-bottom:22px;">
                 <tr>
                   <td style="padding:16px 18px;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -60,7 +60,7 @@
                       </tr>
                       <tr>
                         <td style="padding:4px 0;font-size:13px;color:#64748B;">Total</td>
-                        <td style="padding:4px 0;font-size:16px;color:#0071BC;font-weight:800;text-align:right;">Rp {{ number_format($total, 0, ',', '.') }}</td>
+                        <td style="padding:4px 0;font-size:16px;color:{{ $brandColor }};font-weight:800;text-align:right;">Rp {{ number_format($total, 0, ',', '.') }}</td>
                       </tr>
                     </table>
                   </td>
@@ -79,6 +79,13 @@
                   } elseif (!empty($item['image_url'])) {
                       $productImg = $item['image_url'];
                   }
+                  $itemAccent = $brandColor;
+                  if (!empty($item['color']) && is_string($item['color'])) {
+                      $raw = trim($item['color']);
+                      if (preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $raw) === 1) {
+                          $itemAccent = $raw;
+                      }
+                  }
                 @endphp
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #E2E8F0;border-radius:14px;margin-bottom:14px;overflow:hidden;">
                   <tr>
@@ -92,7 +99,7 @@
                     <td valign="middle" style="padding:14px 16px 14px 0;">
                       <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:#0F172A;">{{ $item['title'] }}</p>
                       <p style="margin:0 0 4px;font-size:13px;color:#64748B;">Qty: {{ $item['quantity'] }}</p>
-                      <p style="margin:0;font-size:14px;font-weight:700;color:#0071BC;">
+                      <p style="margin:0;font-size:14px;font-weight:700;color:{{ $itemAccent }};">
                         Rp {{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}
                       </p>
                     </td>
@@ -118,22 +125,22 @@
 
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 10px;">
                 <tr>
-                  <td align="center" bgcolor="#0071BC" style="border-radius:999px;">
-                    <a href="{{ $trackingUrl }}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:999px;background-color:#0071BC;">
+                  <td align="center" bgcolor="{{ $brandColor }}" style="border-radius:999px;">
+                    <a href="{{ $trackingUrl }}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:999px;background-color:{{ $brandColor }};">
                       Lacak Pesanan
                     </a>
                   </td>
                 </tr>
               </table>
               <p style="margin:0 0 8px;text-align:center;font-size:12px;color:#94A3B8;word-break:break-all;">
-                atau buka: <a href="{{ $trackingUrl }}" style="color:#0071BC;text-decoration:underline;">{{ $trackingUrl }}</a>
+                atau buka: <a href="{{ $trackingUrl }}" style="color:{{ $brandColor }};text-decoration:underline;">{{ $trackingUrl }}</a>
               </p>
             </td>
           </tr>
 
           {{-- ===== FOOTER ===== --}}
           <tr>
-            <td style="background-color:#0B3A5C;padding:24px;">
+            <td style="background-color:{{ $brandDark }};padding:24px;">
               <p style="margin:0 0 6px;text-align:center;font-size:16px;font-weight:800;color:#FFFFFF;">
                 Ikuti Evomi
               </p>
@@ -143,15 +150,15 @@
               <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px;">
                 <tr>
                   <td style="padding:0 8px;">
-                    <a href="{{ $social['instagram'] }}" style="font-size:13px;font-weight:700;color:#5CB2ED;text-decoration:none;">Instagram</a>
+                    <a href="{{ $social['instagram'] }}" style="font-size:13px;font-weight:700;color:{{ $brandLight }};text-decoration:none;">Instagram</a>
                   </td>
                   <td style="padding:0 8px;color:rgba(255,255,255,0.35);">|</td>
                   <td style="padding:0 8px;">
-                    <a href="{{ $social['twitter'] }}" style="font-size:13px;font-weight:700;color:#5CB2ED;text-decoration:none;">Twitter / X</a>
+                    <a href="{{ $social['twitter'] }}" style="font-size:13px;font-weight:700;color:{{ $brandLight }};text-decoration:none;">Twitter / X</a>
                   </td>
                   <td style="padding:0 8px;color:rgba(255,255,255,0.35);">|</td>
                   <td style="padding:0 8px;">
-                    <a href="{{ $social['facebook'] }}" style="font-size:13px;font-weight:700;color:#5CB2ED;text-decoration:none;">Facebook</a>
+                    <a href="{{ $social['facebook'] }}" style="font-size:13px;font-weight:700;color:{{ $brandLight }};text-decoration:none;">Facebook</a>
                   </td>
                 </tr>
               </table>

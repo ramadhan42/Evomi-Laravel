@@ -30,6 +30,14 @@ class ProfileController extends Controller
         ]);
     }
 
+    public function payments(): View
+    {
+        return view('profile.payments', [
+            'activeMenu' => 'payments',
+            'pageTitle' => 'Menunggu Pembayaran',
+        ]);
+    }
+
     public function history(): View
     {
         return view('profile.history', [
