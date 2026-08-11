@@ -9,10 +9,10 @@
         class="evomi-product-modal__backdrop absolute inset-0"
         x-show="$store.evomiProductModal.open"
         x-cloak
-        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter="evomi-product-modal-fade-enter"
         x-transition:enter-start="opacity-0"
         x-transition:enter-end="opacity-100"
-        x-transition:leave="transition ease-in duration-220"
+        x-transition:leave="evomi-product-modal-fade-leave"
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
         @click="$store.evomiProductModal.close()"
@@ -26,12 +26,12 @@
         @click.stop
         x-show="$store.evomiProductModal.open"
         x-cloak
-        x-transition:enter="transition ease-out duration-350"
-        x-transition:enter-start="opacity-0 translate-y-6 scale-[0.97]"
+        x-transition:enter="evomi-product-modal-panel-enter"
+        x-transition:enter-start="opacity-0 translate-y-4 scale-[0.97]"
         x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-        x-transition:leave="transition ease-in duration-220"
-        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-        x-transition:leave-end="opacity-0 translate-y-6 scale-[0.97]"
+        x-transition:leave="evomi-product-modal-panel-leave"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
     >
         {{-- Left: soft accent + product visual --}}
         <div

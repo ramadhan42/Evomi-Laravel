@@ -162,7 +162,11 @@
                                     <div class="min-w-0 flex-1">
                                         <div class="flex items-start justify-between gap-2">
                                             <div class="min-w-0">
-                                                <p class="evomi-account-drawer__cart-title truncate" x-text="item.title"></p>
+                                                <p
+                                                    class="evomi-account-drawer__cart-title truncate"
+                                                    :style="{ color: item.accent || '#1172BA' }"
+                                                    x-text="item.title"
+                                                ></p>
                                                 <p class="evomi-account-drawer__cart-meta" x-text="item.meta || '30ml · EDP'"></p>
                                                 <p class="evomi-account-drawer__cart-price" x-text="item.priceLabel"></p>
                                             </div>
@@ -265,6 +269,7 @@
                                                 type="button"
                                                 class="evomi-track-chip"
                                                 :class="{ 'is-active': drawerTrackSelected?.id === item.id }"
+                                                :style="{ '--track-item-accent': item.accent || '#1172BA' }"
                                                 @click="selectDrawerTrack(item.id)"
                                             >
                                                 <div class="evomi-track-chip__img" :style="{ backgroundColor: (item.accent || '#1172BA') + '22' }">
@@ -272,7 +277,10 @@
                                                 </div>
                                                 <div class="evomi-track-chip__body">
                                                     <p class="evomi-track-chip__code" x-text="item.code"></p>
-                                                    <p class="evomi-track-chip__title" x-text="item.title"></p>
+                                                    <p
+                                                        class="evomi-track-chip__title"
+                                                        x-text="item.title"
+                                                    ></p>
                                                     <p class="evomi-track-chip__status" :class="drawerTrackToneClass(item.status_tone)" x-text="item.status_label"></p>
                                                 </div>
                                             </button>
@@ -282,7 +290,10 @@
                             </div>
 
                             <template x-if="drawerTrackSelected">
-                                <div class="space-y-4">
+                                <div
+                                    class="space-y-4"
+                                    :style="{ '--track-item-accent': drawerTrackSelected.accent || '#1172BA' }"
+                                >
                                     <div class="evomi-track-summary">
                                         <div class="flex items-start justify-between gap-3">
                                             <div>
@@ -327,7 +338,7 @@
 
                                     <div>
                                         <div class="flex items-center gap-2 mb-3">
-                                            <svg class="w-3.5 h-3.5 text-[#1172BA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                                            <svg class="w-3.5 h-3.5 evomi-track-history__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                                             <p class="text-[13px] font-semibold text-slate-800">{{ evomi_l('Riwayat Perjalanan', 'Shipment History') }}</p>
                                         </div>
 

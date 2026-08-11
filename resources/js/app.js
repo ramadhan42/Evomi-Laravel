@@ -806,33 +806,62 @@ function flyStarsToTarget(opts = {}) {
         const thumb = document.createElement('div');
         thumb.className = 'evomi-cart-fly__orb evomi-cart-fly__orb--hero';
         thumb.style.setProperty('--fly-accent', accent);
+        thumb.innerHTML =
+            '<span class="evomi-cart-fly__orb-shine" aria-hidden="true"></span>' +
+            '<span class="evomi-cart-fly__orb-rim" aria-hidden="true"></span>' +
+            '<span class="evomi-cart-fly__orb-core"></span>';
+        const core = thumb.querySelector('.evomi-cart-fly__orb-core');
         if (imageUrl) {
             const img = document.createElement('img');
             img.src = imageUrl;
             img.alt = '';
             img.draggable = false;
-            thumb.appendChild(img);
+            core.appendChild(img);
         } else {
             thumb.classList.add('evomi-cart-fly__orb--empty');
-            thumb.innerHTML = REACTION_STAR_SVG;
+            core.innerHTML = REACTION_STAR_SVG;
         }
         layer.appendChild(thumb);
         jobs.push(
-            animateReactionParticle(thumb, {
+            animateCartBubble(thumb, {
                 startX,
                 startY,
                 endX,
                 endY,
-                floatH: floatH * 0.7,
-                sway: isMobile ? 22 : 34,
-                delay: 0,
-                duration: isMobile ? 980 : 1180,
-                sizeScale: isMobile ? 1.05 : 1.2,
-                rotate: 14,
-                isOrb: true,
-                wobble: isMobile ? 12 : 18,
+                duration: isMobile ? 1180 : 1420,
+                sizeScale: isMobile ? 1.08 : 1.22,
             }),
         );
+
+        // Soft companion 3D bubbles that trail into the cart
+        const trailCount = isMobile ? 4 : 6;
+        for (let i = 0; i < trailCount; i++) {
+            const kind = REACTION_KINDS[i % REACTION_KINDS.length];
+            const color = palette[i % palette.length];
+            const el = document.createElement('span');
+            el.className = `evomi-cart-fly__react evomi-cart-fly__react--3d evomi-cart-fly__react--${kind.key} evomi-cart-fly__react--tone${i % 5}`;
+            el.style.setProperty('--fly-accent', color);
+            el.style.setProperty('--react-face', color);
+            el.innerHTML =
+                `<span class="evomi-cart-fly__react-bubble" aria-hidden="true"></span>` +
+                `<span class="evomi-cart-fly__react-icon">${kind.svg}</span>`;
+            layer.appendChild(el);
+
+            const side = i % 2 === 0 ? -1 : 1;
+            jobs.push(
+                animateCartBubble(el, {
+                    startX: startX + side * (10 + i * 6) + (Math.random() * 10 - 5),
+                    startY: startY + (Math.random() * 12 - 4),
+                    endX: endX + (Math.random() * 8 - 4),
+                    endY: endY + (Math.random() * 6 - 3),
+                    duration: (isMobile ? 1080 : 1280) + i * 70,
+                    delay: 70 + i * 55,
+                    sizeScale: 0.55 + (i % 4) * 0.08,
+                    isOrb: false,
+                    sway: side * (28 + i * 8),
+                }),
+            );
+        }
     } else {
         for (let i = 0; i < count; i++) {
             const kind = REACTION_KINDS[i % REACTION_KINDS.length];
@@ -875,7 +904,7 @@ function flyStarsToTarget(opts = {}) {
     }
 
     const catchAt = mode === 'cart'
-        ? (isMobile ? 720 : 880)
+        ? (isMobile ? 900 : 1100)
         : ((isMobile ? 980 : 1180) + count * 24);
     window.setTimeout(() => {
         if (mode === 'cart' || target.classList.contains('nav-cart-btn')) {
@@ -883,7 +912,7 @@ function flyStarsToTarget(opts = {}) {
         } else {
             bumpDrawerTabCatch(mode === 'track' ? 'track' : 'cart', accent);
         }
-        spawnCatchSparkles(target, accent, mode === 'cart' ? 0 : 10);
+        spawnCatchSparkles(target, accent, mode === 'cart' ? 8 : 10);
     }, catchAt);
 
     return Promise.allSettled(jobs).then(() => {
@@ -940,6 +969,109 @@ const REACTION_KINDS = [
 
 const CART_STAR_SVG = REACTION_STAR_SVG;
 const TRACK_STAR_SVG = REACTION_SPARK_SVG;
+
+/**
+ * Smooth 3D-style bubble flight into the cart.
+ * Soft pop → gentle arc float → eased swoop toward the cart icon.
+ */
+function animateCartBubble(el, cfg) {
+    const {
+        startX,
+        startY,
+        endX,
+        endY,
+        duration = 1320,
+        delay = 0,
+        sizeScale = 1,
+        isOrb = true,
+        sway = 0,
+    } = cfg;
+
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const arcLift = Math.min(150, Math.max(78, Math.abs(dy) * 0.2 + 86));
+    const sideBias =
+        sway ||
+        (Math.abs(dx) < 8
+            ? (Math.random() > 0.5 ? 1 : -1) * 32
+            : Math.sign(dx) * Math.min(52, Math.abs(dx) * 0.14 + 24));
+
+    const pointAt = (t) => {
+        const u = t * t * (3 - 2 * t);
+        const lift = Math.sin(Math.PI * t) * arcLift * (1 - u * 0.2);
+        const swayX = Math.sin(Math.PI * t) * sideBias * (1 - u * 0.55);
+        return {
+            x: startX + dx * u + swayX,
+            y: startY + dy * u - lift,
+        };
+    };
+
+    const startScale = isOrb ? 0.2 : 0.16 * sizeScale;
+    const popScale = isOrb ? 1.32 * sizeScale : 1.12 * sizeScale;
+    const cruiseScale = isOrb ? 1.06 * sizeScale : 0.9 * sizeScale;
+    const endScale = isOrb ? 0.12 : 0.07;
+
+    const frames = [];
+    const steps = [0, 0.07, 0.14, 0.24, 0.36, 0.48, 0.6, 0.72, 0.84, 0.92, 1];
+    for (const t of steps) {
+        const p = pointAt(t);
+        let scale;
+        let rot;
+        let opacity;
+        let brightness;
+        let blur;
+
+        if (t <= 0.07) {
+            const k = t / 0.07;
+            scale = startScale + (popScale - startScale) * k;
+            opacity = k;
+            rot = -12 + 20 * k;
+            brightness = 1.05 + 0.22 * k;
+            blur = 0;
+        } else if (t <= 0.24) {
+            const k = (t - 0.07) / 0.17;
+            scale = popScale + (cruiseScale - popScale) * k;
+            opacity = 1;
+            rot = 8 - 14 * k;
+            brightness = 1.27 - 0.1 * k;
+            blur = 0;
+        } else if (t <= 0.6) {
+            const k = (t - 0.24) / 0.36;
+            scale = cruiseScale * (1 - 0.04 * k);
+            opacity = 1;
+            rot = -6 + Math.sin(k * Math.PI * 2) * 7;
+            brightness = 1.16;
+            blur = 0;
+        } else {
+            const k = (t - 0.6) / 0.4;
+            const ease = k * k * (3 - 2 * k);
+            scale = cruiseScale * 0.96 * (1 - ease) + endScale * ease;
+            opacity = 1 - ease * 0.95;
+            rot = 6 + ease * 26;
+            brightness = 1.18 + ease * 0.4;
+            blur = ease * 0.45;
+        }
+
+        frames.push({
+            offset: t,
+            opacity,
+            transform: `translate3d(${p.x}px, ${p.y}px, 0) translate(-50%, -50%) scale(${scale}) rotate(${rot}deg)`,
+            filter: `blur(${blur}px) brightness(${brightness})`,
+        });
+    }
+
+    el.style.left = '0px';
+    el.style.top = '0px';
+    el.style.opacity = '0';
+    el.style.transform = `translate3d(${startX}px, ${startY}px, 0) translate(-50%, -50%) scale(${startScale})`;
+
+    return el.animate(frames, {
+        duration,
+        delay,
+        easing: 'linear',
+        fill: 'forwards',
+    }).finished;
+}
 
 /**
  * Facebook reaction / YouTube-live like motion:
@@ -1284,7 +1416,7 @@ function productImage(product, prefer = 'default') {
     if (prefer === 'wishlist') {
         path = product?.image_2 || product?.image_1 || product?.image || '';
     } else if (prefer === 'cart') {
-        path = product?.image_1 || product?.image_2 || product?.image || '';
+        path = product?.image_2 || product?.image_1 || product?.image || '';
     } else {
         path =
             product?.image_produk_belanja ||
@@ -1653,12 +1785,15 @@ document.addEventListener('alpine:init', () => {
         async openProduct(productId) {
             const id = Number(productId);
             if (!Number.isFinite(id) || id <= 0) return;
+            window.clearTimeout(this._closeClearTimer);
             this.open = true;
             this.loading = true;
             this.error = '';
             this.product = null;
             this.qty = 1;
             this.statusMessage = '';
+            this.statusTone = 'info';
+            this.actionBusy = false;
             document.documentElement.classList.add('overflow-hidden');
             try {
                 const res = await fetch(`/api/products/${id}?locale=id`, {
@@ -1684,14 +1819,22 @@ document.addEventListener('alpine:init', () => {
         },
 
         close() {
+            if (!this.open && !this.product) return;
             this.open = false;
-            this.loading = false;
-            this.error = '';
-            this.product = null;
-            this.qty = 1;
-            this.statusMessage = '';
             this.actionBusy = false;
             document.documentElement.classList.remove('overflow-hidden');
+            // Keep product/accent until leave transition finishes —
+            // clearing early flashes softAccent fallback (#9CD6FF).
+            window.clearTimeout(this._closeClearTimer);
+            this._closeClearTimer = window.setTimeout(() => {
+                if (this.open) return;
+                this.loading = false;
+                this.error = '';
+                this.product = null;
+                this.qty = 1;
+                this.statusMessage = '';
+                this.statusTone = 'info';
+            }, 320);
         },
 
         changeQty(delta) {

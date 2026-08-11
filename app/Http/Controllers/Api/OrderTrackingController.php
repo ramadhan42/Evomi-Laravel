@@ -111,9 +111,9 @@ class OrderTrackingController extends Controller
                 'invoice' => $invoiceRoot,
                 'code' => $this->shortOrderCode($invoiceRoot),
                 'title' => $localized['title'] ?? ($product?->title ?? 'Produk Evomi'),
-                'image' => $product?->image_1
-                    ?: $product?->image_produk_belanja
-                    ?: $product?->image_2,
+                'image' => $product?->image_2
+                    ?: $product?->image_1
+                    ?: $product?->image_produk_belanja,
                 'accent' => $product?->color ?: '#1172BA',
                 'personality_type' => $product?->personality_type,
                 'status' => $statusKey,
@@ -396,9 +396,9 @@ class OrderTrackingController extends Controller
                 'invoice' => $invoiceRoot,
                 'code' => $this->shortOrderCode($invoiceRoot),
                 'title' => $product?->title ?: 'Produk Evomi',
-                'image' => $product?->image_1
-                    ?: $product?->image_produk_belanja
-                    ?: $product?->image_2,
+                'image' => $product?->image_2
+                    ?: $product?->image_1
+                    ?: $product?->image_produk_belanja,
                 'accent' => $product?->color ?: '#1172BA',
                 'personality_type' => $product?->personality_type,
                 'status' => $statusKey,
