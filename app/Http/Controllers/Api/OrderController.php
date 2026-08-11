@@ -146,6 +146,12 @@ class OrderController extends Controller
         $guestEmailFromRequest = $request->input('guest_email');
         $shippingCost = max(0, (float) $request->input('shipping_cost', 0));
         $promoDiscount = max(0, (float) $request->input('promo_discount', 0));
+        $recipientSeed = [
+            'courier' => $request->input('courier'),
+            'recipient_name' => (string) $request->input('recipient_name', $user->name ?? 'Pelanggan'),
+            'recipient_phone' => (string) $request->input('recipient_phone', ''),
+            'recipient_address' => (string) $request->input('recipient_address', ''),
+        ];
 
         try {
             DB::transaction(function () use (
@@ -161,6 +167,7 @@ class OrderController extends Controller
                 $guestEmailFromRequest,
                 $shippingCost,
                 $promoDiscount,
+                $recipientSeed,
                 &$createdOrders
             ) {
                 foreach ($items as $index => $item) {
@@ -201,6 +208,13 @@ class OrderController extends Controller
                 }
 
                 Cart::where('user_id', $user->id)->delete();
+
+                $awaitingPay = $paymentStatus === Order::PAYMENT_PENDING
+                    && in_array($paymentChannel, ['qris', 'va'], true);
+
+                OrderTracking::ensureForInvoice($invoiceId, $createdOrders[0] ?? null, array_merge($recipientSeed, [
+                    'status' => $awaitingPay ? 'Menunggu Pembayaran' : 'Menunggu Konfirmasi',
+                ]));
             });
 
             $notifyEmail = $guestEmailFromRequest ?: $user->email;
@@ -252,7 +266,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Guest buy-now checkout (no auth). Max 1 item.
+     * Guest checkout (no auth). Supports buy-now and multi-item guest cart.
      */
     public function guestCheckout(Request $request)
     {
@@ -264,11 +278,11 @@ class OrderController extends Controller
             'total' => 'nullable|numeric|min:0',
             'shipping_cost' => 'nullable|numeric|min:0',
             'promo_discount' => 'nullable|numeric|min:0',
-            'items' => 'required|array|size:1',
-            'items.0.product_id' => 'required|integer|exists:products,id',
-            'items.0.quantity' => 'required|integer|min:1',
-            'items.0.price' => 'required|numeric|min:0',
-            'items.0.title' => 'nullable|string|max:255',
+            'items' => 'required|array|min:1|max:20',
+            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric|min:0',
+            'items.*.title' => 'nullable|string|max:255',
             'recipient_name' => 'required|string|max:255',
             'recipient_phone' => 'required|string|max:50',
             'recipient_address' => 'required|string|max:1000',
@@ -284,7 +298,7 @@ class OrderController extends Controller
         }
 
         $data = $validator->validated();
-        $item = $data['items'][0];
+        $items = $data['items'];
         $invoiceId = $data['invoice_id'];
         $guestEmail = $data['guest_email'];
         $metodePembayaran = $data['payment_method'];
@@ -315,11 +329,11 @@ class OrderController extends Controller
         $now = now();
 
         try {
-            $order = null;
+            $createdOrders = [];
 
             DB::transaction(function () use (
                 $data,
-                $item,
+                $items,
                 $invoiceId,
                 $guestEmail,
                 $metodePembayaran,
@@ -330,70 +344,67 @@ class OrderController extends Controller
                 $shippingCost,
                 $promoDiscount,
                 $now,
-                &$order
+                &$createdOrders
             ) {
-                $productId = (int) $item['product_id'];
-                $qty = (int) $item['quantity'];
+                foreach ($items as $index => $item) {
+                    $orderId = count($items) > 1 ? "{$invoiceId}-".($index + 1) : $invoiceId;
+                    $productId = (int) $item['product_id'];
+                    $qty = (int) $item['quantity'];
 
-                $product = Product::where('id', $productId)->lockForUpdate()->first();
-                if (! $product) {
-                    throw new \RuntimeException("Produk #{$productId} tidak ditemukan.");
+                    $product = Product::where('id', $productId)->lockForUpdate()->first();
+                    if (! $product) {
+                        throw new \RuntimeException("Produk #{$productId} tidak ditemukan.");
+                    }
+                    $product->decrementStock($qty);
+
+                    $createdOrders[] = Order::create([
+                        'id' => $orderId,
+                        'user_id' => null,
+                        'guest_email' => $guestEmail,
+                        'product_id' => $productId,
+                        'quantity' => $qty,
+                        'total_price' => $item['price'] * $qty,
+                        'shipping_cost' => $index === 0 ? $shippingCost : 0,
+                        'promo_discount' => $index === 0 ? $promoDiscount : 0,
+                        'status' => 'menunggu_konfirmasi',
+                        'metode_pembayaran' => $metodePembayaran,
+                        'payment_status' => $paymentStatus,
+                        'payment_channel' => $paymentChannel !== '' ? $paymentChannel : null,
+                        'payment_provider' => $paymentProvider,
+                        'payment_expires_at' => $paymentExpiresAt,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
                 }
-                $product->decrementStock($qty);
-
-                $order = Order::create([
-                    'id' => $invoiceId,
-                    'user_id' => null,
-                    'guest_email' => $guestEmail,
-                    'product_id' => $productId,
-                    'quantity' => $qty,
-                    'total_price' => $item['price'] * $qty,
-                    'shipping_cost' => $shippingCost,
-                    'promo_discount' => $promoDiscount,
-                    'status' => 'menunggu_konfirmasi',
-                    'metode_pembayaran' => $metodePembayaran,
-                    'payment_status' => $paymentStatus,
-                    'payment_channel' => $paymentChannel !== '' ? $paymentChannel : null,
-                    'payment_provider' => $paymentProvider,
-                    'payment_expires_at' => $paymentExpiresAt,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
 
                 $awaitingPay = $paymentStatus === Order::PAYMENT_PENDING
                     && in_array($paymentChannel, ['qris', 'va'], true);
 
-                OrderTracking::create([
-                    'order_id' => $invoiceId,
+                OrderTracking::ensureForInvoice($invoiceId, $createdOrders[0] ?? null, [
                     'status' => $awaitingPay ? 'Menunggu Pembayaran' : 'Menunggu Konfirmasi',
                     'courier' => $data['courier'] ?? null,
                     'recipient_name' => $data['recipient_name'],
                     'recipient_phone' => $data['recipient_phone'],
                     'recipient_address' => $data['recipient_address'],
-                    'timeline' => [
-                        [
-                            'status' => $awaitingPay
-                                ? 'Pesanan dibuat — menunggu pembayaran (batas 24 jam)'
-                                : 'Pesanan dibuat',
-                            'date' => $now->toIso8601String(),
-                        ],
-                    ],
                 ]);
             });
 
-            $product = Product::find($item['product_id']);
-            $mailItems = [[
-                'product_id' => (int) $item['product_id'],
-                'title' => $item['title'] ?? ($product?->title ?? 'Produk Evomi'),
-                'quantity' => $item['quantity'],
-                'price' => $item['price'],
-            ]];
+            $mailItems = [];
+            foreach ($items as $item) {
+                $product = Product::find($item['product_id']);
+                $mailItems[] = [
+                    'product_id' => (int) $item['product_id'],
+                    'title' => $item['title'] ?? ($product?->title ?? 'Produk Evomi'),
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                ];
+            }
 
             $this->sendOrderPlacedMail(
-                $order,
+                $createdOrders[0],
                 $mailItems,
                 $metodePembayaran,
-                (float) ($data['total'] ?? $order->total_price),
+                (float) ($data['total'] ?? $createdOrders[0]->grand_total),
                 [
                     'name' => $data['recipient_name'],
                     'phone' => $data['recipient_phone'],
@@ -520,6 +531,9 @@ class OrderController extends Controller
             ->where('created_at', $order->created_at)
             ->update(['status' => 'diterima']);
 
+        $order->refresh();
+        $this->syncTrackingFromOrderStatus($order);
+
         return response()->json([
             'success' => true,
             'message' => 'Pesanan telah dikonfirmasi diterima.',
@@ -540,7 +554,9 @@ class OrderController extends Controller
         }
 
         // Delete only this order row (do not cascade by shared created_at batch).
+        $orderId = (string) $order->id;
         $order->delete();
+        OrderTracking::deleteIfOrderGone($orderId);
 
         return response()->json([
             'message' => 'Riwayat pesanan berhasil dihapus',
@@ -590,11 +606,39 @@ class OrderController extends Controller
 
         $order->save();
 
+        $this->syncTrackingFromOrderStatus($order);
+
         return response()->json([
             'success' => true,
             'message' => 'Data pesanan berhasil diperbarui.',
             'data' => $order,
         ], 200);
+    }
+
+    /**
+     * Keep OrderTracking in sync when admin updates fulfillment status from dashboard.
+     */
+    private function syncTrackingFromOrderStatus(Order $order): void
+    {
+        $invoiceRoot = Order::invoiceRoot((string) $order->id);
+        $tracking = OrderTracking::ensureForInvoice($invoiceRoot, $order);
+
+        $label = Order::trackingStatusLabel($order->status);
+        $tracking->status = $label;
+
+        $timeline = collect($tracking->timeline ?? [])->values()->all();
+        $last = $timeline[0]['status'] ?? null;
+        if ($last !== $label) {
+            array_unshift($timeline, [
+                'status' => $label,
+                'date' => now()->toIso8601String(),
+                'time' => now()->toIso8601String(),
+                'description' => 'Diperbarui dari dashboard Evomi',
+            ]);
+            $tracking->timeline = array_slice($timeline, 0, 20);
+        }
+
+        $tracking->save();
     }
 
     /**

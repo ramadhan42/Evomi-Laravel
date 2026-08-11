@@ -847,8 +847,85 @@ body,
         transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.nav-account-item__main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+}
+
+.nav-account-item__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    background: #eef6fc;
+    color: #1172ba;
+    transition:
+        background-color 0.3s ease,
+        color 0.3s ease,
+        transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-account-item__icon.is-admin {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
+.nav-account-item__icon.is-orders {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.nav-account-item__icon.is-cart {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.nav-account-item__icon.is-track {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
+.nav-account-item__icon.is-logout {
+    background: #fff1f2;
+    color: #e11d48;
+}
+
+.nav-account-item--logout:hover {
+    background-color: #fff1f2;
+}
+
+.nav-account-item--logout:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
 .nav-account-item:hover {
     background-color: #f3f4f6;
+}
+
+.nav-account-item:hover .nav-account-item__icon {
+    transform: translateY(-1px) scale(1.04);
+}
+
+.nav-account-lang {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 10px 2px;
+}
+
+.nav-account-lang__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
 }
 
 .nav-logout {
@@ -1148,6 +1225,102 @@ body.evomi-surface-blue #evomi-main {
 
 body.evomi-surface-blue #evomi-main.page-shell {
     background-color: #1172ba !important;
+}
+
+/* Belanja listing — Figma light content surface under blue navbar */
+body.evomi-belanja-page,
+body.evomi-belanja-page .evomi-site,
+body.evomi-belanja-page #evomi-main.page-shell {
+    background-color: #f6f6f6 !important;
+}
+
+body.evomi-belanja-page #evomi-header-spacer {
+    background-color: #1172ba !important;
+}
+
+.belanja-hero__star {
+    animation: belanja-star-float 3.6s ease-in-out infinite;
+}
+
+.belanja-hero__star:last-of-type {
+    animation-delay: 0.45s;
+}
+
+@keyframes belanja-star-float {
+    0%,
+    100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-3px) rotate(8deg);
+    }
+}
+
+.belanja-products__deco img {
+    filter: drop-shadow(0 10px 18px rgba(17, 114, 186, 0.12));
+}
+
+/*
+ * Belanja mascots — Figma WEBSITE-BRAND / BELANJA 1433:748
+ * Parent `.belanja-page__deco` is max-w 1322px centered (Figma artboard).
+ * PNGs are flattened exports with Figma rotate already applied — do not re-rotate.
+ * Purpose 1532:2366 | Peaceful 1532:2389 | Rebel 1532:2417 | Sweet 1532:2462
+ */
+.belanja-page__deco {
+    overflow: visible;
+}
+
+.belanja-deco {
+    position: absolute;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    user-select: none;
+    filter: drop-shadow(0 10px 18px rgba(17, 114, 186, 0.12));
+}
+
+.belanja-deco img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: contain;
+}
+
+/* Purpose (blue star) — Figma x≈-63..94, y=178 → top 106 below nav */
+.belanja-deco--purpose {
+    left: -33px;
+    top: 106px;
+    width: 134px;
+    height: 191px;
+}
+
+/* Peaceful (green) — Figma x=1156, y=280 */
+.belanja-deco--peaceful {
+    left: auto;
+    right: -46px;
+    top: 208px;
+    width: 166px;
+    height: 225px;
+}
+
+/* Rebel (red) — Figma x≈-67..74, y=358 */
+.belanja-deco--rebel {
+    left: -46px;
+    top: 286px;
+    width: 157px;
+    height: 225px;
+}
+
+/* Sweet (pink) — Figma x=1179, y=484 */
+.belanja-deco--sweet {
+    left: auto;
+    right: -53px;
+    top: 412px;
+    width: 143px;
+    height: 215px;
 }
 
 /* Auth: sembunyikan navbar/footer, biarkan kartu login memenuhi viewport */
@@ -1999,19 +2172,221 @@ select.admin-field-input {
     box-shadow: 0 20px 40px -20px rgba(17, 114, 186, 0.35);
 }
 
-/* Belanja product cards — Next SecondSectionBelanja hover tilt */
+/* Belanja product cards — Figma BELANJA 1433:748 */
 .belanja-card {
+    width: 100%;
+    max-width: 168px;
+    border-width: 0.75px;
+    border-style: solid;
+    border-radius: 15.85px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     transition:
-        box-shadow 0.3s ease,
+        box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
         transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+@media (min-width: 640px) {
+    .belanja-card {
+        max-width: 198.5px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .belanja-card {
+        width: 198.5px;
+        max-width: 198.5px;
+        height: 373px;
+    }
+}
+
+.belanja-card__media {
+    position: relative;
+    width: 100%;
+    height: 168px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+    .belanja-card__media {
+        height: 264.67px;
+    }
+}
+
+.belanja-card__badge {
+    position: absolute;
+    top: 9.82px;
+    left: 9.82px;
+    z-index: 20;
+    background: #fff;
+    padding: 2.24px 6px;
+    border-radius: 9999px;
+    font-size: 7.93px;
+    font-weight: 600;
+    line-height: 11.89px;
+    white-space: nowrap;
+}
+
+/* Figma bottle stage: wrapper 554×588, top -123, rotate 30°, inner 372×464 */
+.belanja-card__bottle-stage {
+    position: absolute;
+    left: calc(50% - 7px);
+    top: -62px;
+    width: 280px;
+    height: 297px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    transform: translateX(-50%);
+}
+
+@media (min-width: 768px) {
+    .belanja-card__bottle-stage {
+        left: calc(50% - 14.75px);
+        top: -122.63px;
+        width: 553.977px;
+        height: 587.975px;
+    }
+}
+
+.belanja-card__bottle-rot {
+    flex: none;
+    rotate: 30deg;
+}
+
+.belanja-card__bottle-frame {
+    position: relative;
+    width: 188px;
+    height: 235px;
+}
+
+@media (min-width: 768px) {
+    .belanja-card__bottle-frame {
+        width: 371.541px;
+        height: 464.426px;
+    }
+}
+
+.belanja-card__bottle {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+    pointer-events: none;
+    transition: scale 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.belanja-card__body {
+    padding: 10px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    text-align: left;
+    min-height: 0;
+}
+
+@media (min-width: 768px) {
+    .belanja-card__body {
+        padding: 13.211px;
+    }
+}
+
+.belanja-card__title {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (min-width: 768px) {
+    .belanja-card__title {
+        font-size: 14.532px;
+        line-height: 21.8px;
+    }
+}
+
+.belanja-card__desc {
+    margin: 2.64px 0 0;
+    font-size: 9px;
+    font-weight: 400;
+    line-height: 1.45;
+    opacity: 0.7;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex-grow: 1;
+}
+
+@media (min-width: 768px) {
+    .belanja-card__desc {
+        font-size: 8.587px;
+        line-height: 12.881px;
+    }
+}
+
+.belanja-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    margin-top: auto;
+    padding-top: 7.93px;
+}
+
+.belanja-card__price {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 768px) {
+    .belanja-card__price {
+        font-size: 10.569px;
+        line-height: 15.854px;
+    }
+}
+
+.belanja-card__cta {
+    width: 23.78px;
+    height: 23.78px;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+
+.belanja-card:hover .belanja-card__cta {
+    transform: scale(1.1);
+}
+
 .belanja-card--tilt-right:hover {
-    transform: rotate(5deg) scale(1.02);
+    transform: rotate(4deg) scale(1.02);
+    box-shadow: 0 18px 36px -18px rgba(17, 114, 186, 0.35);
 }
 
 .belanja-card--tilt-left:hover {
-    transform: rotate(-5deg) scale(1.02);
+    transform: rotate(-4deg) scale(1.02);
+    box-shadow: 0 18px 36px -18px rgba(17, 114, 186, 0.35);
+}
+
+.belanja-card--tilt-right:hover .belanja-card__bottle,
+.belanja-card--tilt-left:hover .belanja-card__bottle {
+    scale: 1.04;
 }
 
 .bv-card-title {
@@ -3154,3 +3529,1286 @@ select.admin-field-input {
   color: #111827 !important;
 }
 
+
+/* Navbar cart (Figma) — guest: white pill on hover like nav links */
+.nav-cart-btn {
+  isolation: isolate;
+  color: #ffffff;
+  transition:
+    color 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.2s ease;
+}
+
+.nav-cart-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transform: scale(0.92);
+  transition:
+    opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: -1;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav-cart-btn:hover {
+    color: var(--nav-color, #1172ba);
+  }
+
+  .nav-cart-btn:hover::before {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.nav-cart-btn:active {
+  opacity: 0.92;
+}
+
+.nav-cart-badge {
+  position: absolute;
+  top: -2px;
+  right: -1px;
+  z-index: 2;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff6b6b 0%, #ef4444 100%);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  letter-spacing: 0.15px;
+  box-shadow:
+    0 0 0 2px var(--nav-color, #1172ba),
+    0 2px 6px rgba(239, 68, 68, 0.35);
+  animation: nav-cart-badge-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes nav-cart-badge-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Cart catch bounce when fly-to-cart lands */
+.nav-cart-btn--catch {
+  animation: nav-cart-catch 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-cart-btn--catch .nav-cart-badge {
+  animation: nav-cart-badge-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes nav-cart-catch {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.28);
+  }
+  55% {
+    transform: scale(0.92);
+  }
+  75% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* YouTube-live style floating stars → falling-star into cart */
+.evomi-cart-fly {
+  position: fixed;
+  inset: 0;
+  z-index: 480;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.evomi-cart-fly__orb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--fly-accent, #1172ba) 22%, #ffffff);
+  box-shadow:
+    0 8px 24px rgba(15, 23, 42, 0.18),
+    0 0 0 2px color-mix(in srgb, var(--fly-accent, #1172ba) 40%, transparent),
+    0 0 18px color-mix(in srgb, var(--fly-accent, #1172ba) 35%, transparent);
+  will-change: transform, opacity, filter;
+}
+
+.evomi-cart-fly__orb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.evomi-cart-fly__star {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  color: var(--fly-accent, #1172ba);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--fly-accent, #1172ba) 55%, transparent));
+  will-change: transform, opacity, filter;
+}
+
+.evomi-cart-fly__star svg {
+  display: block;
+  overflow: visible;
+}
+
+.evomi-cart-fly__star--0 {
+  width: 26px;
+  height: 26px;
+  color: var(--fly-accent, #1172ba);
+}
+
+.evomi-cart-fly__star--1 {
+  width: 18px;
+  height: 18px;
+  color: #ffffff;
+  filter:
+    drop-shadow(0 0 0 1.5px var(--fly-accent, #1172ba))
+    drop-shadow(0 0 8px color-mix(in srgb, var(--fly-accent, #1172ba) 60%, transparent));
+}
+
+.evomi-cart-fly__star--2 {
+  width: 14px;
+  height: 14px;
+  color: color-mix(in srgb, var(--fly-accent, #1172ba) 70%, #ffffff);
+  opacity: 0.95;
+}
+
+.evomi-cart-fly__star--3 {
+  width: 20px;
+  height: 20px;
+  color: color-mix(in srgb, var(--fly-accent, #1172ba) 55%, #ffd6ea);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--fly-accent, #1172ba) 45%, #ff9ec8));
+}
+
+@media (max-width: 767px) {
+  .evomi-cart-fly__orb {
+    width: 30px;
+    height: 30px;
+  }
+
+  .evomi-cart-fly__star--0 {
+    width: 22px;
+    height: 22px;
+  }
+
+  .evomi-cart-fly__star--1 {
+    width: 15px;
+    height: 15px;
+  }
+
+  .evomi-cart-fly__star--2 {
+    width: 12px;
+    height: 12px;
+  }
+
+  .evomi-cart-fly__star--3 {
+    width: 17px;
+    height: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evomi-cart-fly {
+    display: none !important;
+  }
+
+  .nav-cart-btn--catch {
+    animation: none;
+  }
+}
+
+.nav-login-link {
+  transition: opacity 0.2s ease;
+}
+
+.nav-login-link:hover {
+  opacity: 0.85;
+}
+
+/* Figma CartSidebar */
+.evomi-account-drawer__backdrop {
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.evomi-account-drawer__panel {
+  padding: 0;
+}
+
+.evomi-account-drawer__shell {
+  height: 100%;
+  border-radius: 0;
+  background: #fff;
+  border: 0;
+  box-shadow: -12px 0 40px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+}
+
+.evomi-account-drawer__empty-icon {
+  background: #f3f4f6;
+  color: #cccccc;
+}
+
+.evomi-account-drawer__brand {
+  color: #1e2939;
+  font-family: inherit;
+}
+
+.evomi-account-drawer__orders-pill {
+  color: #1172ba;
+  background: #f0f7ff;
+  border-radius: 14px;
+  font-size: 11px;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.evomi-account-drawer__orders-pill:hover {
+  background: #e4f0ff;
+}
+
+.evomi-account-drawer__tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 16px;
+  background: #f3f4f6;
+}
+
+.evomi-account-drawer__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 36px;
+  padding: 0.5rem 0.65rem;
+  border-radius: 14px;
+  color: #6a7282;
+  font-size: 12px;
+  font-weight: 600;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.evomi-account-drawer__tab.is-active {
+  color: #1e2939;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.evomi-account-drawer__close {
+  color: #555555;
+  background: #f3f4f6;
+  width: 32px;
+  height: 32px;
+  transition:
+    background-color 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.2s ease,
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.evomi-account-drawer__close:hover {
+  background: #e5e7eb;
+  color: #334155;
+  transform: rotate(90deg);
+}
+
+.evomi-account-drawer__tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #1172ba;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.evomi-account-drawer__body {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+}
+
+.evomi-account-drawer__body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.evomi-account-drawer__body::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.55);
+  border-radius: 999px;
+}
+
+.evomi-account-drawer__empty-icon {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.evomi-account-drawer__cart-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.85rem;
+  border-radius: 1.1rem;
+  border: 1px solid #eef2f7;
+  background: #fff;
+  animation: evomi-drawer-item-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--stagger, 0) * 45ms);
+}
+
+.evomi-account-drawer__cart-thumb {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.evomi-account-drawer__cart-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  padding: 0.35rem;
+}
+
+.evomi-account-drawer__cart-title {
+  color: #1172ba;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.evomi-account-drawer__cart-meta {
+  margin-top: 0.2rem;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.evomi-account-drawer__cart-price {
+  margin-top: 0.35rem;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.evomi-account-drawer__trash {
+  color: #cbd5e1;
+  padding: 0.15rem;
+  border-radius: 0.4rem;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.evomi-account-drawer__trash:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.evomi-account-drawer__qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.evomi-account-drawer__qty button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.evomi-account-drawer__qty button:hover:not(:disabled) {
+  background: #f8fafc;
+  color: #1172ba;
+}
+
+.evomi-account-drawer__qty button:disabled {
+  opacity: 0.45;
+}
+
+.evomi-account-drawer__qty span {
+  min-width: 28px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.evomi-account-drawer__track-card {
+  padding: 1.15rem;
+  border-radius: 1.15rem;
+  border: 1px solid #eef2f7;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(17, 114, 186, 0.06), transparent 55%),
+    #fff;
+}
+
+.evomi-account-drawer__resi-input {
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 0 0.85rem;
+  font-size: 12px;
+  color: #0f172a;
+  outline: none;
+  background: #fff;
+}
+
+.evomi-account-drawer__resi-input:focus {
+  border-color: #1172ba;
+  box-shadow: 0 0 0 3px rgba(17, 114, 186, 0.12);
+}
+
+.evomi-track-chips {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(17, 114, 186, 0.35) transparent;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  cursor: grab;
+}
+
+.evomi-track-chips:active {
+  cursor: grabbing;
+}
+
+.evomi-track-chips::-webkit-scrollbar {
+  height: 5px;
+}
+
+.evomi-track-chips::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.evomi-track-chips::-webkit-scrollbar-thumb {
+  background: rgba(17, 114, 186, 0.35);
+  border-radius: 999px;
+}
+
+.evomi-track-chips::-webkit-scrollbar-thumb:hover {
+  background: rgba(17, 114, 186, 0.55);
+}
+
+.evomi-track-chip {
+  width: 120px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  border: 1.5px solid #eef2f7;
+  background: #fff;
+  overflow: hidden;
+  text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.evomi-track-chip.is-active {
+  border-color: #1172ba;
+  box-shadow: 0 0 0 2px rgba(17, 114, 186, 0.12);
+}
+
+.evomi-track-chip__img {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.evomi-track-chip__img img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  padding: 0.35rem;
+}
+
+.evomi-track-chip__body {
+  padding: 0.55rem 0.65rem 0.7rem;
+}
+
+.evomi-track-chip__code {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  line-height: 1.2;
+}
+
+.evomi-track-chip__title {
+  margin-top: 0.15rem;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.evomi-track-chip__status {
+  margin-top: 0.25rem;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.evomi-track-chip__status.is-success,
+.evomi-track-badge.is-success {
+  color: #16a34a;
+}
+
+.evomi-track-chip__status.is-info,
+.evomi-track-badge.is-info {
+  color: #1172ba;
+}
+
+.evomi-track-chip__status.is-warning,
+.evomi-track-badge.is-warning {
+  color: #d97706;
+}
+
+.evomi-track-chip__status.is-danger,
+.evomi-track-badge.is-danger {
+  color: #dc2626;
+}
+
+.evomi-track-chip__status.is-muted,
+.evomi-track-badge.is-muted {
+  color: #64748b;
+}
+
+.evomi-track-summary {
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  padding: 1rem;
+  background: #fff;
+}
+
+.evomi-track-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f8fafc;
+}
+
+.evomi-track-badge.is-success {
+  background: #ecfdf5;
+}
+
+.evomi-track-badge.is-info {
+  background: #eff6ff;
+}
+
+.evomi-track-badge.is-warning {
+  background: #fffbeb;
+}
+
+.evomi-track-progress {
+  padding: 0.25rem 0 0.5rem;
+}
+
+.evomi-track-progress__steps {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.25rem;
+}
+
+.evomi-track-progress__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  color: #94a3b8;
+}
+
+.evomi-track-progress__dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  background: #e5e7eb;
+  color: #64748b;
+}
+
+.evomi-track-progress__step.is-done .evomi-track-progress__dot,
+.evomi-track-progress__step.is-current .evomi-track-progress__dot {
+  background: #1172ba;
+  color: #fff;
+}
+
+.evomi-track-progress__step.is-done,
+.evomi-track-progress__step.is-current {
+  color: #1172ba;
+}
+
+.evomi-track-progress__label {
+  font-size: 9px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.evomi-track-progress__bar {
+  margin: 0.65rem 0.5rem 0;
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.evomi-track-progress__bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #1172ba;
+  transition: width 0.35s ease;
+}
+
+.evomi-track-timeline__item {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.evomi-track-timeline__rail {
+  width: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.evomi-track-timeline__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid #cbd5e1;
+  background: #fff;
+  margin-top: 2px;
+}
+
+.evomi-track-timeline__item.is-first .evomi-track-timeline__dot {
+  border-color: #1172ba;
+  background: #1172ba;
+  box-shadow: 0 0 0 3px rgba(17, 114, 186, 0.15);
+}
+
+.evomi-track-timeline__line {
+  width: 2px;
+  flex: 1;
+  min-height: 28px;
+  background: #e5e7eb;
+  margin-top: 4px;
+}
+
+.evomi-track-details {
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  padding: 1rem;
+  background: #f8fafc;
+}
+
+.evomi-track-copy {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #1172ba;
+  background: #eff6ff;
+  flex-shrink: 0;
+}
+
+.evomi-track-copy:hover {
+  background: #dbeafe;
+}
+
+.evomi-account-drawer__footer {
+  border-top: 1px solid #eef2f7;
+  background: #fff;
+}
+
+/* Figma OrdersModal */
+.evomi-orders-modal__backdrop {
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.evomi-orders-modal__shell {
+  height: 100%;
+  background: #f6f6f6;
+  box-shadow: -16px 0 48px rgba(15, 23, 42, 0.16);
+}
+
+.evomi-orders-modal__title {
+  color: #1172ba;
+  font-size: 24px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.evomi-orders-modal__close {
+  color: #1172ba;
+  border-radius: 999px;
+  transition: background-color 0.2s ease;
+}
+
+.evomi-orders-modal__close:hover {
+  background: rgba(17, 114, 186, 0.08);
+}
+
+.evomi-orders-modal__filters {
+  border-bottom: 0.667px solid rgba(201, 168, 76, 0.1);
+}
+
+.evomi-orders-modal__filter {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 12px 18px;
+  color: rgba(17, 114, 186, 0.5);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.evomi-orders-modal__filter.is-active {
+  color: #1172ba;
+}
+
+.evomi-orders-modal__filter.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 4px;
+  background: #1172ba;
+}
+
+.evomi-orders-modal__filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #1172ba;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.evomi-orders-modal__body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.evomi-orders-modal__body::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 999px;
+}
+
+.evomi-orders-modal__card {
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.evomi-orders-modal__card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+}
+
+@media (min-width: 640px) {
+  .evomi-orders-modal__card-main {
+    gap: 16px;
+    padding: 20px;
+  }
+}
+
+.evomi-orders-modal__thumb {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+@media (min-width: 640px) {
+  .evomi-orders-modal__thumb {
+    width: 107px;
+    height: 107px;
+    border-radius: 14px;
+  }
+}
+
+.evomi-orders-modal__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.evomi-orders-modal__qty {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #1172ba;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.evomi-orders-modal__invoice {
+  color: #5d5d5d;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  line-height: 1.4;
+}
+
+.evomi-orders-modal__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 12px;
+  padding: 4px 10px;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.evomi-orders-modal__product {
+  margin-top: 4px;
+  color: #5d5d5d;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+@media (min-width: 640px) {
+  .evomi-orders-modal__product {
+    font-size: 18px;
+  }
+}
+
+.evomi-orders-modal__meta {
+  margin-top: 2px;
+  color: #5d5d5d;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.evomi-orders-modal__footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.evomi-orders-modal__price {
+  color: #5d5d5d;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+@media (min-width: 640px) {
+  .evomi-orders-modal__price {
+    font-size: 16px;
+  }
+}
+
+.evomi-orders-modal__detail-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #5d5d5d;
+  font-size: 9px;
+}
+
+.evomi-orders-modal__expand-inner {
+  padding: 14px 16px 16px;
+  border-top: 1px solid #eee;
+}
+
+@media (min-width: 640px) {
+  .evomi-orders-modal__expand-inner {
+    padding: 14px 20px 18px;
+  }
+}
+
+.evomi-orders-modal__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.evomi-orders-modal__action.is-pay {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.evomi-orders-modal__action.is-pay:hover {
+  background: #d97706;
+}
+
+.evomi-orders-modal__action.is-confirm {
+  background: #5ea14a;
+  color: #fff;
+}
+
+.evomi-orders-modal__action.is-confirm:hover {
+  background: #4f8c3d;
+}
+
+.evomi-orders-modal__action.is-ghost {
+  background: #fff;
+  color: #1172ba;
+  border: 1px solid rgba(17, 114, 186, 0.25);
+}
+
+.evomi-orders-modal__action.is-ghost:hover {
+  background: #f0f7ff;
+}
+
+.evomi-orders-modal__retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 12px;
+  background: #1172ba;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.evomi-orders-modal__retry:hover {
+  background: #0d5a94;
+}
+
+.evomi-account-drawer__total-row {
+  border-top: 1px solid #f1f5f9;
+  margin-top: 0.15rem;
+  padding-top: 0.75rem;
+}
+
+.evomi-account-drawer__btn-primary,
+.evomi-account-drawer__btn-checkout {
+  background: #1172ba;
+  box-shadow: 0 8px 18px rgba(17, 114, 186, 0.22);
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+}
+
+.evomi-account-drawer__btn-primary:hover,
+.evomi-account-drawer__btn-checkout:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 10px 22px rgba(17, 114, 186, 0.28);
+  transform: translateY(-1px);
+}
+
+.evomi-account-drawer__btn-primary:active,
+.evomi-account-drawer__btn-checkout:active {
+  transform: translateY(0);
+}
+
+.evomi-drawer-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.8rem 0.85rem;
+  border-radius: 1.05rem;
+  text-align: left;
+  border: 1px solid #eef2f7;
+  background: #fff;
+  transition:
+    background-color 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease;
+}
+
+.evomi-drawer-link:hover {
+  background-color: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+}
+
+.evomi-drawer-link:hover .evomi-drawer-icon {
+  transform: scale(1.05);
+}
+
+.evomi-drawer-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.55rem;
+  height: 2.55rem;
+  border-radius: 0.95rem;
+  flex-shrink: 0;
+  color: var(--drawer-icon, #1172ba);
+  background: color-mix(in srgb, var(--drawer-icon, #1172ba) 12%, white);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.evomi-drawer-icon .profile-nav-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.evomi-drawer-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: #22c55e;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.25);
+}
+
+@keyframes evomi-drawer-item-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evomi-account-drawer__cart-item,
+  .evomi-drawer-link,
+  .evomi-account-drawer__btn-primary,
+  .evomi-account-drawer__btn-checkout,
+  .evomi-account-drawer__close {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Product detail modal (Figma) */
+.evomi-product-modal__backdrop {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.evomi-product-modal__panel {
+  border-radius: 28px;
+  box-shadow:
+    0 25px 50px -12px rgba(15, 23, 42, 0.28),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+.evomi-product-modal__image {
+  filter: drop-shadow(0 18px 28px rgba(15, 23, 42, 0.18));
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.evomi-product-modal__close {
+  color: #64748b;
+  background: #f3f4f6;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.evomi-product-modal__close:hover {
+  background: #e5e7eb;
+  color: #334155;
+  transform: rotate(90deg);
+}
+
+.evomi-product-modal__spec {
+  border-radius: 14px;
+  background: #f3f4f6;
+  padding: 0.85rem 0.95rem;
+  text-align: left;
+}
+
+.evomi-product-modal__spec-label {
+  margin: 0 0 0.3rem;
+  color: #9ca3af;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.evomi-product-modal__spec-value {
+  margin: 0;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.evomi-product-modal__qty {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.evomi-product-modal__qty button {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.evomi-product-modal__qty button:hover:not(:disabled) {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.evomi-product-modal__qty button:disabled {
+  opacity: 0.35;
+}
+
+.evomi-product-modal__qty span {
+  min-width: 28px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+
+.evomi-product-modal__cta {
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.2s ease,
+    box-shadow 0.25s ease;
+}
+
+.evomi-product-modal__cta:hover:not(:disabled) {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.16);
+}
+
+.evomi-product-modal__cta:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+@media (max-width: 767px) {
+  .evomi-product-modal__panel {
+    border-radius: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evomi-product-modal__image,
+  .evomi-product-modal__close,
+  .evomi-product-modal__cta {
+    transition: none !important;
+  }
+}

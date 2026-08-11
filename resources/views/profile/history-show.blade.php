@@ -50,7 +50,11 @@
                     </button>
                     <div class="sm:text-right">
                         <p class="text-xs text-gray-400 mb-0.5">{{ evomi_l('No. Invoice', 'Invoice No.') }}</p>
-                        <p class="font-bold text-gray-900 bg-gray-50 px-3 py-1 rounded-lg inline-block border border-gray-100 text-sm" x-text="group.invoice"></p>
+                        <p
+                            class="font-bold bg-gray-50 px-3 py-1 rounded-lg inline-block border border-gray-100 text-sm"
+                            :style="{ color: group.accent || '#1172BA' }"
+                            x-text="group.invoice"
+                        ></p>
                     </div>
                 </div>
             </div>

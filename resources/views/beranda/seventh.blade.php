@@ -14,7 +14,7 @@
         $hl4 = $cms->textLines('seventh', 'headline_4', 'bermain', 2);
         $hl5 = $cms->textLines('seventh', 'headline_5', 'kuis', 2);
     }
-    $cta = $cms->textLines('seventh', 'cta_label', evomi_l('Mulai Kuis', 'Start Quiz'), 1);
+    $cta = $cms->textLines('seventh', 'cta_label', evomi_l('Temukan Aromamu', 'Find Your Scent'), 1);
     $productImg = $cms->image('seventh', 'product_image', '/src/images/section 7/produk.png');
     $badges = [];
     for ($i = 1; $i <= 4; $i++) {
@@ -45,9 +45,9 @@
         </div>
     </div>
 
-    <div class="relative z-20 w-full md:w-auto md:absolute md:left-[calc(2.5rem+7%)] lg:left-[calc(4rem+7%)] md:top-1/2 md:-translate-y-1/2 md:max-w-[420px] lg:max-w-xl pl-[7%] md:pl-0">
-        <div class="parallax-self flex flex-col justify-center items-start text-left gap-6 md:gap-8" data-reveal data-parallax="0.06">
-            <h2 class="text-[30px] sm:text-[36px] md:text-[48px] lg:text-[55px] leading-[1.12] font-semibold text-left">
+    <div class="relative z-20 w-full md:w-auto md:absolute md:left-[calc(2.5rem+7%)] lg:left-[calc(4rem+7%)] md:top-1/2 md:-translate-y-1/2 md:max-w-[420px] lg:max-w-xl px-1 md:px-0 md:pl-0">
+        <div class="parallax-self flex flex-col justify-center items-center text-center md:items-start md:text-left gap-6 md:gap-8" data-reveal data-parallax="0.06">
+            <h2 class="text-[30px] sm:text-[36px] md:text-[48px] lg:text-[55px] leading-[1.12] font-semibold text-center md:text-left">
                 @if ($isEn)
                     <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('seventh', 'en_l1', '600') }}">{{ $en1 }}</span><br>
                     <span class="cms-fs cms-lines text-[#DD74A5]" style="{{ $cms->fontInline('seventh', 'en_l2', '600') }}">{{ $en2 }}</span><br>
@@ -62,7 +62,7 @@
 
             <a
                 href="{{ route('kuis') }}"
-                class="cms-fs group relative z-20 overflow-hidden self-start text-[14px] md:text-[19px] text-white bg-[#1172BA] px-6 md:px-9 py-3 md:py-3.5 rounded-full shadow-md transition-[background-color,box-shadow] duration-200 hover:bg-[#0e5d99] hover:shadow-lg active:brightness-95 inline-flex items-center gap-2 md:gap-2.5 font-semibold"
+                class="cms-fs group relative z-20 overflow-hidden self-center md:self-start text-[14px] md:text-[19px] text-white bg-[#1172BA] px-6 md:px-9 py-3 md:py-3.5 rounded-full shadow-md transition-[background-color,box-shadow] duration-200 hover:bg-[#0e5d99] hover:shadow-lg active:brightness-95 inline-flex items-center gap-2 md:gap-2.5 font-semibold"
                 style="{{ $cms->fontInline('seventh', 'cta_label', '600') }}"
             >
                 <span

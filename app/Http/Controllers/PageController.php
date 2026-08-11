@@ -322,62 +322,57 @@ class PageController extends Controller
 
     public function pengirimanShow(string $resi): View
     {
-        $resi = trim($resi);
-        $row = OrderTracking::query()->where('order_id', $resi)->first();
+        $resi = trim(urldecode($resi));
+        $row = $resi !== '' ? OrderTracking::findByResiOrOrder($resi) : null;
 
-        if ($row) {
-            $timelineRaw = is_array($row->timeline) ? $row->timeline : [];
-            $timeline = [];
-            foreach ($timelineRaw as $item) {
-                $date = $item['date'] ?? null;
-                $parsed = $date ? date_create($date) : null;
-                $timeline[] = [
-                    'status' => $item['status'] ?? 'Update',
-                    'date' => $parsed ? $parsed->format('d M Y') : ($item['date'] ?? ''),
-                    'time' => $parsed ? $parsed->format('H:i') : ($item['time'] ?? ''),
-                    'description' => $item['description'] ?? ($item['status'] ?? ''),
-                ];
-            }
+        if (! $row) {
+            return view('pages.pengiriman-show', [
+                'tracking' => null,
+                'query' => $resi,
+            ]);
+        }
 
-            $tracking = [
-                'resi' => strtoupper($resi),
-                'courier' => $row->courier ?: 'Kurir Evomi',
-                'estimatedDelivery' => now()->addDays(3)->translatedFormat('d M Y'),
-                'currentStatus' => $row->status ?: 'Menunggu Konfirmasi',
-                'recipient' => [
-                    'name' => $row->recipient_name ?: 'Pelanggan Evomi',
-                    'phone' => $row->recipient_phone ?: '-',
-                    'address' => $row->recipient_address ?: '-',
-                ],
-                'timeline' => $timeline ?: [[
-                    'status' => $row->status ?: 'Pesanan dibuat',
-                    'date' => optional($row->created_at)->translatedFormat('d M Y') ?: now()->translatedFormat('d M Y'),
-                    'time' => optional($row->created_at)->format('H:i') ?: now()->format('H:i'),
-                    'description' => 'Pesanan tercatat di sistem Evomi.',
-                ]],
-            ];
-        } else {
-            $tracking = [
-                'resi' => strtoupper($resi),
-                'courier' => '-',
-                'estimatedDelivery' => '-',
-                'currentStatus' => 'Tidak ditemukan',
-                'recipient' => [
-                    'name' => '-',
-                    'phone' => '-',
-                    'address' => '-',
-                ],
-                'timeline' => [[
-                    'status' => 'Resi tidak ditemukan',
-                    'date' => now()->translatedFormat('d M Y'),
-                    'time' => now()->format('H:i'),
-                    'description' => 'Pastikan nomor invoice/resi sudah benar.',
-                ]],
+        $timelineRaw = is_array($row->timeline) ? $row->timeline : [];
+        $timeline = [];
+        foreach ($timelineRaw as $item) {
+            $item = is_array($item) ? $item : (array) $item;
+            $stamp = $item['time'] ?? $item['date'] ?? null;
+            $parsed = is_string($stamp) && $stamp !== '' ? date_create($stamp) : null;
+            $timeline[] = [
+                'status' => $item['status'] ?? 'Update',
+                'date' => $parsed ? $parsed->format('d M Y') : (string) ($item['date'] ?? ''),
+                'time' => $parsed ? $parsed->format('H:i') : (string) ($item['time'] ?? ''),
+                'description' => $item['description'] ?? ($item['status'] ?? ''),
             ];
         }
 
+        $displayCode = $row->tracking_number ?: $row->order_id;
+
+        $tracking = [
+            'resi' => $displayCode,
+            'orderId' => $row->order_id,
+            'trackingNumber' => $row->tracking_number ?: null,
+            'courier' => $row->courier ?: 'Kurir Evomi',
+            'estimatedDelivery' => $row->estimated_delivery
+                ? $row->estimated_delivery->translatedFormat('d M Y')
+                : 'Belum ada estimasi',
+            'currentStatus' => $row->status ?: 'Menunggu Konfirmasi',
+            'recipient' => [
+                'name' => $row->recipient_name ?: 'Pelanggan Evomi',
+                'phone' => $row->recipient_phone ?: '-',
+                'address' => $row->recipient_address ?: '-',
+            ],
+            'timeline' => $timeline ?: [[
+                'status' => $row->status ?: 'Pesanan dibuat',
+                'date' => optional($row->created_at)->translatedFormat('d M Y') ?: now()->translatedFormat('d M Y'),
+                'time' => optional($row->created_at)->format('H:i') ?: now()->format('H:i'),
+                'description' => 'Pesanan tercatat di sistem Evomi.',
+            ]],
+        ];
+
         return view('pages.pengiriman-show', [
             'tracking' => $tracking,
+            'query' => $resi,
         ]);
     }
 

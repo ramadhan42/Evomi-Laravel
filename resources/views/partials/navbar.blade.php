@@ -21,14 +21,8 @@
             'match' => '/belanja',
         ],
         [
-            'href' => route('artikel'),
-            'label' => $navCms->get('menu', 'artikel', evomi_l('Artikel', 'Articles')),
-            'route' => 'artikel',
-            'match' => '/artikel',
-        ],
-        [
             'href' => route('kuis'),
-            'label' => $navCms->get('menu', 'kuis', evomi_l('Kuis', 'Quiz')),
+            'label' => evomi_l('Temukan Aromamu', 'Find Your Scent'),
             'route' => 'kuis',
             'match' => '/kuis',
         ],
@@ -85,9 +79,9 @@
                 >
             </a>
 
-            {{-- Desktop: 5 kolom seperti Next (Beranda · Tentang · Belanja · Artikel · Kuis) --}}
+            {{-- Desktop: Beranda · Tentang · Belanja · Temukan Aromamu (compact like Figma) --}}
             <div
-                class="hidden md:grid grid-cols-5 gap-1 items-center relative"
+                class="hidden md:flex items-center justify-center gap-1 relative shrink-0"
                 x-ref="track"
             >
                 <span
@@ -102,7 +96,7 @@
                     @endphp
                     <a
                         href="{{ $link['href'] }}"
-                        class="nav-pill relative z-[1] flex justify-center items-center w-full md:min-w-[7.25rem] md:px-5 text-[12px] md:text-[18px] py-2.5 font-normal rounded-full text-center whitespace-nowrap nav-soft {{ $active ? 'is-active text-[var(--nav-color)]' : 'text-white' }}"
+                        class="nav-pill relative z-[1] inline-flex justify-center items-center px-4 py-2 text-[14px] font-normal rounded-full text-center whitespace-nowrap nav-soft {{ $active ? 'is-active text-[var(--nav-color)]' : 'text-white' }}"
                         data-soft-nav
                         data-nav-index="{{ $i }}"
                         data-nav-match="{{ $link['match'] }}"
@@ -115,7 +109,7 @@
             <div class="hidden md:flex items-center space-x-2 md:mr-2 shrink-0">
                 {{-- Logged in --}}
                 <template x-if="isLoggedIn">
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1.5 md:gap-2">
                         <div
                             class="nav-avatar-wrap relative z-[70]"
                             :class="{ 'is-open': accountMenuOpen }"
@@ -182,98 +176,120 @@
                                             class="nav-account-item"
                                             @click="closeAccountMenu()"
                                         >
-                                            <div class="min-w-0">
-                                                <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Dashboard Admin', 'Admin Dashboard') }}</p>
-                                                <p class="text-[10px] text-gray-500 mt-0.5">{{ evomi_l('Kelola toko & CMS Evomi', 'Manage Evomi store & CMS') }}</p>
+                                            <div class="nav-account-item__main">
+                                                <span class="nav-account-item__icon is-admin">
+                                                    @include('partials.icons.dashboard', ['class' => 'w-[15px] h-[15px]'])
+                                                </span>
+                                                <div class="min-w-0">
+                                                    <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Dashboard Admin', 'Admin Dashboard') }}</p>
+                                                    <p class="text-[10px] text-gray-500 mt-0.5">{{ evomi_l('Kelola toko & CMS Evomi', 'Manage Evomi store & CMS') }}</p>
+                                                </div>
                                             </div>
                                         </a>
                                     </template>
 
                                     <a href="{{ route('profile.index') }}" role="menuitem" class="nav-account-item" data-soft-nav @click="closeAccountMenu()">
-                                        <div class="min-w-0">
-                                            <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Pengaturan Profil', 'Profile Settings') }}</p>
-                                            <p class="text-[10px] text-gray-500 mt-0.5">{{ evomi_l('Data akun & pengaturan', 'Account data & settings') }}</p>
+                                        <div class="nav-account-item__main">
+                                            <span class="nav-account-item__icon">
+                                                @include('partials.icons.user', ['class' => 'w-[15px] h-[15px]'])
+                                            </span>
+                                            <div class="min-w-0">
+                                                <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Pengaturan Profil', 'Profile Settings') }}</p>
+                                                <p class="text-[10px] text-gray-500 mt-0.5">{{ evomi_l('Data akun & pengaturan', 'Account data & settings') }}</p>
+                                            </div>
                                         </div>
                                     </a>
 
-                                    <a href="{{ route('profile.chat') }}" role="menuitem" class="nav-account-item" data-soft-nav @click="closeAccountMenu()">
-                                        <div class="min-w-0">
-                                            <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Pesan belum dibaca', 'Unread messages') }}</p>
-                                            <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('unread', $L('Ada balasan baru dari admin', 'New reply from admin'), $L('Tidak ada pesan baru', 'No new messages'))"></p>
-                                        </div>
-                                        <span
-                                            class="shrink-0 flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full text-[11px] font-bold"
-                                            :class="badges.unread > 0 ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'"
-                                            x-text="badgeLabel('unread') || '0'"
-                                        ></span>
-                                    </a>
-
-                                    <a href="{{ route('profile.cart') }}" role="menuitem" class="nav-account-item" data-soft-nav @click="closeAccountMenu()">
-                                        <div class="min-w-0">
-                                            <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Keranjang belanja', 'Shopping cart') }}</p>
-                                            <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('cart', $L('Produk siap checkout', 'Ready to checkout'), $L('Keranjang masih kosong', 'Cart is empty'))"></p>
-                                        </div>
-                                        <span
-                                            class="shrink-0 flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full text-[11px] font-bold"
-                                            :class="badges.cart > 0 ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'"
-                                            x-text="badgeLabel('cart') || '0'"
-                                        ></span>
-                                    </a>
-
-                                    <a href="{{ route('profile.payments') }}" role="menuitem" class="nav-account-item" data-soft-nav @click="closeAccountMenu()">
-                                        <div class="min-w-0">
-                                            <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Menunggu pembayaran', 'Pending payments') }}</p>
-                                            <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('payments', $L('Selesaikan dalam 24 jam', 'Complete within 24 hours'), $L('Tidak ada tagihan', 'No pending bills'))"></p>
-                                        </div>
-                                        <span
-                                            class="shrink-0 flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full text-[11px] font-bold"
-                                            :class="badges.payments > 0 ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-400'"
-                                            x-text="badgeLabel('payments') || '0'"
-                                        ></span>
-                                    </a>
-
-                                    <a href="{{ route('profile.history') }}" role="menuitem" class="nav-account-item" data-soft-nav @click="closeAccountMenu()">
-                                        <div class="min-w-0">
-                                            <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Riwayat belanja', 'Order history') }}</p>
-                                            <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('history', $L('Pesanan yang pernah dibuat', 'Orders you have placed'), $L('Belum ada riwayat', 'No order history yet'))"></p>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        class="nav-account-item w-full"
+                                        @click="closeAccountMenu(); openOrdersModal()"
+                                    >
+                                        <div class="nav-account-item__main">
+                                            <span class="nav-account-item__icon is-orders">
+                                                @include('partials.icons.orders', ['class' => 'w-[14px] h-[14px]'])
+                                            </span>
+                                            <div class="min-w-0 text-left">
+                                                <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Pesanan Saya', 'My Orders') }}</p>
+                                                <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('history', $L('Lihat status & detail pesanan', 'View order status & details'), $L('Belum ada pesanan', 'No orders yet'))"></p>
+                                            </div>
                                         </div>
                                         <span
                                             class="shrink-0 flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full text-[11px] font-bold"
                                             :class="badges.history > 0 ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'"
                                             x-text="badgeLabel('history') || '0'"
                                         ></span>
-                                    </a>
+                                    </button>
 
-                                    <a href="{{ route('profile.wishlist') }}" role="menuitem" class="nav-account-item" data-soft-nav @click="closeAccountMenu()">
-                                        <div class="min-w-0">
-                                            <p class="text-[11px] font-semibold text-gray-800">Wishlist</p>
-                                            <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('wishlist', $L('Produk yang disimpan', 'Saved products'), $L('Wishlist masih kosong', 'Wishlist is empty'))"></p>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        class="nav-account-item w-full"
+                                        @click="closeAccountMenu(); openAccountDrawer('track')"
+                                    >
+                                        <div class="nav-account-item__main">
+                                            <span class="nav-account-item__icon is-track">
+                                                @include('partials.icons.truck', ['class' => 'w-[15px] h-[15px]'])
+                                            </span>
+                                            <div class="min-w-0 text-left">
+                                                <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Lacak Pesanan', 'Track Order') }}</p>
+                                                <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('history', $L('Pantau status pengiriman', 'Monitor shipping status'), $L('Belum ada pesanan', 'No orders yet'))"></p>
+                                            </div>
                                         </div>
                                         <span
                                             class="shrink-0 flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full text-[11px] font-bold"
-                                            :class="badges.wishlist > 0 ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'"
-                                            x-text="badgeLabel('wishlist') || '0'"
+                                            :class="badges.history > 0 ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'"
+                                            x-text="badgeLabel('history') || '0'"
                                         ></span>
-                                    </a>
+                                    </button>
 
-                                    <div class="flex items-center justify-between gap-3 px-1 pt-1.5 pb-0.5" data-no-locale-fx>
-                                        <p class="text-[11px] font-semibold text-gray-800" x-text="locale === 'en' ? 'Language' : 'Bahasa'">Bahasa</p>
+                                    <div class="nav-account-lang" data-no-locale-fx>
+                                        <div class="nav-account-lang__label">
+                                            <span class="nav-account-item__icon">
+                                                @include('partials.icons.globe', ['class' => 'w-[15px] h-[15px]'])
+                                            </span>
+                                            <p class="text-[11px] font-semibold text-gray-800" x-text="locale === 'en' ? 'Language' : 'Bahasa'">Bahasa</p>
+                                        </div>
                                         @include('partials.language-switcher', ['variant' => 'dark'])
                                     </div>
+
+                                    <div class="h-px bg-gray-100"></div>
+
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        class="nav-account-item nav-account-item--logout w-full"
+                                        :disabled="logoutLoading"
+                                        @click="closeAccountMenu(); askLogout()"
+                                    >
+                                        <div class="nav-account-item__main">
+                                            <span class="nav-account-item__icon is-logout">
+                                                @include('partials.icons.logout', ['class' => 'w-[15px] h-[15px]'])
+                                            </span>
+                                            <div class="min-w-0 text-left">
+                                                <p class="text-[11px] font-semibold text-rose-600" x-text="logoutLoading ? $L('Keluar...', 'Logging out...') : @js($navLogout)"></p>
+                                                <p class="text-[10px] text-rose-400/90 mt-0.5">{{ evomi_l('Keluar dari akun Evomi', 'Sign out of Evomi') }}</p>
+                                            </div>
+                                        </div>
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
                         <button
                             type="button"
-                            class="nav-logout flex items-center justify-center gap-2 md:px-6 text-[12px] md:text-[18px] py-2.5 font-normal rounded-full text-center"
-                            :disabled="logoutLoading"
-                            @click="askLogout()"
+                            class="nav-cart-btn relative z-[1] inline-flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-full text-white"
+                            :aria-label="$L('Keranjang', 'Cart')"
+                            @click="closeAccountMenu(); openAccountDrawer()"
                         >
-                            <span x-text="logoutLoading ? $L('Keluar...', 'Logging out...') : @js($navLogout)"></span>
-                            <svg class="nav-logout-icon w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
+                            @include('partials.icons.cart', ['class' => 'w-[18px] h-[18px] md:w-[19px] md:h-[19px]'])
+                            <span
+                                class="nav-cart-badge"
+                                x-show="badges.cart > 0"
+                                x-cloak
+                                x-text="badgeLabel('cart')"
+                            ></span>
                         </button>
                     </div>
                 </template>
@@ -283,36 +299,59 @@
                     <div class="flex items-center space-x-2">
                         <a
                             href="{{ route('login') }}"
-                            class="nav-pill relative z-[1] flex justify-center items-center md:px-6 text-[12px] md:text-[18px] py-2.5 font-normal rounded-full text-center text-white nav-soft"
+                            class="nav-login-link relative z-[1] flex justify-center items-center px-3 md:px-4 text-[14px] md:text-[17px] py-2 font-medium text-white nav-soft"
                             data-soft-nav
                         >
                             <span class="relative z-[1]">{{ $navLogin }}</span>
                         </a>
-                        <a
-                            href="{{ route('register') }}"
-                            class="nav-pill relative z-[1] flex justify-center items-center md:px-6 text-[12px] md:text-[18px] py-2.5 font-normal rounded-full text-center text-white nav-soft"
-                            data-soft-nav
+                        <button
+                            type="button"
+                            class="nav-cart-btn relative z-[1] inline-flex items-center justify-center w-10 h-10 rounded-full text-white"
+                            :aria-label="$L('Keranjang', 'Cart')"
+                            @click="openAccountDrawer()"
                         >
-                            <span class="relative z-[1]">{{ $navRegister }}</span>
-                        </a>
+                            @include('partials.icons.cart')
+                            <span
+                                class="nav-cart-badge"
+                                x-show="badges.cart > 0"
+                                x-cloak
+                                x-text="badgeLabel('cart')"
+                            ></span>
+                        </button>
                     </div>
                 </template>
             </div>
 
-            <button
-                type="button"
-                class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/15 transition-colors"
-                @click="open = !open"
-                :aria-expanded="open.toString()"
-                :aria-label="open ? $L('Tutup menu', 'Close menu') : $L('Buka menu', 'Open menu')"
-            >
-                <svg x-show="!open" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-                <svg x-cloak x-show="open" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+            <div class="md:hidden flex items-center gap-1.5 shrink-0">
+                <button
+                    type="button"
+                    class="nav-cart-btn relative z-[1] inline-flex items-center justify-center w-10 h-10 rounded-full text-white"
+                    :aria-label="$L('Keranjang', 'Cart')"
+                    @click="openAccountDrawer()"
+                >
+                    @include('partials.icons.cart')
+                    <span
+                        class="nav-cart-badge"
+                        x-show="badges.cart > 0"
+                        x-cloak
+                        x-text="badgeLabel('cart')"
+                    ></span>
+                </button>
+                <button
+                    type="button"
+                    class="inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/15 transition-colors"
+                    @click="open = !open"
+                    :aria-expanded="open.toString()"
+                    :aria-label="open ? $L('Tutup menu', 'Close menu') : $L('Buka menu', 'Open menu')"
+                >
+                    <svg x-show="!open" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <svg x-cloak x-show="open" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <div
@@ -372,49 +411,48 @@
                     <template x-if="isAdmin">
                         <a
                             href="{{ route('dashboard') }}"
-                            class="nav-pill relative z-[1] flex items-center w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white"
+                            class="nav-pill relative z-[1] flex items-center gap-2.5 w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white"
                             @click="open = false"
                         >
+                            <span class="relative z-[1] inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.dashboard', ['class' => 'w-3.5 h-3.5'])</span>
                             <span class="relative z-[1]">{{ evomi_l('Dashboard Admin', 'Admin Dashboard') }}</span>
                         </a>
                     </template>
-                    <a href="{{ route('profile.index') }}" data-soft-nav class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false">
-                        <span>{{ evomi_l('Pengaturan Profil', 'Profile Settings') }}</span>
+                    <a href="{{ route('profile.index') }}" data-soft-nav class="nav-pill relative z-[1] flex items-center gap-2.5 w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false">
+                        <span class="relative z-[1] inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.user', ['class' => 'w-3.5 h-3.5'])</span>
+                        <span class="relative z-[1]">{{ evomi_l('Pengaturan Profil', 'Profile Settings') }}</span>
                     </a>
-                    <a href="{{ route('profile.chat') }}" data-soft-nav class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false">
-                        <span>{{ evomi_l('Pesan', 'Messages') }}</span>
-                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('unread') || '0'"></span>
-                    </a>
-                    <a href="{{ route('profile.cart') }}" data-soft-nav class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false">
-                        <span>{{ evomi_l('Keranjang', 'Cart') }}</span>
-                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('cart') || '0'"></span>
-                    </a>
-                    <a href="{{ route('profile.payments') }}" data-soft-nav class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false">
-                        <span>{{ evomi_l('Pembayaran', 'Payments') }}</span>
-                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('payments') || '0'"></span>
-                    </a>
-                    <a href="{{ route('profile.history') }}" data-soft-nav class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false">
-                        <span>{{ evomi_l('Riwayat', 'History') }}</span>
+                    <button type="button" class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false; openOrdersModal()">
+                        <span class="relative z-[1] inline-flex items-center gap-2.5">
+                            <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.orders', ['class' => 'w-3.5 h-3.5'])</span>
+                            <span>{{ evomi_l('Pesanan Saya', 'My Orders') }}</span>
+                        </span>
                         <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('history') || '0'"></span>
-                    </a>
-                    <a href="{{ route('profile.wishlist') }}" data-soft-nav class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false">
-                        <span>Wishlist</span>
-                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('wishlist') || '0'"></span>
-                    </a>
+                    </button>
+                    <button type="button" class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false; openAccountDrawer('track')">
+                        <span class="relative z-[1] inline-flex items-center gap-2.5">
+                            <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.truck', ['class' => 'w-3.5 h-3.5'])</span>
+                            <span>{{ evomi_l('Lacak Pesanan', 'Track Order') }}</span>
+                        </span>
+                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('history') || '0'"></span>
+                    </button>
                     <div class="flex items-center justify-between gap-3 px-3 py-2" data-no-locale-fx>
-                        <span class="text-[12px] font-bold text-white" x-text="locale === 'en' ? 'Language' : 'Bahasa'">Bahasa</span>
+                        <span class="relative z-[1] inline-flex items-center gap-2.5 text-[12px] font-bold text-white">
+                            <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.globe', ['class' => 'w-3.5 h-3.5'])</span>
+                            <span x-text="locale === 'en' ? 'Language' : 'Bahasa'">Bahasa</span>
+                        </span>
                         @include('partials.language-switcher', ['variant' => 'light'])
                     </div>
                     <button
                         type="button"
-                        class="nav-logout flex items-center justify-center gap-2 w-full px-3 py-2.5 text-[12px] font-bold rounded-full"
+                        class="nav-pill relative z-[1] flex items-center gap-2.5 w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-rose-100"
                         :disabled="logoutLoading"
-                        @click="askLogout()"
+                        @click="open = false; askLogout()"
                     >
-                        <span x-text="logoutLoading ? $L('Keluar...', 'Logging out...') : @js($navLogout)"></span>
-                        <svg class="nav-logout-icon w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
+                        <span class="relative z-[1] inline-flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/25 text-rose-100">
+                            @include('partials.icons.logout', ['class' => 'w-3.5 h-3.5'])
+                        </span>
+                        <span class="relative z-[1]" x-text="logoutLoading ? $L('Keluar...', 'Logging out...') : @js($navLogout)"></span>
                     </button>
                 </div>
             </template>
@@ -429,14 +467,14 @@
                     >
                         <span class="relative z-[1]">{{ $navLogin }}</span>
                     </a>
-                    <a
-                        href="{{ route('register') }}"
-                        class="nav-pill relative z-[1] flex items-center w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white nav-soft"
-                        data-soft-nav
-                        @click="open = false"
+                    <button
+                        type="button"
+                        class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white"
+                        @click="open = false; openAccountDrawer()"
                     >
-                        <span class="relative z-[1]">{{ $navRegister }}</span>
-                    </a>
+                        <span class="relative z-[1]">{{ evomi_l('Keranjang', 'Cart') }}</span>
+                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('cart') || '0'"></span>
+                    </button>
                 </div>
             </template>
         </div>
@@ -535,6 +573,8 @@
             </div>
         </div>
     </template>
+
+    @include('partials.account-drawer')
 </header>
 {{-- Spacer so fixed header doesn't cover content --}}
 <div id="evomi-header-spacer" class="w-full" style="background-color: {{ $navAccent }}" aria-hidden="true"></div>

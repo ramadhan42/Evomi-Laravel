@@ -152,7 +152,7 @@
                         <a href="{{ route('artikel') }}" class="text-[14px] md:text-[16px] inline-block w-fit hover:scale-110 hover:font-bold transition-all origin-left" data-soft-nav>{{ $footerCms->get('menu', 'artikel', evomi_l('Artikel', 'Articles')) }}</a>
                     </li>
                     <li>
-                        <a href="{{ route('kuis') }}" class="text-[14px] md:text-[16px] inline-block w-fit hover:scale-110 hover:font-bold transition-all origin-left" data-soft-nav>{{ $footerCms->get('menu', 'kuis', evomi_l('Kuis', 'Quiz')) }}</a>
+                        <a href="{{ route('kuis') }}" class="text-[14px] md:text-[16px] inline-block w-fit hover:scale-110 hover:font-bold transition-all origin-left" data-soft-nav>{{ $footerCms->get('menu', 'kuis', evomi_l('Temukan Aromamu', 'Find Your Scent')) }}</a>
                     </li>
                 </ul>
             </div>

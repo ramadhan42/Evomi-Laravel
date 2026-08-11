@@ -31,6 +31,7 @@
         {{-- KIRI: Gallery --}}
         <div class="lg:col-span-4 flex flex-col items-center w-full select-none">
             <div
+                data-belanja-hero-image
                 class="w-full aspect-square rounded-[24px] overflow-hidden flex justify-center items-center relative shadow-sm"
                 :style="accentSurfaceStyle"
             >
@@ -244,7 +245,8 @@
                             ></button>
                             <button
                                 type="button"
-                                @click="addToCart()"
+                                data-belanja-add-cart
+                                @click="addToCart($event)"
                                 :disabled="isOutOfStock || actionBusy"
                                 class="w-full bg-white font-nohemi text-[16px] font-semibold py-3 rounded-full border shadow-sm hover:bg-gray-50 active:scale-95 transition-all disabled:opacity-50"
                                 :style="{ ...accentTextStyle, borderColor: accent }"

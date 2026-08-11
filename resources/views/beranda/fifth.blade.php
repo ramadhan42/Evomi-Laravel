@@ -104,13 +104,13 @@
     <div class="relative z-10 w-full max-w-[1100px] grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5 md:gap-6 lg:gap-8 mb-8 md:mb-12 px-0 sm:px-2">
         @foreach ($products as $product)
             @php $i = $loop->iteration; @endphp
-            <a
-                href="{{ route('belanja.show', $product['id']) }}"
-                class="fifth-product-card group relative w-full max-w-[260px] mx-auto rounded-[18px] md:rounded-[24px] shadow-sm hover:shadow-xl transition-[box-shadow] duration-300 ease-out overflow-hidden flex flex-col border-2 hover:z-20 cursor-pointer"
+            <button
+                type="button"
+                class="fifth-product-card group relative w-full max-w-[260px] mx-auto rounded-[18px] md:rounded-[24px] shadow-sm hover:shadow-xl transition-[box-shadow] duration-300 ease-out overflow-hidden flex flex-col border-2 hover:z-20 cursor-pointer text-left"
                 style="border-color: {{ $product['text'] }}"
-                data-soft-nav
                 data-reveal
                 data-reveal-delay="{{ number_format($loop->index * 0.12, 2, '.', '') }}"
+                onclick="window.evomiOpenProduct({{ (int) $product['id'] }})"
             >
                 {{-- Area gambar --}}
                 <div
@@ -165,7 +165,7 @@
                         </span>
                     </div>
                 </div>
-            </a>
+            </button>
         @endforeach
     </div>
 

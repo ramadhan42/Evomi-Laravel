@@ -46,6 +46,16 @@
                 Tim Evomi sedang memproses pesananmu. Simpan email ini sebagai bukti pemesanan, atau lacak status pengiriman kapan saja.
               </p>
 
+              @if (!empty($isGuest))
+                <div style="margin:0 0 18px;padding:12px 14px;border-radius:12px;background:#FFF7ED;border:1px solid #FED7AA;color:#9A3412;font-size:13px;line-height:1.55;">
+                  Anda checkout sebagai guest. Data di perangkat bisa hilang — simpan email ini untuk pembayaran &amp; pelacakan.
+                  <a href="{{ $registerUrl }}" style="color:#1172BA;font-weight:700;text-decoration:none;">Daftar</a>
+                  atau
+                  <a href="{{ $loginUrl }}" style="color:#1172BA;font-weight:700;text-decoration:none;">login</a>
+                  agar pesanan tetap aman.
+                </div>
+              @endif
+
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{{ $brandSoft }};border-radius:12px;margin-bottom:22px;">
                 <tr>
                   <td style="padding:16px 18px;">

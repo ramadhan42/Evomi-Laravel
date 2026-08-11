@@ -20,6 +20,7 @@
             'label' => $cms->image('hero', 'product1_badge_icon', '/src/images/section 1/purpose-prestige.png'),
             'labelClass' => 'left-[30%] md:left-[31%] top-[2%] md:top-[4%] w-[9.3%] h-[9.3%] md:w-[8.2%] md:h-[8.2%]',
             'title' => $cms->get('hero', 'product1_badge_label', 'Purpose Prestige'),
+            'personality' => 'prestige',
             'n' => 1, 'z' => 'z-20', 'delay' => '1.1s',
         ],
         [
@@ -27,6 +28,7 @@
             'label' => $cms->image('hero', 'product2_badge_icon', '/src/images/section 1/rabel-brave.png'),
             'labelClass' => 'left-[43%] top-[10.8%] md:top-[12.8%] w-[7.2%] h-[7.2%] md:w-[6.2%] md:h-[6.2%]',
             'title' => $cms->get('hero', 'product2_badge_label', 'Rebel Brave'),
+            'personality' => 'rebel_brave',
             'n' => 2, 'z' => 'z-30', 'delay' => '1.4s',
         ],
         [
@@ -34,6 +36,7 @@
             'label' => $cms->image('hero', 'product3_badge_icon', '/src/images/section 1/peaceful-calm.png'),
             'labelClass' => 'right-[38%] top-[10%] md:top-[6.8%] w-[8.2%] h-[8.2%] md:w-[7.2%] md:h-[7.2%]',
             'title' => $cms->get('hero', 'product3_badge_label', 'Peaceful Calm'),
+            'personality' => 'peaceful_calm',
             'n' => 3, 'z' => '', 'delay' => '1.7s',
         ],
         [
@@ -41,9 +44,25 @@
             'label' => $cms->image('hero', 'product4_badge_icon', '/src/images/section 1/sweet-shy.png'),
             'labelClass' => 'right-[27%] md:right-[28%] top-[10.4%] md:top-[10.8%] w-[7.2%] h-[7.2%] md:w-[6.2%] md:h-[6.2%]',
             'title' => $cms->get('hero', 'product4_badge_label', 'Sweet Shy'),
+            'personality' => 'sweet_shy',
             'n' => 4, 'z' => 'z-30', 'delay' => '2.0s',
         ],
     ];
+    $catalogByPersonality = [];
+    foreach (\App\Support\BelanjaCatalog::all() as $catProduct) {
+        $key = (string) ($catProduct['personality_type'] ?? '');
+        if ($key === 'purpose_prestige') {
+            $key = 'prestige';
+        }
+        if ($key !== '' && ! isset($catalogByPersonality[$key])) {
+            $catalogByPersonality[$key] = $catProduct;
+        }
+    }
+    foreach ($products as &$heroProduct) {
+        $match = $catalogByPersonality[$heroProduct['personality']] ?? null;
+        $heroProduct['id'] = $match['id'] ?? null;
+    }
+    unset($heroProduct);
     $dividerIcons = [
         $cms->image('hero', 'divider_icon_1', '/src/images/section 1/purpose.png'),
         $cms->image('hero', 'divider_icon_2', '/src/images/section 1/peaceful.png'),
@@ -110,18 +129,23 @@
             </div>
 
             @foreach ($products as $i => $product)
-                <a
-                    href="{{ route('belanja') }}"
+                <button
+                    type="button"
                     class="hero-label-hit absolute z-40 {{ $product['labelClass'] }}"
                     data-hero-enter="label"
                     style="--hero-enter-delay: {{ 1.0 + ($i * 0.08) }}s; --hero-enter-dur: 0.6s;"
                     aria-label="{{ $product['title'] }}"
+                    @if (! empty($product['id']))
+                        onclick="window.evomiOpenProduct({{ (int) $product['id'] }})"
+                    @else
+                        onclick="window.location.href='{{ route('belanja') }}'"
+                    @endif
                 >
                     {{-- Same float keyframes + delay as the bottle below (Next floatDelay sync) --}}
                     <div class="hero-product-float relative w-full h-full" style="animation-delay: {{ $product['delay'] }}">
                         <img src="{{ $product['label'] }}" alt="" class="w-full h-full object-contain pointer-events-none">
                     </div>
-                </a>
+                </button>
             @endforeach
 
             {{-- Side badges --}}
@@ -155,13 +179,22 @@
                         style="--hero-enter-delay: {{ 0.3 + (($product['n'] - 1) * 0.12) }}s; --hero-enter-dur: 0.8s;"
                     >
                         <div class="relative flex h-full w-full items-center justify-center hero-product-float" style="animation-delay: {{ $product['delay'] }}">
-                            <a href="{{ route('belanja') }}" class="hero-product-hit relative inline-flex h-full max-w-full items-center justify-center" aria-label="{{ $product['title'] }}">
+                            <button
+                                type="button"
+                                class="hero-product-hit relative inline-flex h-full max-w-full items-center justify-center"
+                                aria-label="{{ $product['title'] }}"
+                                @if (! empty($product['id']))
+                                    onclick="window.evomiOpenProduct({{ (int) $product['id'] }})"
+                                @else
+                                    onclick="window.location.href='{{ route('belanja') }}'"
+                                @endif
+                            >
                                 <img
                                     src="{{ $product['img'] }}"
                                     alt="Botol {{ $product['title'] }}"
                                     class="pointer-events-none h-full w-auto max-w-full object-contain gambar-utama-hover"
                                 >
-                            </a>
+                            </button>
                         </div>
                     </div>
                 @endforeach

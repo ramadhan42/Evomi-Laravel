@@ -169,4 +169,46 @@ class Order extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Invoice root for multi-line checkouts (INV-ts-rand[-n] → INV-ts-rand).
+     */
+    public static function invoiceRoot(string $orderId): string
+    {
+        if (preg_match('/^(INV-\d+-\d+)(?:-\d+)?$/', $orderId, $m) === 1) {
+            return $m[1];
+        }
+
+        return $orderId;
+    }
+
+    /**
+     * Whether any order line still exists for this invoice root.
+     */
+    public static function existsForInvoice(string $invoiceRoot): bool
+    {
+        $invoiceRoot = self::invoiceRoot($invoiceRoot);
+
+        return self::query()
+            ->where(function ($q) use ($invoiceRoot) {
+                $q->where('id', $invoiceRoot)
+                    ->orWhere('id', 'like', $invoiceRoot.'-%');
+            })
+            ->exists();
+    }
+
+    /**
+     * Map fulfillment status to a storefront/admin tracking label.
+     */
+    public static function trackingStatusLabel(?string $status): string
+    {
+        return match (strtolower((string) $status)) {
+            'menunggu_konfirmasi' => 'Menunggu Konfirmasi',
+            'pengemasan' => 'Dikemas',
+            'dalam_perjalanan' => 'Dalam Perjalanan',
+            'diterima', 'selesai' => 'Terkirim',
+            'dibatalkan' => 'Dibatalkan',
+            default => 'Diproses',
+        };
+    }
 }

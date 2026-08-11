@@ -47,9 +47,10 @@
             || (bool) preg_match('#^profile/history/[^/]+$#', $path)
             || (bool) preg_match('#^pembayaran/#', $path)
             || $path === 'checkout';
-        $surfaceBlue = in_array($route, ['beranda', 'belanja', 'artikel', 'artikel.show', 'login', 'register'], true)
+        $surfaceBlue = in_array($route, ['beranda', 'artikel', 'artikel.show', 'login', 'register'], true)
             || $path === 'artikel'
             || str_starts_with($path, 'artikel/');
+        $belanjaMode = $route === 'belanja';
         $authMode = in_array($route, ['login', 'register'], true);
         $paymentMode = $route === 'pembayaran' || str_starts_with($path, 'pembayaran/');
         $themeAccent = $themeAccent ?? '#1172BA';
@@ -63,7 +64,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body
-    class="font-nohemi antialiased bg-white text-[#1172BA] overflow-x-hidden{{ $surfaceBlue ? ' evomi-surface-blue' : '' }}{{ $authMode ? ' evomi-auth-mode' : '' }}{{ $paymentMode ? ' evomi-payment-mode' : '' }}{{ $footerSeamless ? ' evomi-detail-seamless' : '' }}"
+    class="font-nohemi antialiased bg-white text-[#1172BA] overflow-x-hidden{{ $surfaceBlue ? ' evomi-surface-blue' : '' }}{{ $belanjaMode ? ' evomi-belanja-page' : '' }}{{ $authMode ? ' evomi-auth-mode' : '' }}{{ $paymentMode ? ' evomi-payment-mode' : '' }}{{ $footerSeamless ? ' evomi-detail-seamless' : '' }}"
     style="--evomi-theme: {{ $themeAccent }}"
 >
     @unless ($skipFullLoader)
@@ -82,5 +83,6 @@
             @include('partials.footer')
         </div>
     </div>
+    @include('components.modals.product')
 </body>
 </html>

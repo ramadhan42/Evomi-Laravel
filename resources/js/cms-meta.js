@@ -456,7 +456,7 @@ export const SEVENTH_FIELD_ORDER = withFontFieldOrder(SEVENTH_BASE, [
 /** Section display order: Hero → 1 → 2 → 3 → … */
 export const SECTION_ORDER = {
     beranda: ['hero', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'],
-    belanja: ['hero', 'list', 'badges'],
+    belanja: ['hero', 'list', 'cards', 'badges', 'images'],
     belanja_details: ['labels', 'disclaimer', 'guarantee', 'chat', 'content', 'images', 'badges'],
     checkout: ['header', 'sections', 'labels', 'messages', 'images'],
     kontak: ['header', 'info'],
@@ -487,13 +487,14 @@ export const SECTION_LABELS = {
     nav: 'Navbar Extra',
     auth: 'Auth',
     list: 'Daftar Produk',
+    cards: 'Gambar Card Produk',
     badges: 'Badge Karakter',
     labels: 'Label UI',
     guarantee: 'Jaminan Produk',
     chat: 'Chat',
     content: 'Konten',
     disclaimer: 'Disclaimer',
-    images: 'Gambar',
+    images: 'Gambar & Dekorasi',
     sections: 'Section',
     messages: 'Pesan',
     profile: 'Profile',
@@ -544,6 +545,41 @@ const FIELD_LABELS = {
     title_1: 'Judul Bagian 1',
     title_2: 'Judul Bagian 2',
     subtitle: 'Subtitle',
+    star_icon: 'Ikon Bintang Judul',
+    deco_purpose: 'Maskot Purpose (kiri atas)',
+    deco_peaceful: 'Maskot Peaceful (kanan atas)',
+    deco_rebel: 'Maskot Rebel (kiri bawah)',
+    deco_sweet: 'Maskot Sweet (kanan bawah)',
+    card_purpose_image: 'Gambar Card — Purpose Prestige',
+    card_peaceful_image: 'Gambar Card — Peaceful Calm',
+    card_rebel_image: 'Gambar Card — Rebel Brave',
+    card_sweet_image: 'Gambar Card — Sweet Shy',
+    card_purpose_title: 'Judul Card — Purpose',
+    card_peaceful_title: 'Judul Card — Peaceful',
+    card_rebel_title: 'Judul Card — Rebel',
+    card_sweet_title: 'Judul Card — Sweet',
+    card_purpose_desc: 'Deskripsi Card — Purpose',
+    card_peaceful_desc: 'Deskripsi Card — Peaceful',
+    card_rebel_desc: 'Deskripsi Card — Rebel',
+    card_sweet_desc: 'Deskripsi Card — Sweet',
+    card_purpose_price: 'Harga Card — Purpose',
+    card_peaceful_price: 'Harga Card — Peaceful',
+    card_rebel_price: 'Harga Card — Rebel',
+    card_sweet_price: 'Harga Card — Sweet',
+    card_image_width_mobile: 'Lebar Gambar Card — Mobile',
+    card_image_width_desktop: 'Lebar Gambar Card — Desktop',
+    card_image_rotate_mobile: 'Rotasi Gambar Card — Mobile',
+    card_image_rotate_desktop: 'Rotasi Gambar Card — Desktop',
+    card_image_top_mobile: 'Posisi Vertikal Gambar — Mobile',
+    card_image_top_desktop: 'Posisi Vertikal Gambar — Desktop',
+    empty_title: 'Judul Saat Produk Kosong',
+    empty_hint: 'Petunjuk Saat Produk Kosong',
+    see_detail: 'Teks Lihat Detail',
+    no_image: 'Teks Tanpa Gambar',
+    purpose: 'Badge Purpose',
+    peaceful: 'Badge Peaceful',
+    rebel: 'Badge Rebel',
+    sweet: 'Badge Sweet',
     tagline: 'Tagline (Every Version of Me)',
     cta_label: 'Teks Tombol CTA',
     marquee_text: 'Teks Divider Marquee',
@@ -594,6 +630,31 @@ const SUFFIX_PRIORITY = [
     '_rotate_desktop',
 ];
 
+export const BELANJA_CARDS_FIELD_ORDER = [
+    'card_purpose_image',
+    'card_purpose_title',
+    'card_purpose_desc',
+    'card_purpose_price',
+    'card_peaceful_image',
+    'card_peaceful_title',
+    'card_peaceful_desc',
+    'card_peaceful_price',
+    'card_rebel_image',
+    'card_rebel_title',
+    'card_rebel_desc',
+    'card_rebel_price',
+    'card_sweet_image',
+    'card_sweet_title',
+    'card_sweet_desc',
+    'card_sweet_price',
+    'card_image_width_mobile',
+    'card_image_width_desktop',
+    'card_image_rotate_mobile',
+    'card_image_rotate_desktop',
+    'card_image_top_mobile',
+    'card_image_top_desktop',
+];
+
 function fieldOrderForSection(section) {
     switch (section) {
         case 'hero':
@@ -618,6 +679,8 @@ function fieldOrderForSection(section) {
             return SEVENTH_FIELD_ORDER;
         case 'site':
             return SITE_FIELD_ORDER;
+        case 'cards':
+            return BELANJA_CARDS_FIELD_ORDER;
         default:
             return null;
     }

@@ -16,8 +16,11 @@
             <div class="bg-white rounded-[28px] border border-gray-100 p-6 md:p-8 shadow-sm mb-6">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                     <div>
-                        <p class="text-xs uppercase tracking-wider text-gray-400 font-semibold">No. Resi</p>
-                        <p class="text-lg font-bold text-gray-900">{{ $tracking['resi'] }}</p>
+                        <p class="text-xs uppercase tracking-wider text-gray-400 font-semibold">No. Resi / No. Pesanan</p>
+                        <p class="text-lg font-bold text-gray-900 break-all">{{ $tracking['resi'] }}</p>
+                        @if (!empty($tracking['trackingNumber']) && !empty($tracking['orderId']) && $tracking['trackingNumber'] !== $tracking['orderId'])
+                            <p class="mt-1 text-xs text-gray-500">No. pesanan: <span class="font-semibold text-gray-700">{{ $tracking['orderId'] }}</span></p>
+                        @endif
                     </div>
                     <span class="inline-flex self-start rounded-full bg-[#E8F4FC] text-[#1172BA] px-4 py-1.5 text-sm font-semibold">{{ $tracking['currentStatus'] }}</span>
                 </div>
@@ -41,7 +44,7 @@
                             </div>
                             <div class="pb-2">
                                 <p class="font-semibold text-gray-900 text-sm">{{ $item['status'] }}</p>
-                                <p class="text-xs text-gray-400 mt-0.5">{{ $item['date'] }} · {{ $item['time'] }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">{{ $item['date'] }}@if(!empty($item['time'])) · {{ $item['time'] }}@endif</p>
                                 <p class="text-sm text-gray-600 mt-1">{{ $item['description'] }}</p>
                             </div>
                         </div>
@@ -50,8 +53,8 @@
             </div>
         @else
             <div class="bg-white rounded-[28px] border border-dashed border-gray-200 p-8 text-center">
-                <h2 class="font-semibold text-gray-900">Resi tidak ditemukan</h2>
-                <p class="mt-2 text-sm text-gray-600">Periksa kembali nomor resi, atau coba lagi nanti.</p>
+                <h2 class="font-semibold text-gray-900">No. resi / no. pesanan tidak ditemukan</h2>
+                <p class="mt-2 text-sm text-gray-600">Periksa kembali nomor resi atau nomor pesanan Anda, lalu coba lagi.</p>
                 <a href="{{ route('pengiriman') }}" data-soft-nav class="inline-flex mt-6 rounded-full bg-[#1172BA] text-white px-5 py-2.5 text-sm font-semibold">Coba Lacak Lagi</a>
             </div>
         @endif

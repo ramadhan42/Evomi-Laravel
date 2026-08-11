@@ -52,7 +52,7 @@ class PersonalityTheme extends Model
             'badge' => 'Evomi',
             'badge_key' => 'purpose',
             'accent' => '#1172BA',
-            'soft_accent' => '#9CD6FF',
+            'soft_accent' => '#E6F3FB',
             'character' => 'belanja/detail/purpose-character.svg',
             'fallback_img' => 'section 5/purpose-prestige.png',
         ];

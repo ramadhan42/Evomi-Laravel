@@ -58,10 +58,12 @@
 
                 <div x-show="!error && groups.length > 0" x-cloak class="space-y-3">
                     <template x-for="group in pagedGroups" :key="group.groupId">
-                        <a
-                            :href="'/profile/history/' + group.groupId"
-                            data-soft-nav
-                            class="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-5 rounded-2xl border border-gray-100 bg-white hover:border-slate-200 transition-all gap-4 cursor-pointer group"
+                        <div
+                            class="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-5 rounded-2xl border border-gray-100 bg-white hover:border-slate-200 transition-all gap-4 cursor-pointer group/card"
+                            role="link"
+                            tabindex="0"
+                            @click="typeof window.softNavigate === 'function' ? window.softNavigate('/profile/history/' + group.groupId) : (window.location.href = '/profile/history/' + group.groupId)"
+                            @keydown.enter.prevent="typeof window.softNavigate === 'function' ? window.softNavigate('/profile/history/' + group.groupId) : (window.location.href = '/profile/history/' + group.groupId)"
                         >
                             <div class="flex items-start gap-4 w-full sm:w-auto overflow-hidden min-w-0">
                                 <div
@@ -71,7 +73,7 @@
                                     <img
                                         :src="group.imageUrl"
                                         :alt="group.productTitle"
-                                        class="max-h-full max-w-full w-auto h-auto object-contain group-hover:scale-105 transition-transform duration-300"
+                                        class="max-h-full max-w-full w-auto h-auto object-contain group-hover/card:scale-105 transition-transform duration-300"
                                         x-on:error="$el.style.display='none'"
                                     >
                                     <span
@@ -83,7 +85,11 @@
                                 </div>
 
                                 <div class="flex-1 min-w-0 py-0.5">
-                                    <p class="font-bold text-xs mb-1 tracking-wide text-[#1172BA]" x-text="group.invoice"></p>
+                                    <p
+                                        class="font-bold text-xs mb-1 tracking-wide"
+                                        :style="{ color: group.accent || '#1172BA' }"
+                                        x-text="group.invoice"
+                                    ></p>
                                     <p class="font-semibold text-slate-900 text-[15px] truncate mb-1.5">
                                         <span x-text="group.productTitle"></span>
                                         <span x-show="group.extraCount > 0" class="text-slate-500 font-normal text-sm" x-text="' (+' + group.extraCount + ' ' + $L('Produk Lain', 'More Products') + ')'"></span>
@@ -99,9 +105,24 @@
                             </div>
 
                             <div class="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-0 border-slate-100" @click.stop>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border" :class="group.paymentClass" x-text="group.paymentLabel"></span>
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border" :class="group.statusClass">
+                                <div class="flex flex-col sm:items-end gap-1.5 min-w-0">
+                                    <span
+                                        x-show="group.paymentKey === 'success'"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    >{{ evomi_l('Sudah dibayar', 'Paid') }}</span>
+                                    <span
+                                        x-show="group.paymentKey === 'awaiting'"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap bg-amber-50 text-amber-700 border-amber-200"
+                                    >{{ evomi_l('Menunggu pembayaran', 'Awaiting payment') }}</span>
+                                    <span
+                                        x-show="group.paymentKey === 'cancelled'"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap bg-rose-50 text-rose-700 border-rose-200"
+                                    >{{ evomi_l('Dibatalkan', 'Cancelled') }}</span>
+                                    <span
+                                        x-show="!group.paymentKey || group.paymentKey === 'pending'"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap bg-amber-50 text-amber-700 border-amber-200"
+                                    >{{ evomi_l('Belum dibayar', 'Unpaid') }}</span>
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap" :class="group.statusClass">
                                         <span class="w-1.5 h-1.5 rounded-full" :class="group.statusDot"></span>
                                         <span x-text="group.statusLabel"></span>
                                     </span>
@@ -140,12 +161,12 @@
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
                                 </button>
 
-                                <span class="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-slate-400 group-hover:text-slate-700 transition-colors">
+                                <span class="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-slate-400 group-hover/card:text-slate-700 transition-colors">
                                     {{ evomi_l('Lihat detail', 'View details') }}
-                                    <svg class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                                    <svg class="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                                 </span>
                             </div>
-                        </a>
+                        </div>
                     </template>
 
                     <div class="flex items-center justify-center gap-4 pt-5" x-show="pageCount > 1">

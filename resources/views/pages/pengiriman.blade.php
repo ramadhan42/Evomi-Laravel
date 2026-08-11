@@ -46,14 +46,14 @@
 
         <div class="p-6 md:p-8 bg-[#1172BA] text-white rounded-[28px] md:rounded-[32px]">
             <h3 class="text-lg font-bold mb-3">Lacak Pesanan Anda</h3>
-            <p class="text-sm text-white/90 mb-5">Masukkan nomor resi pengiriman Anda. Jika resi belum tersedia, paket belum bisa dilacak.</p>
+            <p class="text-sm text-white/90 mb-5">Masukkan nomor resi atau nomor pesanan Anda untuk melihat status pengiriman.</p>
             <div class="flex flex-col sm:flex-row gap-3">
-                <input type="text" x-model="resi" placeholder="Masukkan nomor resi..." class="w-full h-[48px] rounded-full px-4 text-gray-900 bg-white text-sm outline-none">
+                <input type="text" x-model="resi" placeholder="No. resi / no. pesanan..." class="w-full h-[48px] rounded-full px-4 text-gray-900 bg-white text-sm outline-none">
                 <button
                     type="button"
                     class="h-[48px] px-6 rounded-full bg-white text-[#1172BA] font-bold hover:bg-gray-100 shrink-0"
                     @click="
-                        if (!resi.trim()) { error = 'Masukkan nomor resi terlebih dahulu. Pesanan tanpa no resi belum bisa dilacak.'; return; }
+                        if (!resi.trim()) { error = 'Masukkan nomor resi / nomor pesanan terlebih dahulu.'; return; }
                         error = '';
                         if (window.softNavigate) softNavigate('/pengiriman/' + encodeURIComponent(resi.trim()));
                         else window.location.href = '/pengiriman/' + encodeURIComponent(resi.trim());

@@ -469,7 +469,7 @@ final class BerandaCmsDefaults
             ['seventh', 'headline_3', 'string', 'dengan'],
             ['seventh', 'headline_4', 'string', 'bermain'],
             ['seventh', 'headline_5', 'string', 'kuis'],
-            ['seventh', 'cta_label', 'string', 'Mulai Kuis'],
+            ['seventh', 'cta_label', 'string', 'Temukan Aromamu'],
             ['seventh', 'product_image', 'image', '/src/images/section 7/produk.png'],
         ];
 

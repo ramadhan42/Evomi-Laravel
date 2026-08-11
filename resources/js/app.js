@@ -636,15 +636,15 @@ function fulfillmentStatusConfig(status) {
 }
 
 function paymentStatusBadgeClass(status) {
-    if (status === 'success') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-    if (status === 'cancelled') return 'bg-rose-50 text-rose-700 border-rose-100';
-    return 'bg-amber-50 text-amber-700 border-amber-100';
+    if (status === 'success') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    if (status === 'cancelled') return 'bg-rose-50 text-rose-700 border-rose-200';
+    return 'bg-amber-50 text-amber-700 border-amber-200';
 }
 
 function paymentStatusLabel(status) {
-    if (status === 'success') return storefrontL('Berhasil', 'Success');
+    if (status === 'success') return storefrontL('Sudah dibayar', 'Paid');
     if (status === 'cancelled') return storefrontL('Dibatalkan', 'Cancelled');
-    return storefrontL('Pending', 'Pending');
+    return storefrontL('Belum dibayar', 'Unpaid');
 }
 
 /**
@@ -731,6 +731,261 @@ function emitEvomiEvent(name) {
     window.dispatchEvent(new Event(name));
 }
 
+/**
+ * YouTube-live style floating stars that rise, sway, then streak into the cart.
+ * Smooth multi-phase motion (float up → falling-star arc → cart catch).
+ *
+ * @param {{ imageUrl?: string, accent?: string, sourceEl?: Element|null, particleCount?: number }} opts
+ */
+function flyToCart(opts = {}) {
+    const {
+        imageUrl = '',
+        accent = '#1172BA',
+        sourceEl = null,
+        particleCount = null,
+    } = opts;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const cart = getVisibleCartButton();
+
+    if (reduceMotion || !cart) {
+        bumpCartCatch(cart);
+        return Promise.resolve();
+    }
+
+    const fromRect = resolveFlySourceRect(sourceEl);
+    const toRect = cart.getBoundingClientRect();
+    if (toRect.width < 2 || toRect.height < 2) {
+        bumpCartCatch(cart);
+        return Promise.resolve();
+    }
+
+    const layer = document.createElement('div');
+    layer.className = 'evomi-cart-fly';
+    layer.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(layer);
+
+    const startX = fromRect.left + fromRect.width / 2;
+    const startY = fromRect.top + fromRect.height / 2;
+    const endX = toRect.left + toRect.width / 2;
+    const endY = toRect.top + toRect.height / 2;
+
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    const count = particleCount ?? (isMobile ? 12 : 16);
+    const floatH = isMobile ? 110 : 160;
+
+    const jobs = [];
+
+    // Soft product orb (subtle, not the focus — stars are)
+    if (imageUrl) {
+        const thumb = document.createElement('div');
+        thumb.className = 'evomi-cart-fly__orb';
+        thumb.style.setProperty('--fly-accent', accent);
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = '';
+        img.draggable = false;
+        thumb.appendChild(img);
+        layer.appendChild(thumb);
+        jobs.push(
+            animateCartStar(thumb, {
+                startX,
+                startY,
+                endX,
+                endY,
+                floatH: floatH * 0.55,
+                sway: 18,
+                delay: 0,
+                duration: isMobile ? 980 : 1180,
+                sizeScale: isMobile ? 0.9 : 1,
+                rotate: 12,
+                isOrb: true,
+            }),
+        );
+    }
+
+    for (let i = 0; i < count; i++) {
+        const star = document.createElement('span');
+        const variant = i % 4;
+        star.className = `evomi-cart-fly__star evomi-cart-fly__star--${variant}`;
+        star.style.setProperty('--fly-accent', accent);
+        star.innerHTML = CART_STAR_SVG;
+        layer.appendChild(star);
+
+        const side = i % 2 === 0 ? -1 : 1;
+        const sway = (isMobile ? 36 : 52) * side * (0.45 + (i % 5) * 0.12);
+        const sizeScale = 0.55 + (i % 5) * 0.12;
+        const delay = 40 + i * (isMobile ? 55 : 70);
+        const duration = (isMobile ? 1050 : 1280) + (i % 4) * 90;
+        const float = floatH * (0.75 + (i % 4) * 0.08);
+        const rotate = side * (80 + (i % 6) * 28);
+
+        jobs.push(
+            animateCartStar(star, {
+                startX: startX + (Math.random() * 20 - 10),
+                startY: startY + (Math.random() * 12 - 6),
+                endX: endX + (Math.random() * 10 - 5),
+                endY: endY + (Math.random() * 8 - 4),
+                floatH: float,
+                sway,
+                delay,
+                duration,
+                sizeScale,
+                rotate,
+                isOrb: false,
+            }),
+        );
+    }
+
+    // Catch pulse slightly before the last stars arrive
+    const catchAt = (isMobile ? 900 : 1100) + count * 20;
+    window.setTimeout(() => bumpCartCatch(cart), catchAt);
+
+    return Promise.allSettled(jobs).then(() => {
+        layer.remove();
+    });
+}
+
+const CART_STAR_SVG =
+    '<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true" focusable="false">' +
+    '<path fill="currentColor" d="M12 1.6l2.35 6.55h6.9l-5.58 4.05 2.13 6.55L12 14.7l-5.8 4.05 2.13-6.55-5.58-4.05h6.9L12 1.6z"/>' +
+    '</svg>';
+
+/**
+ * YouTube-like float up with sway, then falling-star arc into cart.
+ */
+function animateCartStar(el, cfg) {
+    const {
+        startX,
+        startY,
+        endX,
+        endY,
+        floatH,
+        sway,
+        delay,
+        duration,
+        sizeScale,
+        rotate,
+        isOrb,
+    } = cfg;
+
+    const peakX = startX + sway;
+    const peakY = startY - floatH;
+    // Control point for falling-star diagonal into cart
+    const midX = peakX + (endX - peakX) * 0.42 + sway * 0.25;
+    const midY = peakY + (endY - peakY) * 0.35;
+
+    const pop = isOrb ? 0.92 : 0.35 * sizeScale;
+    const floatScale = isOrb ? 0.78 : 0.95 * sizeScale;
+    const endScale = isOrb ? 0.12 : 0.08;
+
+    el.style.left = '0px';
+    el.style.top = '0px';
+    el.style.opacity = '0';
+    el.style.transform = `translate(${startX}px, ${startY}px) translate(-50%, -50%) scale(${pop}) rotate(0deg)`;
+
+    const easing = 'cubic-bezier(0.22, 0.8, 0.28, 1)';
+
+    return el.animate(
+        [
+            {
+                offset: 0,
+                opacity: 0,
+                transform: `translate(${startX}px, ${startY}px) translate(-50%, -50%) scale(${pop * 0.4}) rotate(${rotate * 0.1}deg)`,
+                filter: 'blur(0px) brightness(1.1)',
+            },
+            {
+                // Pop in (YouTube like burst)
+                offset: 0.08,
+                opacity: 1,
+                transform: `translate(${startX + sway * 0.08}px, ${startY - 10}px) translate(-50%, -50%) scale(${pop * 1.25}) rotate(${rotate * 0.2}deg)`,
+                filter: 'blur(0px) brightness(1.25)',
+            },
+            {
+                // Float up + sway (livestream love)
+                offset: 0.38,
+                opacity: 1,
+                transform: `translate(${peakX * 0.55 + startX * 0.45}px, ${startY - floatH * 0.55}px) translate(-50%, -50%) scale(${floatScale}) rotate(${rotate * 0.55}deg)`,
+                filter: 'blur(0px) brightness(1.15)',
+            },
+            {
+                // Peak — hang briefly
+                offset: 0.52,
+                opacity: 0.95,
+                transform: `translate(${peakX}px, ${peakY}px) translate(-50%, -50%) scale(${floatScale * 0.92}) rotate(${rotate * 0.75}deg)`,
+                filter: 'blur(0.2px) brightness(1.2)',
+            },
+            {
+                // Falling-star streak toward cart
+                offset: 0.78,
+                opacity: 0.85,
+                transform: `translate(${midX}px, ${midY}px) translate(-50%, -50%) scale(${floatScale * 0.55}) rotate(${rotate}deg)`,
+                filter: 'blur(0.4px) brightness(1.35)',
+            },
+            {
+                offset: 1,
+                opacity: 0,
+                transform: `translate(${endX}px, ${endY}px) translate(-50%, -50%) scale(${endScale}) rotate(${rotate * 1.15}deg)`,
+                filter: 'blur(1px) brightness(1.5)',
+            },
+        ],
+        {
+            duration,
+            delay,
+            easing,
+            fill: 'forwards',
+        },
+    ).finished;
+}
+
+function resolveFlySourceRect(sourceEl) {
+    if (sourceEl && typeof sourceEl.getBoundingClientRect === 'function') {
+        const r = sourceEl.getBoundingClientRect();
+        if (r.width > 2 && r.height > 2) return r;
+    }
+    const modalImg = document.querySelector('.evomi-product-modal__image');
+    if (modalImg) {
+        const r = modalImg.getBoundingClientRect();
+        if (r.width > 2 && r.height > 2) return r;
+    }
+    const detailImg = document.querySelector('[data-belanja-hero-image], .belanja-detail__image, .belanja-detail img');
+    if (detailImg) {
+        const r = detailImg.getBoundingClientRect();
+        if (r.width > 2 && r.height > 2) return r;
+    }
+    return {
+        left: window.innerWidth / 2 - 24,
+        top: window.innerHeight * 0.45,
+        width: 48,
+        height: 48,
+    };
+}
+
+function getVisibleCartButton() {
+    const buttons = [...document.querySelectorAll('.nav-cart-btn')];
+    return (
+        buttons.find((btn) => {
+            const r = btn.getBoundingClientRect();
+            const style = window.getComputedStyle(btn);
+            if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) {
+                return false;
+            }
+            return r.width > 2 && r.height > 2 && r.bottom > 0 && r.top < window.innerHeight;
+        }) || buttons[0] || null
+    );
+}
+
+function bumpCartCatch(cartBtn) {
+    const btn = cartBtn || getVisibleCartButton();
+    if (!btn) return;
+    btn.classList.remove('nav-cart-btn--catch');
+    void btn.offsetWidth;
+    btn.classList.add('nav-cart-btn--catch');
+    window.setTimeout(() => btn.classList.remove('nav-cart-btn--catch'), 800);
+}
+
+window.evomiFlyToCart = flyToCart;
+
 function productTitle(product) {
     return product?.title || product?.name || 'Produk';
 }
@@ -739,8 +994,43 @@ function productPrice(product) {
     return Number(product?.price || product?.harga || 0) || 0;
 }
 
+function productSoftAccent(product) {
+    if (product?.soft_accent) return String(product.soft_accent);
+    const personality = String(product?.personality_type || '').toLowerCase();
+    const map = {
+        prestige: '#9CD6FF',
+        purpose_prestige: '#9CD6FF',
+        peaceful_calm: '#C6F5B8',
+        rebel_brave: '#FFBBB5',
+        sweet_shy: '#F5D7E7',
+    };
+    return map[personality] || '#9CD6FF';
+}
+
+function productBadge(product) {
+    if (product?.badge) return String(product.badge);
+    const personality = String(product?.personality_type || '').toLowerCase();
+    const map = {
+        prestige: 'Optimis',
+        purpose_prestige: 'Optimis',
+        peaceful_calm: 'Damai',
+        rebel_brave: 'Berani',
+        sweet_shy: 'Manis',
+    };
+    return map[personality] || 'Evomi';
+}
+
+function productGenderLabel(product) {
+    const raw = String(product?.gender || 'unisex').toLowerCase();
+    if (raw === 'male' || raw === 'pria') return storefrontL('Pria', 'Male');
+    if (raw === 'female' || raw === 'wanita') return storefrontL('Wanita', 'Female');
+    if (raw === 'unisex') return 'Unisex';
+    return product?.gender || 'Unisex';
+}
+
 function productAccent(product) {
     if (product?.color) return String(product.color);
+    if (product?.accent) return String(product.accent);
     const personality = String(product?.personality_type || '').toLowerCase();
     const map = {
         prestige: '#1172BA',
@@ -860,11 +1150,12 @@ function groupOrdersByCreatedAt(orders) {
                 statusLabel: fulfill.label,
                 statusClass: fulfill.class,
                 statusDot: fulfill.dot,
+                paymentKey: awaitingPay ? 'awaiting' : pay,
                 paymentLabel: awaitingPay
                     ? storefrontL('Menunggu pembayaran', 'Awaiting payment')
                     : paymentStatusLabel(pay),
                 paymentClass: awaitingPay
-                    ? 'bg-amber-50 text-amber-700'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
                     : paymentStatusBadgeClass(pay),
                 paymentMethod: first.metode_pembayaran || '',
                 isAwaitingPayment: awaitingPay,
@@ -924,6 +1215,118 @@ function waitFrames(n = 2) {
     });
 }
 
+const GUEST_CART_KEY = 'evomi_guest_cart_v1';
+const GUEST_EMAIL_KEY = 'evomi_guest_email_v1';
+
+function readGuestEmail() {
+    try {
+        const raw = String(localStorage.getItem(GUEST_EMAIL_KEY) || '').trim().toLowerCase();
+        return raw.includes('@') ? raw : '';
+    } catch {
+        return '';
+    }
+}
+
+function writeGuestEmail(email) {
+    const next = String(email || '').trim().toLowerCase();
+    try {
+        if (next.includes('@')) localStorage.setItem(GUEST_EMAIL_KEY, next);
+        else localStorage.removeItem(GUEST_EMAIL_KEY);
+    } catch {
+        /* ignore */
+    }
+    return next.includes('@') ? next : '';
+}
+
+function readGuestCart() {
+    try {
+        const raw = localStorage.getItem(GUEST_CART_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+    } catch {
+        return [];
+    }
+}
+
+function writeGuestCart(items) {
+    try {
+        localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items || []));
+    } catch {
+        /* ignore */
+    }
+    emitEvomiEvent('cart_updated');
+}
+
+function guestCartCount() {
+    return readGuestCart().reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+}
+
+function upsertGuestCartItem({ productId, quantity, title, price, image, accent, stock }) {
+    const id = Number(productId);
+    const qty = Math.max(1, Number(quantity) || 1);
+    if (!Number.isFinite(id) || id <= 0) {
+        throw new Error(storefrontL('Produk tidak valid.', 'Invalid product.'));
+    }
+    const items = readGuestCart();
+    const idx = items.findIndex((i) => Number(i.product_id) === id);
+    const available = Number(stock);
+    if (idx >= 0) {
+        const next = (Number(items[idx].quantity) || 0) + qty;
+        if (Number.isFinite(available) && available > 0 && next > available) {
+            throw new Error(
+                storefrontL(`Stok tidak cukup. Tersedia: ${available}.`, `Insufficient stock. Available: ${available}.`),
+            );
+        }
+        items[idx].quantity = next;
+        if (title) items[idx].title = title;
+        if (price != null) items[idx].price = Number(price) || items[idx].price;
+        if (image) items[idx].image = image;
+        if (accent) items[idx].accent = accent;
+        if (Number.isFinite(available)) items[idx].stock = available;
+    } else {
+        if (Number.isFinite(available) && available > 0 && qty > available) {
+            throw new Error(
+                storefrontL(`Stok tidak cukup. Tersedia: ${available}.`, `Insufficient stock. Available: ${available}.`),
+            );
+        }
+        items.push({
+            id: `guest-${id}`,
+            product_id: id,
+            quantity: qty,
+            title: title || `Produk #${id}`,
+            price: Number(price) || 0,
+            image: image || '',
+            accent: accent || '#1172BA',
+            stock: Number.isFinite(available) ? available : 99,
+        });
+    }
+    writeGuestCart(items);
+    return items;
+}
+
+async function mergeGuestCartIntoAccount() {
+    const token = getAuthToken();
+    if (!token) return;
+    const guestItems = readGuestCart();
+    if (!guestItems.length) return;
+    for (const item of guestItems) {
+        try {
+            await fetch('/api/carts', {
+                method: 'POST',
+                headers: authHeaders(true),
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    product_id: Number(item.product_id),
+                    quantity: Number(item.quantity) || 1,
+                }),
+            });
+        } catch {
+            /* keep going */
+        }
+    }
+    writeGuestCart([]);
+}
+
 document.addEventListener('alpine:init', () => {
     registerAdminCrud(Alpine, {
         authHeaders,
@@ -942,6 +1345,244 @@ document.addEventListener('alpine:init', () => {
         getAuthUser,
     });
 
+    Alpine.store('evomiProductModal', {
+        open: false,
+        loading: false,
+        error: '',
+        product: null,
+        qty: 1,
+        statusMessage: '',
+        statusTone: 'info',
+        actionBusy: false,
+
+        get accent() {
+            return productAccent(this.product);
+        },
+
+        get softAccent() {
+            return productSoftAccent(this.product);
+        },
+
+        get badge() {
+            return productBadge(this.product);
+        },
+
+        get stock() {
+            return Number(this.product?.quantity ?? this.product?.stock ?? 0) || 0;
+        },
+
+        get isOutOfStock() {
+            return this.stock < 1;
+        },
+
+        get unitPrice() {
+            return productPrice(this.product);
+        },
+
+        get priceLabel() {
+            return formatRupiah(this.unitPrice);
+        },
+
+        get lineTotalLabel() {
+            return formatRupiah(this.unitPrice * Math.max(1, this.qty || 1));
+        },
+
+        get ctaLabel() {
+            if (this.isOutOfStock) return storefrontL('Stok habis', 'Out of stock');
+            if (this.actionBusy) return storefrontL('Menambah...', 'Adding...');
+            return `${storefrontL('Tambah ke Keranjang', 'Add to Cart')} · ${this.lineTotalLabel}`;
+        },
+
+        get imageUrl() {
+            return productImage(this.product, 'default');
+        },
+
+        get volumeLabel() {
+            const size = Number(this.product?.bottle_size || 30) || 30;
+            return `${size}ml`;
+        },
+
+        get longevityLabel() {
+            return this.product?.longevity || storefrontL('8–12 jam', '8–12 hrs');
+        },
+
+        get typeLabel() {
+            return this.product?.perfume_type || 'Eau de Parfum';
+        },
+
+        get genderLabel() {
+            return productGenderLabel(this.product);
+        },
+
+        get ratingLabel() {
+            const rating = this.product?.rating || '4.9';
+            const reviews = this.product?.reviews_count || 128;
+            return `${rating} (${reviews} ${storefrontL('ulasan', 'reviews')})`;
+        },
+
+        get scentNotes() {
+            const p = this.product || {};
+            return [p.top_note, p.middle_note, p.base_note].filter(Boolean);
+        },
+
+        async openProduct(productId) {
+            const id = Number(productId);
+            if (!Number.isFinite(id) || id <= 0) return;
+            this.open = true;
+            this.loading = true;
+            this.error = '';
+            this.product = null;
+            this.qty = 1;
+            this.statusMessage = '';
+            document.documentElement.classList.add('overflow-hidden');
+            try {
+                const res = await fetch(`/api/products/${id}?locale=id`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const data = await readApiJson(res);
+                const product = data?.data || data;
+                if (!res.ok || !product?.id) {
+                    throw new Error(
+                        apiErrorMessage(data, storefrontL('Produk tidak ditemukan.', 'Product not found.')),
+                    );
+                }
+                this.product = product;
+                this.qty = 1;
+            } catch (err) {
+                this.error =
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL('Gagal memuat produk.', 'Failed to load product.');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        close() {
+            this.open = false;
+            this.loading = false;
+            this.error = '';
+            this.product = null;
+            this.qty = 1;
+            this.statusMessage = '';
+            this.actionBusy = false;
+            document.documentElement.classList.remove('overflow-hidden');
+        },
+
+        changeQty(delta) {
+            if (!this.product) return;
+            const next = this.qty + delta;
+            this.qty = Math.min(Math.max(1, next), Math.max(1, this.stock));
+        },
+
+        buyNow() {
+            if (!this.product || this.isOutOfStock) return;
+            const productId = Number(this.product.id);
+            const params = new URLSearchParams({
+                type: 'buynow',
+                productId: String(productId),
+                qty: String(this.qty),
+                unitPrice: String(productPrice(this.product)),
+                productDiscount: '0',
+            });
+            const qs = params.toString();
+            try {
+                sessionStorage.setItem('evomi_checkout_qs', qs);
+            } catch {
+                /* ignore */
+            }
+            this.close();
+            softNavigate(`/checkout?${qs}`);
+        },
+
+        async addToCart() {
+            if (!this.product || this.isOutOfStock || this.actionBusy) return;
+            this.actionBusy = true;
+            this.statusMessage = storefrontL('Menambah...', 'Adding...');
+            this.statusTone = 'info';
+            try {
+                const payload = {
+                    productId: this.product.id,
+                    quantity: this.qty,
+                    title: productTitle(this.product),
+                    price: productPrice(this.product),
+                    image: productImage(this.product, 'cart'),
+                    accent: productAccent(this.product),
+                    stock: this.stock,
+                };
+                if (getAuthToken()) {
+                    const res = await fetch('/api/carts', {
+                        method: 'POST',
+                        headers: authHeaders(true),
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            product_id: payload.productId,
+                            quantity: payload.quantity,
+                        }),
+                    });
+                    const data = await readApiJson(res);
+                    if (!res.ok) {
+                        throw new Error(
+                            apiErrorMessage(data, storefrontL('Gagal menambah ke keranjang.', 'Failed to add to cart.')),
+                        );
+                    }
+                    emitEvomiEvent('cart_updated');
+                } else {
+                    upsertGuestCartItem(payload);
+                    this.statusMessage = storefrontL('Ditambahkan ke keranjang!', 'Added to cart!');
+                    this.statusTone = 'success';
+                    await flyToCart({
+                        imageUrl: payload.image,
+                        accent: payload.accent || '#1172BA',
+                        sourceEl:
+                            document.querySelector('.evomi-product-modal__image') ||
+                            document.querySelector('.evomi-product-modal__cta'),
+                    });
+                    this.close();
+                    const nav = window.__evomiNav;
+                    if (nav && typeof nav.showGuestCartWarning === 'function') {
+                        nav.showGuestCartWarning();
+                    } else if (nav && typeof nav.openAccountDrawer === 'function') {
+                        nav.openAccountDrawer();
+                    }
+                    return;
+                }
+                this.statusMessage = storefrontL('Ditambahkan ke keranjang!', 'Added to cart!');
+                this.statusTone = 'success';
+                await flyToCart({
+                    imageUrl: payload.image,
+                    accent: payload.accent || '#1172BA',
+                    sourceEl:
+                        document.querySelector('.evomi-product-modal__image') ||
+                        document.querySelector('.evomi-product-modal__cta'),
+                });
+                this.close();
+                window.setTimeout(() => {
+                    const nav = window.__evomiNav;
+                    if (nav && typeof nav.openAccountDrawer === 'function') {
+                        nav.openAccountDrawer();
+                    }
+                }, 280);
+            } catch (err) {
+                this.statusMessage =
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL('Gagal menambah ke keranjang.', 'Failed to add to cart.');
+                this.statusTone = 'error';
+            } finally {
+                this.actionBusy = false;
+            }
+        },
+    });
+
+    window.evomiOpenProduct = (id) => {
+        try {
+            Alpine.store('evomiProductModal').openProduct(id);
+        } catch {
+            /* alpine not ready */
+        }
+    };
+
     Alpine.data('evomiNavbar', (activeIndex = 0) => ({
         open: false,
         isNavHidden: false,
@@ -956,6 +1597,38 @@ document.addEventListener('alpine:init', () => {
         userName: null,
         userAvatar: null,
         accountMenuOpen: false,
+        accountDrawerOpen: false,
+        drawerTab: 'cart',
+        drawerCartLoading: false,
+        drawerCartItems: [],
+        drawerUpdatingId: null,
+        drawerTrackLoading: false,
+        drawerTrackItems: [],
+        drawerTrackSelectedId: null,
+        drawerTrackCopied: false,
+        drawerGuestResi: '',
+        drawerGuestResiError: '',
+        ordersModalOpen: false,
+        ordersLoading: false,
+        ordersError: '',
+        ordersGroups: [],
+        ordersFilter: 'all',
+        ordersExpandedId: null,
+        ordersToast: '',
+        _ordersToastTimer: null,
+        guestWarnOpen: false,
+        guestWarnEmail: '',
+        guestWarnBusy: false,
+        guestWarnError: '',
+        guestWarnStatus: '',
+        guestEmailInput: '',
+        guestOrdersEmail: '',
+        guestOrdersNotify: true,
+        guestTrackEmail: '',
+        guestTrackNotify: true,
+        guestTrackEmailError: '',
+        guestCartEmailBusy: false,
+        guestCartEmailStatus: '',
         logoutLoading: false,
         logoutModal: {
             open: false,
@@ -978,6 +1651,107 @@ document.addEventListener('alpine:init', () => {
 
         badgeDesc(key, filled, empty) {
             return (this.badges?.[key] || 0) > 0 ? filled : empty;
+        },
+
+        get drawerCartCount() {
+            return this.drawerCartItems.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+        },
+
+        get drawerTrackCount() {
+            const live = Array.isArray(this.drawerTrackItems) ? this.drawerTrackItems.length : 0;
+            if (live > 0) return live;
+            return Number(this.badges?.history) || 0;
+        },
+
+        get drawerCartSubtotalLabel() {
+            const total = this.drawerCartItems.reduce(
+                (s, i) => s + (Number(i.unitPrice) || 0) * (Number(i.quantity) || 0),
+                0,
+            );
+            return formatRupiah(total);
+        },
+
+        get ordersFilterTabs() {
+            return [
+                { key: 'all', label: storefrontL('Semua', 'All') },
+                { key: 'menunggu', label: storefrontL('Menunggu', 'Pending') },
+                { key: 'diproses', label: storefrontL('Diproses', 'Processing') },
+                { key: 'dikirim', label: storefrontL('Dikirim', 'Shipped') },
+                { key: 'selesai', label: storefrontL('Selesai', 'Completed') },
+            ];
+        },
+
+        get filteredOrders() {
+            if (this.ordersFilter === 'all') return this.ordersGroups;
+            return this.ordersGroups.filter((g) => this.orderFilterKey(g) === this.ordersFilter);
+        },
+
+        ordersFilterCount(key) {
+            if (key === 'all') return this.ordersGroups.length;
+            return this.ordersGroups.filter((g) => this.orderFilterKey(g) === key).length;
+        },
+
+        orderFilterKey(group) {
+            return this.orderBadge(group).filter;
+        },
+
+        orderBadge(group) {
+            const iconBase = '/src/images/orders';
+            if (
+                group?.isAwaitingPayment ||
+                group?.paymentKey === 'awaiting' ||
+                group?.paymentKey === 'pending'
+            ) {
+                return {
+                    filter: 'menunggu',
+                    label: storefrontL('Menunggu', 'Pending'),
+                    bg: '#5d5d5d',
+                    icon: `${iconBase}/icon-process.svg`,
+                };
+            }
+            const s = String(group?.status || '').toLowerCase();
+            if (s === 'dalam_perjalanan') {
+                return {
+                    filter: 'dikirim',
+                    label: storefrontL('Dalam Pengiriman', 'In Transit'),
+                    bg: '#1172ba',
+                    icon: `${iconBase}/icon-truck.svg`,
+                };
+            }
+            if (s === 'selesai' || s === 'diterima') {
+                return {
+                    filter: 'selesai',
+                    label: storefrontL('Selesai', 'Completed'),
+                    bg: '#5ea14a',
+                    icon: `${iconBase}/icon-check.svg`,
+                };
+            }
+            if (s === 'dibatalkan') {
+                return {
+                    filter: 'selesai',
+                    label: storefrontL('Dibatalkan', 'Cancelled'),
+                    bg: '#b42318',
+                    icon: `${iconBase}/icon-check.svg`,
+                };
+            }
+            return {
+                filter: 'diproses',
+                label: storefrontL('Sedang Proses', 'Processing'),
+                bg: '#ffbb45',
+                icon: `${iconBase}/icon-process.svg`,
+            };
+        },
+
+        orderMetaLine(group) {
+            const first = group?.items?.[0] || {};
+            const size =
+                first.product?.size ||
+                first.product?.volume ||
+                first.size ||
+                first.volume ||
+                '50ml';
+            const qty = Number(group?.quantity) || 1;
+            return `${size} · Qty ${qty} · ${group?.dateLabel || ''}`;
         },
 
         setLocale(next) {
@@ -1007,6 +1781,10 @@ document.addEventListener('alpine:init', () => {
             this.locale = readAdminLocale();
             writeAdminLocale(this.locale);
             this.lastScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+            this.guestWarnEmail = readGuestEmail();
+            this.guestEmailInput = this.guestWarnEmail;
+            this.guestOrdersEmail = this.guestWarnEmail;
+            this.guestTrackEmail = this.guestWarnEmail;
             this.readAuth();
             this._onAuthChange = () => this.readAuth();
             this._onBadgeRefresh = () => this.refreshBadges();
@@ -1020,6 +1798,10 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('history_updated', this._onBadgeRefresh);
             window.addEventListener('messages_read', this._onBadgeRefresh);
             window.addEventListener('evomi-admin-locale', this._onLocaleChange);
+            this._onDrawerCartRefresh = () => {
+                if (this.accountDrawerOpen) this.loadDrawerCart();
+            };
+            window.addEventListener('cart_updated', this._onDrawerCartRefresh);
 
             this.$nextTick(() => {
                 this.syncSpacer();
@@ -1068,6 +1850,12 @@ document.addEventListener('alpine:init', () => {
             this.$watch('accountMenuOpen', () => {
                 this.$nextTick(() => this.syncSpacer());
             });
+
+            this.$watch('drawerTab', (tab) => {
+                if (tab === 'track' && this.accountDrawerOpen) {
+                    this.loadDrawerTrackings();
+                }
+            });
         },
 
         readAuth() {
@@ -1075,12 +1863,17 @@ document.addEventListener('alpine:init', () => {
             const user = getAuthUser();
 
             if (token && user) {
+                const wasGuest = !this.isLoggedIn;
                 this.isLoggedIn = true;
                 this.userEmail = user.email || null;
                 this.userName = user.name || user.nama_lengkap || null;
                 this.isAdmin = Boolean(user.is_admin);
                 this.userAvatar = avatarUrlFromUser(user);
-                this.refreshBadges();
+                if (wasGuest && guestCartCount() > 0) {
+                    mergeGuestCartIntoAccount().finally(() => this.refreshBadges());
+                } else {
+                    this.refreshBadges();
+                }
             } else {
                 this.isLoggedIn = false;
                 this.isAdmin = false;
@@ -1088,7 +1881,13 @@ document.addEventListener('alpine:init', () => {
                 this.userName = null;
                 this.userAvatar = null;
                 this.accountMenuOpen = false;
-                this.badges = { cart: 0, wishlist: 0, history: 0, unread: 0 };
+                this.badges = {
+                    cart: guestCartCount(),
+                    wishlist: 0,
+                    history: 0,
+                    payments: 0,
+                    unread: 0,
+                };
             }
 
             this.$nextTick(() => {
@@ -1101,7 +1900,13 @@ document.addEventListener('alpine:init', () => {
 
         async refreshBadges() {
             if (!this.isLoggedIn) {
-                this.badges = { cart: 0, wishlist: 0, history: 0, unread: 0 };
+                this.badges = {
+                    cart: guestCartCount(),
+                    wishlist: 0,
+                    history: 0,
+                    payments: 0,
+                    unread: 0,
+                };
                 return;
             }
             this.badges = await fetchBadgeCounts();
@@ -1109,15 +1914,795 @@ document.addEventListener('alpine:init', () => {
 
         toggleAccountMenu() {
             this.accountMenuOpen = !this.accountMenuOpen;
+            if (this.accountMenuOpen) this.closeAccountDrawer();
         },
 
         closeAccountMenu() {
             this.accountMenuOpen = false;
         },
 
+        mapDrawerCartItem(row, { isGuest = false } = {}) {
+            if (isGuest) {
+                const unit = Number(row.price) || 0;
+                const qty = Number(row.quantity) || 1;
+                return {
+                    id: row.id || `guest-${row.product_id}`,
+                    product_id: row.product_id,
+                    title: row.title || `Produk #${row.product_id}`,
+                    imageUrl: row.image || '',
+                    accent: row.accent || '#1172BA',
+                    meta: '30ml · EDP',
+                    stock: Number(row.stock ?? 99) || 99,
+                    quantity: qty,
+                    unitPrice: unit,
+                    priceLabel: formatRupiah(unit),
+                    lineTotalLabel: formatRupiah(unit * qty),
+                    isGuest: true,
+                };
+            }
+            const unit = productPrice(row.product);
+            const qty = Number(row.quantity) || 1;
+            const size = row.product?.size || row.product?.volume || '30ml';
+            const type = row.product?.type || row.product?.concentration || 'EDP';
+            return {
+                id: row.id,
+                product_id: row.product_id || row.product?.id,
+                title: productTitle(row.product),
+                imageUrl: productImage(row.product, 'cart'),
+                accent: productAccent(row.product),
+                meta: `${size} · ${type}`,
+                stock: Number(row.product?.stock ?? 99) || 99,
+                quantity: qty,
+                unitPrice: unit,
+                priceLabel: formatRupiah(unit),
+                lineTotalLabel: formatRupiah(unit * qty),
+                isGuest: false,
+            };
+        },
+
+        get drawerTrackSelected() {
+            const id = this.drawerTrackSelectedId;
+            if (!id) return this.drawerTrackItems[0] || null;
+            return this.drawerTrackItems.find((i) => i.id === id) || this.drawerTrackItems[0] || null;
+        },
+
+        get drawerTrackSteps() {
+            return [
+                { key: 'diterima', label: storefrontL('Diterima', 'Received') },
+                { key: 'dikemas', label: storefrontL('Dikemas', 'Packed') },
+                { key: 'dikirim', label: storefrontL('Dikirim', 'Shipped') },
+                { key: 'transit', label: storefrontL('Transit', 'Transit') },
+                { key: 'terkirim', label: storefrontL('Terkirim', 'Delivered') },
+            ];
+        },
+
+        drawerTrackToneClass(tone) {
+            if (tone === 'success') return 'is-success';
+            if (tone === 'info') return 'is-info';
+            if (tone === 'warning') return 'is-warning';
+            if (tone === 'danger') return 'is-danger';
+            return 'is-muted';
+        },
+
+        drawerTrackStepDone(index) {
+            const selected = this.drawerTrackSelected;
+            if (!selected) return false;
+            return Number(selected.progress_step) >= index;
+        },
+
+        drawerTrackStepCurrent(index) {
+            const selected = this.drawerTrackSelected;
+            if (!selected) return false;
+            return Number(selected.progress_step) === index;
+        },
+
+        drawerTrackProgressPct() {
+            const selected = this.drawerTrackSelected;
+            if (!selected) return 0;
+            const step = Math.max(0, Math.min(4, Number(selected.progress_step) || 0));
+            return (step / 4) * 100;
+        },
+
+        formatDrawerTrackTime(raw) {
+            if (!raw) return { time: '—', date: '' };
+            const d = new Date(raw);
+            if (Number.isNaN(d.getTime())) {
+                const text = String(raw);
+                return { time: text.slice(0, 5), date: text };
+            }
+            return {
+                time: d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                date: d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }),
+            };
+        },
+
+        selectDrawerTrack(id) {
+            this.drawerTrackSelectedId = id;
+            this.drawerTrackCopied = false;
+        },
+
+        scrollTrackChipsWheel(event) {
+            const el = event.currentTarget;
+            if (!el) return;
+            const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
+                ? event.deltaX
+                : event.deltaY;
+            if (!delta) return;
+            const max = el.scrollWidth - el.clientWidth;
+            if (max <= 0) return;
+            const next = Math.min(max, Math.max(0, el.scrollLeft + delta));
+            if (next === el.scrollLeft) return;
+            event.preventDefault();
+            el.scrollLeft = next;
+        },
+
+        async copyDrawerResi() {
+            const selected = this.drawerTrackSelected;
+            const resi = selected?.tracking_number || selected?.id;
+            if (!resi) return;
+            try {
+                await navigator.clipboard.writeText(String(resi));
+                this.drawerTrackCopied = true;
+                window.setTimeout(() => {
+                    this.drawerTrackCopied = false;
+                }, 1600);
+            } catch {
+                /* ignore */
+            }
+        },
+
+        async submitDrawerGuestResi() {
+            const resi = String(this.drawerGuestResi || '').trim();
+            if (!resi) {
+                this.drawerGuestResiError = storefrontL(
+                    'Masukkan nomor resi / nomor pesanan terlebih dahulu.',
+                    'Please enter a tracking or order number first.',
+                );
+                return;
+            }
+            this.drawerGuestResiError = '';
+            this.drawerTrackLoading = true;
+            try {
+                const res = await fetch(`/api/trackings/${encodeURIComponent(resi)}`, {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                });
+                const data = await readApiJson(res);
+                if (!res.ok) {
+                    throw new Error(
+                        apiErrorMessage(
+                            data,
+                            storefrontL(
+                                'Nomor resi / nomor pesanan tidak ditemukan.',
+                                'Tracking or order number not found.',
+                            ),
+                        ),
+                    );
+                }
+                const row = data?.data || data;
+                if (!row || (!row.id && !row.orderId && !row.order_id)) {
+                    throw new Error(
+                        storefrontL(
+                            'Nomor resi / nomor pesanan tidak ditemukan.',
+                            'Tracking or order number not found.',
+                        ),
+                    );
+                }
+                const mapped = {
+                    ...row,
+                    id: row.id || row.orderId || row.order_id,
+                    code: row.code || row.resi || row.id || resi,
+                    title: row.title || storefrontL('Pesanan Evomi', 'Evomi Order'),
+                    courier: row.courier && row.courier !== 'Belum ditentukan' ? row.courier : row.courier || null,
+                    tracking_number: row.tracking_number || row.trackingNumber || null,
+                    estimated_delivery: row.estimated_delivery || row.estimatedDelivery || null,
+                    status_label: row.status_label || row.currentStatus || storefrontL('Diproses', 'Processing'),
+                    status_tone: row.status_tone || 'muted',
+                    progress_step: Number.isFinite(Number(row.progress_step)) ? Number(row.progress_step) : 0,
+                    destination: row.destination || null,
+                    recipient: row.recipient || null,
+                    imageUrl: mediaUrl(row.image) || productImageFallback(row),
+                    timeline: (row.timeline || []).map((entry) => {
+                        const stamp = this.formatDrawerTrackTime(entry.time || entry.date);
+                        return {
+                            ...entry,
+                            timeLabel: stamp.time,
+                            dateLabel: stamp.date,
+                            place: entry.description || '',
+                        };
+                    }),
+                };
+                this.drawerTrackItems = [mapped];
+                this.drawerTrackSelectedId = mapped.id;
+            } catch (err) {
+                this.drawerTrackItems = [];
+                this.drawerTrackSelectedId = null;
+                this.drawerGuestResiError =
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL(
+                              'Gagal memuat pelacakan.',
+                              'Failed to load tracking.',
+                          );
+            } finally {
+                this.drawerTrackLoading = false;
+            }
+        },
+
+        async loadDrawerTrackings() {
+            if (!this.isLoggedIn || !getAuthToken()) {
+                return;
+            }
+            this.drawerTrackLoading = true;
+            try {
+                const res = await fetch('/api/my-trackings?locale=id', {
+                    headers: authHeaders(true),
+                    credentials: 'same-origin',
+                });
+                if (res.status === 401) {
+                    clearAuthSession();
+                    this.readAuth();
+                    this.drawerTrackItems = [];
+                    return;
+                }
+                const data = await readApiJson(res);
+                const list = Array.isArray(data) ? data : data.data || [];
+                this.drawerTrackItems = list.map((row) => ({
+                    ...row,
+                    imageUrl: mediaUrl(row.image) || productImageFallback(row),
+                    timeline: (row.timeline || []).map((entry) => {
+                        const stamp = this.formatDrawerTrackTime(entry.time);
+                        return {
+                            ...entry,
+                            timeLabel: stamp.time,
+                            dateLabel: stamp.date,
+                            place: entry.description || '',
+                        };
+                    }),
+                }));
+                if (
+                    !this.drawerTrackSelectedId ||
+                    !this.drawerTrackItems.some((i) => i.id === this.drawerTrackSelectedId)
+                ) {
+                    this.drawerTrackSelectedId = this.drawerTrackItems[0]?.id || null;
+                }
+            } catch {
+                this.drawerTrackItems = [];
+            } finally {
+                this.drawerTrackLoading = false;
+            }
+        },
+
+        async openAccountDrawer(tab = 'cart') {
+            this.open = false;
+            this.accountMenuOpen = false;
+            this.guestEmailInput = readGuestEmail() || this.guestEmailInput;
+            this.guestTrackEmail = readGuestEmail() || this.guestTrackEmail;
+            this.drawerTab = tab === 'track' ? 'track' : 'cart';
+            this.accountDrawerOpen = true;
+            document.documentElement.classList.add('overflow-hidden');
+
+            const tasks = [];
+            if (this.drawerTab === 'cart') {
+                tasks.push(this.loadDrawerCart());
+            }
+            if (this.isLoggedIn) {
+                // Prefetch trackings so "Lacak Pesanan" badge count is ready on both tabs.
+                tasks.push(this.loadDrawerTrackings());
+            }
+            await Promise.all(tasks);
+        },
+
+        closeAccountDrawer() {
+            this.accountDrawerOpen = false;
+            if (!this.ordersModalOpen) {
+                document.documentElement.classList.remove('overflow-hidden');
+            }
+        },
+
+        async openOrdersModal() {
+            this.closeAccountDrawer();
+            this.ordersModalOpen = true;
+            this.ordersFilter = 'all';
+            this.ordersExpandedId = null;
+            this.guestOrdersEmail = readGuestEmail() || this.guestOrdersEmail;
+            document.documentElement.classList.add('overflow-hidden');
+            if (this.isLoggedIn) {
+                await this.loadOrders();
+            } else if (this.guestOrdersEmail) {
+                await this.loadGuestOrders({ notify: false });
+            } else {
+                this.ordersGroups = [];
+                this.ordersError = '';
+                this.ordersLoading = false;
+            }
+        },
+
+        closeOrdersModal() {
+            this.ordersModalOpen = false;
+            this.ordersExpandedId = null;
+            if (!this.accountDrawerOpen && !this.guestWarnOpen) {
+                document.documentElement.classList.remove('overflow-hidden');
+            }
+        },
+
+        showGuestCartWarning() {
+            this.guestWarnEmail = readGuestEmail();
+            this.guestWarnError = '';
+            this.guestWarnStatus = '';
+            this.guestWarnBusy = false;
+            this.guestWarnOpen = true;
+            document.documentElement.classList.add('overflow-hidden');
+        },
+
+        closeGuestCartWarning() {
+            this.guestWarnOpen = false;
+            this.guestWarnBusy = false;
+            if (!this.accountDrawerOpen && !this.ordersModalOpen) {
+                document.documentElement.classList.remove('overflow-hidden');
+            }
+        },
+
+        async continueAsGuestFromWarning({ sendEmail = false } = {}) {
+            if (this.guestWarnBusy) return;
+            this.guestWarnError = '';
+            this.guestWarnStatus = '';
+            const email = String(this.guestWarnEmail || '').trim().toLowerCase();
+            if (sendEmail) {
+                if (!email.includes('@')) {
+                    this.guestWarnError = storefrontL(
+                        'Masukkan email yang valid untuk mengirim salinan keranjang.',
+                        'Enter a valid email to send your cart copy.',
+                    );
+                    return;
+                }
+                this.guestWarnBusy = true;
+                try {
+                    await this.emailGuestCartSnapshot(email);
+                    writeGuestEmail(email);
+                    this.guestOrdersEmail = email;
+                    this.guestTrackEmail = email;
+                    this.guestWarnStatus = storefrontL(
+                        'Salinan keranjang sudah dikirim ke email Anda.',
+                        'A cart copy has been sent to your email.',
+                    );
+                } catch (err) {
+                    this.guestWarnError =
+                        err instanceof Error
+                            ? err.message
+                            : storefrontL('Gagal mengirim email keranjang.', 'Failed to send cart email.');
+                    this.guestWarnBusy = false;
+                    return;
+                }
+                this.guestWarnBusy = false;
+            } else if (email.includes('@')) {
+                writeGuestEmail(email);
+                this.guestOrdersEmail = email;
+                this.guestTrackEmail = email;
+            }
+            this.closeGuestCartWarning();
+            await this.openAccountDrawer('cart');
+        },
+
+        goGuestAuth(path) {
+            this.closeGuestCartWarning();
+            this.closeAccountDrawer();
+            this.closeOrdersModal();
+            softNavigate(path);
+        },
+
+        async emailGuestCartSnapshot(emailOverride = null) {
+            const email = String(emailOverride || this.guestEmailInput || readGuestEmail() || '')
+                .trim()
+                .toLowerCase();
+            if (!email.includes('@')) {
+                throw new Error(
+                    storefrontL('Masukkan email yang valid.', 'Enter a valid email.'),
+                );
+            }
+            const items = readGuestCart();
+            if (!items.length) {
+                throw new Error(
+                    storefrontL('Keranjang masih kosong.', 'Cart is still empty.'),
+                );
+            }
+            const res = await fetch('/api/guest/cart-email', {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    email,
+                    items: items.map((row) => ({
+                        product_id: Number(row.product_id),
+                        title: row.title || `Produk #${row.product_id}`,
+                        quantity: Number(row.quantity) || 1,
+                        price: Number(row.price) || 0,
+                        image: row.image || '',
+                    })),
+                }),
+            });
+            const data = await readApiJson(res);
+            if (!res.ok) {
+                throw new Error(
+                    apiErrorMessage(data, storefrontL('Gagal mengirim email keranjang.', 'Failed to send cart email.')),
+                );
+            }
+            writeGuestEmail(email);
+            return data;
+        },
+
+        async sendGuestCartEmailFromDrawer() {
+            if (this.guestCartEmailBusy) return;
+            this.guestCartEmailBusy = true;
+            this.guestCartEmailStatus = '';
+            try {
+                await this.emailGuestCartSnapshot(this.guestEmailInput);
+                this.guestCartEmailStatus = storefrontL(
+                    'Salinan keranjang terkirim. Cek inbox email Anda.',
+                    'Cart copy sent. Check your email inbox.',
+                );
+            } catch (err) {
+                this.guestCartEmailStatus =
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL('Gagal mengirim email keranjang.', 'Failed to send cart email.');
+            } finally {
+                this.guestCartEmailBusy = false;
+            }
+        },
+
+        async loadOrders() {
+            this.ordersLoading = true;
+            this.ordersError = '';
+            try {
+                if (!this.isLoggedIn) {
+                    await this.loadGuestOrders({ notify: false });
+                    return;
+                }
+                const res = await fetch('/api/shopping-history?locale=id', {
+                    headers: authHeaders(true),
+                    credentials: 'same-origin',
+                });
+                if (res.status === 401) {
+                    clearAuthSession();
+                    this.readAuth();
+                    await this.loadGuestOrders({ notify: false });
+                    return;
+                }
+                const data = await readApiJson(res);
+                if (!res.ok) {
+                    throw new Error(
+                        apiErrorMessage(data, storefrontL('Gagal memuat pesanan.', 'Failed to load orders.')),
+                    );
+                }
+                const list = Array.isArray(data) ? data : data.data || [];
+                this.ordersGroups = groupOrdersByCreatedAt(list);
+                cacheHistoryGroups(this.ordersGroups);
+                emitEvomiEvent('history_updated');
+            } catch (err) {
+                this.ordersError =
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL('Gagal memuat pesanan.', 'Failed to load orders.');
+                this.ordersGroups = [];
+            } finally {
+                this.ordersLoading = false;
+            }
+        },
+
+        async loadGuestOrders({ notify = false } = {}) {
+            const email = String(this.guestOrdersEmail || readGuestEmail() || '')
+                .trim()
+                .toLowerCase();
+            if (!email.includes('@')) {
+                this.ordersGroups = [];
+                this.ordersError = storefrontL(
+                    'Masukkan email yang dipakai saat checkout guest.',
+                    'Enter the email used for guest checkout.',
+                );
+                this.ordersLoading = false;
+                return;
+            }
+            this.ordersLoading = true;
+            this.ordersError = '';
+            try {
+                const res = await fetch('/api/guest/orders', {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        email,
+                        notify: Boolean(notify),
+                        locale: 'id',
+                    }),
+                });
+                const data = await readApiJson(res);
+                if (!res.ok) {
+                    throw new Error(
+                        apiErrorMessage(data, storefrontL('Gagal memuat pesanan guest.', 'Failed to load guest orders.')),
+                    );
+                }
+                writeGuestEmail(email);
+                const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+                this.ordersGroups = groupOrdersByCreatedAt(list);
+                cacheHistoryGroups(this.ordersGroups);
+                if (notify) {
+                    this.showOrdersToast(
+                        storefrontL('Ringkasan pesanan telah dikirim ke email.', 'Order summary sent to your email.'),
+                    );
+                }
+            } catch (err) {
+                this.ordersGroups = [];
+                this.ordersError =
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL('Gagal memuat pesanan guest.', 'Failed to load guest orders.');
+            } finally {
+                this.ordersLoading = false;
+            }
+        },
+
+        async submitDrawerGuestEmailTrack() {
+            const email = String(this.guestTrackEmail || '').trim().toLowerCase();
+            if (!email.includes('@')) {
+                this.guestTrackEmailError = storefrontL(
+                    'Masukkan email yang valid.',
+                    'Enter a valid email.',
+                );
+                return;
+            }
+            this.guestTrackEmailError = '';
+            writeGuestEmail(email);
+            this.drawerTrackLoading = true;
+            try {
+                const res = await fetch('/api/guest/trackings', {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        email,
+                        notify: Boolean(this.guestTrackNotify),
+                        locale: 'id',
+                    }),
+                });
+                const data = await readApiJson(res);
+                if (!res.ok) {
+                    throw new Error(
+                        apiErrorMessage(data, storefrontL('Gagal memuat pelacakan.', 'Failed to load tracking.')),
+                    );
+                }
+                const list = Array.isArray(data?.data) ? data.data : [];
+                this.drawerTrackItems = list.map((row) => ({
+                    ...row,
+                    imageUrl: mediaUrl(row.image) || productImageFallback(row),
+                    timeline: (row.timeline || []).map((entry) => {
+                        const stamp = this.formatDrawerTrackTime(entry.time);
+                        return {
+                            ...entry,
+                            timeLabel: stamp.time,
+                            dateLabel: stamp.date,
+                            place: entry.description || '',
+                        };
+                    }),
+                }));
+                this.drawerTrackSelectedId = this.drawerTrackItems[0]?.id || null;
+                if (!this.drawerTrackItems.length) {
+                    this.guestTrackEmailError = storefrontL(
+                        'Belum ada pesanan untuk email ini.',
+                        'No orders found for this email.',
+                    );
+                }
+            } catch (err) {
+                this.drawerTrackItems = [];
+                this.drawerTrackSelectedId = null;
+                this.guestTrackEmailError =
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL('Gagal memuat pelacakan.', 'Failed to load tracking.');
+            } finally {
+                this.drawerTrackLoading = false;
+            }
+        },
+
+        toggleOrderDetail(group) {
+            const id = group?.groupId;
+            this.ordersExpandedId = this.ordersExpandedId === id ? null : id;
+        },
+
+        goOrderDetailPage(group) {
+            if (!group?.groupId) return;
+            this.closeOrdersModal();
+            const id = encodeURIComponent(group.groupId);
+            if (!this.isLoggedIn) {
+                softNavigate(`/pengiriman/${id}`);
+                return;
+            }
+            softNavigate(`/profile/history/${id}`);
+        },
+
+        showOrdersToast(message, ms = 2200) {
+            this.ordersToast = message;
+            if (this._ordersToastTimer) window.clearTimeout(this._ordersToastTimer);
+            this._ordersToastTimer = window.setTimeout(() => {
+                this.ordersToast = '';
+            }, ms);
+        },
+
+        async requestOrderConfirm(group) {
+            if (!group?.canConfirm || !Array.isArray(group.items)) return;
+            const ok = window.confirm(
+                storefrontL(
+                    'Apakah Anda yakin telah menerima paket pesanan ini dengan baik? Jika ya, pesanan akan diselesaikan.',
+                    'Have you received this package in good condition? If yes, the order will be completed.',
+                ),
+            );
+            if (!ok) return;
+            try {
+                for (const item of group.items) {
+                    const res = await fetch(`/api/orders/${item.id}/confirm`, {
+                        method: 'PATCH',
+                        headers: authHeaders(true),
+                        credentials: 'same-origin',
+                    });
+                    if (!res.ok) {
+                        const data = await readApiJson(res);
+                        throw new Error(
+                            apiErrorMessage(data, storefrontL('Gagal konfirmasi pesanan.', 'Failed to confirm order.')),
+                        );
+                    }
+                }
+                emitEvomiEvent('history_updated');
+                await this.loadOrders();
+                this.showOrdersToast(
+                    storefrontL('Pesanan telah berhasil diselesaikan.', 'Order completed successfully.'),
+                );
+            } catch (err) {
+                this.showOrdersToast(
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL('Gagal konfirmasi pesanan.', 'Failed to confirm order.'),
+                );
+            }
+        },
+
+        async loadDrawerCart() {
+            this.drawerCartLoading = true;
+            try {
+                if (!getAuthToken()) {
+                    this.drawerCartItems = readGuestCart().map((row) => this.mapDrawerCartItem(row, { isGuest: true }));
+                    return;
+                }
+                const res = await fetch('/api/carts?locale=id', {
+                    headers: authHeaders(true),
+                    credentials: 'same-origin',
+                });
+                if (res.status === 401) {
+                    clearAuthSession();
+                    this.readAuth();
+                    this.drawerCartItems = readGuestCart().map((row) => this.mapDrawerCartItem(row, { isGuest: true }));
+                    return;
+                }
+                const data = await readApiJson(res);
+                const list = Array.isArray(data) ? data : data.data || [];
+                this.drawerCartItems = list.map((row) => this.mapDrawerCartItem(row));
+            } catch {
+                this.drawerCartItems = [];
+            } finally {
+                this.drawerCartLoading = false;
+            }
+        },
+
+        async drawerChangeQty(item, delta) {
+            const next = (Number(item.quantity) || 1) + delta;
+            if (next < 1) {
+                await this.drawerRemoveItem(item);
+                return;
+            }
+            if (item.stock && next > item.stock) return;
+            if (this.drawerUpdatingId === item.id) return;
+
+            const prevQty = item.quantity;
+            this.drawerUpdatingId = item.id;
+            item.quantity = next;
+            item.lineTotalLabel = formatRupiah(item.unitPrice * next);
+            try {
+                if (item.isGuest || !getAuthToken()) {
+                    const items = readGuestCart().map((row) => {
+                        if (Number(row.product_id) === Number(item.product_id)) {
+                            return { ...row, quantity: next };
+                        }
+                        return row;
+                    });
+                    writeGuestCart(items);
+                    this.badges.cart = guestCartCount();
+                } else {
+                    const res = await fetch(`/api/carts/${item.id}`, {
+                        method: 'PUT',
+                        headers: authHeaders(true),
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ quantity: next }),
+                    });
+                    const data = await readApiJson(res);
+                    if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Gagal mengubah jumlah.', 'Failed to update quantity.')));
+                    emitEvomiEvent('cart_updated');
+                }
+            } catch {
+                item.quantity = prevQty;
+                item.lineTotalLabel = formatRupiah(item.unitPrice * prevQty);
+            } finally {
+                this.drawerUpdatingId = null;
+            }
+        },
+
+        async drawerRemoveItem(item) {
+            if (this.drawerUpdatingId === item.id) return;
+            this.drawerUpdatingId = item.id;
+            try {
+                if (item.isGuest || !getAuthToken()) {
+                    writeGuestCart(readGuestCart().filter((row) => Number(row.product_id) !== Number(item.product_id)));
+                    this.drawerCartItems = this.drawerCartItems.filter((i) => i.id !== item.id);
+                    this.badges.cart = guestCartCount();
+                } else {
+                    const res = await fetch(`/api/carts/${item.id}`, {
+                        method: 'DELETE',
+                        headers: authHeaders(true),
+                        credentials: 'same-origin',
+                    });
+                    if (!res.ok) {
+                        const data = await readApiJson(res);
+                        throw new Error(apiErrorMessage(data, storefrontL('Gagal menghapus item.', 'Failed to remove item.')));
+                    }
+                    this.drawerCartItems = this.drawerCartItems.filter((i) => i.id !== item.id);
+                    emitEvomiEvent('cart_updated');
+                }
+            } catch {
+                /* keep item on failure */
+            } finally {
+                this.drawerUpdatingId = null;
+            }
+        },
+
+        goDrawerLink(href, requireAuth = false) {
+            if (requireAuth && !this.isLoggedIn) {
+                this.closeAccountDrawer();
+                softNavigate('/login');
+                return;
+            }
+            this.closeAccountDrawer();
+            softNavigate(href);
+        },
+
+        goDrawerCheckout() {
+            if (!this.drawerCartItems.length) return;
+            this.closeAccountDrawer();
+            try {
+                sessionStorage.setItem('evomi_checkout_qs', 'type=cart');
+            } catch {
+                /* ignore */
+            }
+            softNavigate('/checkout?type=cart');
+        },
+
         askLogout() {
             this.open = false;
             this.accountMenuOpen = false;
+            this.closeAccountDrawer();
+            this.closeOrdersModal();
             this.logoutModal = { open: true, type: 'confirm' };
         },
 
@@ -1558,36 +3143,70 @@ document.addEventListener('alpine:init', () => {
             softNavigate(`/checkout?${qs}`);
         },
 
-        async addToCart() {
+        async addToCart(event) {
             if (this.isOutOfStock || this.actionBusy) return;
-            if (!getAuthToken()) {
-                this.requireLogin(storefrontL('Silakan login terlebih dahulu untuk menambah ke keranjang.', 'Please log in first to add items to cart.'));
-                return;
-            }
             this.actionBusy = true;
             this.statusMessage = storefrontL('Menambah...', 'Adding...');
             this.statusTone = 'info';
+            const sourceEl =
+                event?.currentTarget ||
+                document.querySelector('[data-belanja-add-cart]') ||
+                document.querySelector('[data-belanja-hero-image]');
+            const imageUrl = this.gallery?.[0] || this.shareImage || '';
+            const accent = this.accent || '#1172BA';
             try {
-                const res = await fetch('/api/carts', {
-                    method: 'POST',
-                    headers: authHeaders(true),
-                    credentials: 'same-origin',
-                    body: JSON.stringify({
-                        product_id: this.id,
+                if (getAuthToken()) {
+                    const res = await fetch('/api/carts', {
+                        method: 'POST',
+                        headers: authHeaders(true),
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            product_id: this.id,
+                            quantity: this.quantity,
+                        }),
+                    });
+                    const data = await readApiJson(res);
+                    if (res.status === 401) {
+                        clearAuthSession();
+                        upsertGuestCartItem({
+                            productId: this.id,
+                            quantity: this.quantity,
+                            title: this.title,
+                            price: this.price,
+                            image: imageUrl,
+                            accent,
+                            stock: this.stock,
+                        });
+                        this.flashStatus(storefrontL('Ditambahkan ke keranjang!', 'Added to cart!'), 'success');
+                        await flyToCart({ imageUrl, accent, sourceEl });
+                        return;
+                    }
+                    if (!res.ok) {
+                        throw new Error(apiErrorMessage(data, storefrontL('Gagal menambah ke keranjang.', 'Failed to add to cart.')));
+                    }
+                    emitEvomiEvent('cart_updated');
+                } else {
+                    upsertGuestCartItem({
+                        productId: this.id,
                         quantity: this.quantity,
-                    }),
-                });
-                const data = await readApiJson(res);
-                if (res.status === 401) {
-                    clearAuthSession();
-                    this.requireLogin(storefrontL('Sesi habis. Silakan login lagi.', 'Session expired. Please log in again.'));
+                        title: this.title,
+                        price: this.price,
+                        image: imageUrl,
+                        accent,
+                        stock: this.stock,
+                    });
+                    this.flashStatus(storefrontL('Ditambahkan ke keranjang!', 'Added to cart!'), 'success');
+                    await flyToCart({ imageUrl, accent, sourceEl });
+                    window.setTimeout(() => {
+                        const nav = window.__evomiNav;
+                        if (nav && typeof nav.showGuestCartWarning === 'function') {
+                            nav.showGuestCartWarning();
+                        }
+                    }, 200);
                     return;
                 }
-                if (!res.ok) {
-                    throw new Error(apiErrorMessage(data, storefrontL('Gagal menambah ke keranjang.', 'Failed to add to cart.')));
-                }
                 this.flashStatus(storefrontL('Ditambahkan ke keranjang!', 'Added to cart!'), 'success');
-                emitEvomiEvent('cart_updated');
+                await flyToCart({ imageUrl, accent, sourceEl });
             } catch (err) {
                 this.flashStatus(
                     err instanceof Error ? err.message : storefrontL('Gagal menambah ke keranjang.', 'Failed to add to cart.'),
@@ -2541,6 +4160,28 @@ document.addEventListener('alpine:init', () => {
             const token = getAuthToken();
             const user = getAuthUser();
             if (!token || !user) {
+                if (this.activeKey === 'cart') {
+                    this.ready = true;
+                    this.badges = {
+                        cart: guestCartCount(),
+                        wishlist: 0,
+                        history: 0,
+                        payments: 0,
+                        unread: 0,
+                    };
+                    this._onBadge = () => {
+                        this.badges = {
+                            ...this.badges,
+                            cart: guestCartCount(),
+                        };
+                    };
+                    window.addEventListener('cart_updated', this._onBadge);
+                    this.$nextTick(() => {
+                        this.moveIndicator(this.activeKey, false);
+                        bindSoftLinks(this.$el);
+                    });
+                    return;
+                }
                 window.location.replace('/login');
                 return;
             }
@@ -2831,13 +4472,44 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             this.error = '';
             try {
+                if (!getAuthToken()) {
+                    const list = readGuestCart();
+                    this.items = list.map((row) => ({
+                        id: row.id || `guest-${row.product_id}`,
+                        product_id: row.product_id,
+                        title: row.title || `Produk #${row.product_id}`,
+                        imageUrl: row.image || '',
+                        accent: row.accent || '#1172BA',
+                        stock: Number(row.stock ?? 99) || 99,
+                        quantity: Number(row.quantity) || 1,
+                        unitPrice: Number(row.price) || 0,
+                        priceLabel: formatRupiah(Number(row.price) || 0),
+                        lineTotalLabel: formatRupiah((Number(row.price) || 0) * (Number(row.quantity) || 1)),
+                        isGuest: true,
+                    }));
+                    emitEvomiEvent('cart_updated');
+                    return;
+                }
                 const res = await fetch('/api/carts?locale=id', {
                     headers: authHeaders(true),
                     credentials: 'same-origin',
                 });
                 if (res.status === 401) {
                     clearAuthSession();
-                    window.location.replace('/login');
+                    const list = readGuestCart();
+                    this.items = list.map((row) => ({
+                        id: row.id || `guest-${row.product_id}`,
+                        product_id: row.product_id,
+                        title: row.title || `Produk #${row.product_id}`,
+                        imageUrl: row.image || '',
+                        accent: row.accent || '#1172BA',
+                        stock: Number(row.stock ?? 99) || 99,
+                        quantity: Number(row.quantity) || 1,
+                        unitPrice: Number(row.price) || 0,
+                        priceLabel: formatRupiah(Number(row.price) || 0),
+                        lineTotalLabel: formatRupiah((Number(row.price) || 0) * (Number(row.quantity) || 1)),
+                        isGuest: true,
+                    }));
                     return;
                 }
                 const data = await readApiJson(res);
@@ -2870,15 +4542,25 @@ document.addEventListener('alpine:init', () => {
             item.quantity = next;
             item.lineTotalLabel = formatRupiah(item.unitPrice * next);
             try {
-                const res = await fetch(`/api/carts/${item.id}`, {
-                    method: 'PUT',
-                    headers: authHeaders(true),
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ quantity: next }),
-                });
-                const data = await readApiJson(res);
-                if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Gagal mengubah jumlah.', 'Failed to update quantity.')));
-                emitEvomiEvent('cart_updated');
+                if (item.isGuest || !getAuthToken()) {
+                    const items = readGuestCart().map((row) => {
+                        if (Number(row.product_id) === Number(item.product_id)) {
+                            return { ...row, quantity: next };
+                        }
+                        return row;
+                    });
+                    writeGuestCart(items);
+                } else {
+                    const res = await fetch(`/api/carts/${item.id}`, {
+                        method: 'PUT',
+                        headers: authHeaders(true),
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ quantity: next }),
+                    });
+                    const data = await readApiJson(res);
+                    if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Gagal mengubah jumlah.', 'Failed to update quantity.')));
+                    emitEvomiEvent('cart_updated');
+                }
             } catch (err) {
                 item.quantity = prevQty;
                 item.lineTotalLabel = formatRupiah(item.unitPrice * prevQty);
@@ -2896,6 +4578,12 @@ document.addEventListener('alpine:init', () => {
 
         async remove(item) {
             try {
+                if (item.isGuest || !getAuthToken()) {
+                    writeGuestCart(readGuestCart().filter((row) => Number(row.product_id) !== Number(item.product_id)));
+                    this.items = this.items.filter((i) => i.id !== item.id);
+                    this.showToast(storefrontL('Item dihapus dari keranjang.', 'Item removed from cart.'));
+                    return;
+                }
                 const res = await fetch(`/api/carts/${item.id}`, {
                     method: 'DELETE',
                     headers: authHeaders(true),
@@ -3032,7 +4720,7 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async moveToCart(item) {
+        async moveToCart(item, event) {
             if (!getAuthToken()) {
                 this.openError('Silakan login terlebih dahulu untuk menambahkan produk.');
                 return;
@@ -3059,6 +4747,11 @@ document.addEventListener('alpine:init', () => {
                 }
                 emitEvomiEvent('cart_updated');
                 emitEvomiEvent('wishlist_updated');
+                await flyToCart({
+                    imageUrl: item.image || item.product?.image_1 || '',
+                    accent: item.accent || item.product?.color || '#1172BA',
+                    sourceEl: event?.currentTarget || null,
+                });
                 this.showToast('Ditambahkan ke keranjang.');
             } catch (err) {
                 this.openError(err instanceof Error ? err.message : storefrontL('Gagal memindahkan.', 'Failed to move item.'));
@@ -3908,8 +5601,22 @@ document.addEventListener('alpine:init', () => {
         async loadItems(params) {
             if (this.type === 'cart') {
                 if (!getAuthToken()) {
-                    window.location.replace('/login');
-                    throw new Error(storefrontL('Login diperlukan untuk checkout keranjang.', 'Login required for cart checkout.'));
+                    const list = readGuestCart();
+                    this.items = list
+                        .map((row) => ({
+                            id: row.id || `guest-${row.product_id}`,
+                            product_id: row.product_id,
+                            title: row.title || `Produk #${row.product_id}`,
+                            price: Number(row.price) || 0,
+                            quantity: Number(row.quantity || 1),
+                            stock: Number(row.stock ?? 99),
+                            image: row.image || '',
+                            personality_type: '',
+                        }))
+                        .filter((i) => i.product_id);
+                    if (!this.items.length) throw new Error(storefrontL('Keranjang kosong.', 'Cart is empty.'));
+                    this.brand = DEFAULT_THEME_BLUE;
+                    return;
                 }
                 const res = await fetch('/api/carts?locale=id', {
                     headers: authHeaders(true),
@@ -3917,8 +5624,25 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (res.status === 401) {
                     clearAuthSession();
-                    window.location.replace('/login');
-                    throw new Error(storefrontL('Sesi berakhir.', 'Session expired.'));
+                    const list = readGuestCart();
+                    this.items = list
+                        .map((row) => ({
+                            id: row.id || `guest-${row.product_id}`,
+                            product_id: row.product_id,
+                            title: row.title || `Produk #${row.product_id}`,
+                            price: Number(row.price) || 0,
+                            quantity: Number(row.quantity || 1),
+                            stock: Number(row.stock ?? 99),
+                            image: row.image || '',
+                            personality_type: '',
+                        }))
+                        .filter((i) => i.product_id);
+                    if (!this.items.length) {
+                        window.location.replace('/login');
+                        throw new Error(storefrontL('Sesi berakhir.', 'Session expired.'));
+                    }
+                    this.brand = DEFAULT_THEME_BLUE;
+                    return;
                 }
                 const data = await readApiJson(res);
                 const list = Array.isArray(data) ? data : data.data || [];
@@ -4192,7 +5916,7 @@ document.addEventListener('alpine:init', () => {
             if (!(await this.validateForm())) return;
 
             const token = getAuthToken();
-            if (this.type === 'cart' && !token) {
+            if (this.type === 'cart' && !token && !readGuestCart().length && !this.items.length) {
                 window.location.href = '/login';
                 return;
             }
@@ -4217,7 +5941,7 @@ document.addEventListener('alpine:init', () => {
 
         async createPendingOrder(invoiceId, { paymentLabel, channel, provider }) {
             const token = getAuthToken();
-            const isGuestBuyNow = this.type === 'buynow' && !token;
+            const isGuestCheckout = !token;
             const payload = {
                 invoice_id: invoiceId,
                 payment_method: paymentLabel,
@@ -4241,15 +5965,7 @@ document.addEventListener('alpine:init', () => {
                 })),
             };
 
-            if (isGuestBuyNow) {
-                if (payload.items.length !== 1) {
-                    throw new Error(
-                        storefrontL(
-                            'Checkout tamu hanya untuk 1 produk (beli langsung).',
-                            'Guest checkout is only for single-product buy now.',
-                        ),
-                    );
-                }
+            if (isGuestCheckout) {
                 const res = await fetch('/api/checkout/guest', {
                     method: 'POST',
                     headers: {
@@ -4267,6 +5983,7 @@ document.addEventListener('alpine:init', () => {
                         apiErrorMessage(data, storefrontL('Checkout gagal.', 'Checkout failed.')),
                     );
                 }
+                if (this.type === 'cart') writeGuestCart([]);
                 return data;
             }
 
@@ -4934,11 +6651,7 @@ document.addEventListener('alpine:init', () => {
             if (this.processing) return;
 
             const token = getAuthToken();
-            const isGuestBuyNow = this.type === 'buynow' && !token;
-            if (this.type === 'cart' && !token) {
-                window.location.href = '/login';
-                return;
-            }
+            const isGuestCheckout = !token;
 
             this.processing = true;
             let paymentLabel = 'Cash on Delivery';
@@ -4976,15 +6689,7 @@ document.addEventListener('alpine:init', () => {
             };
 
             try {
-                if (isGuestBuyNow) {
-                    if (payload.items.length !== 1) {
-                        throw new Error(
-                            storefrontL(
-                                'Checkout tamu hanya untuk 1 produk (beli langsung).',
-                                'Guest checkout is only for single-product buy now.',
-                            ),
-                        );
-                    }
+                if (isGuestCheckout) {
                     const res = await fetch('/api/checkout/guest', {
                         method: 'POST',
                         headers: {
@@ -5005,6 +6710,7 @@ document.addEventListener('alpine:init', () => {
                             ),
                         );
                     }
+                    if (this.type === 'cart') writeGuestCart([]);
                 } else {
                     const res = await fetch('/api/checkout', {
                         method: 'POST',

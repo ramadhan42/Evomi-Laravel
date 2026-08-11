@@ -41,7 +41,7 @@ class LocaleSeeder extends Seeder
             'tentang' => 'About',
             'belanja' => 'Shop',
             'artikel' => 'Articles',
-            'kuis' => 'Quiz',
+            'kuis' => 'Find Your Scent',
             'login' => 'Login',
             'register' => 'Sign Up',
             'logout' => 'Logout',
@@ -57,7 +57,7 @@ class LocaleSeeder extends Seeder
         $this->put('footer', 'menu', 'beranda', 'string', 'Home');
         $this->put('footer', 'menu', 'belanja', 'string', 'Shop');
         $this->put('footer', 'menu', 'artikel', 'string', 'Articles');
-        $this->put('footer', 'menu', 'kuis', 'string', 'Quiz');
+        $this->put('footer', 'menu', 'kuis', 'string', 'Find Your Scent');
         $this->put('footer', 'help', 'heading', 'string', 'Help');
         $this->put('footer', 'help', 'faq', 'string', 'FAQ');
         $this->put('footer', 'help', 'pengiriman', 'string', 'Shipping Status');
@@ -149,7 +149,7 @@ class LocaleSeeder extends Seeder
         $this->put('beranda', 'seventh', 'en_l2', 'string', 'scent by');
         $this->put('beranda', 'seventh', 'en_l3', 'string', 'playing the ');
         $this->put('beranda', 'seventh', 'en_l4', 'string', 'quiz');
-        $this->put('beranda', 'seventh', 'cta_label', 'string', 'Start Quiz');
+        $this->put('beranda', 'seventh', 'cta_label', 'string', 'Find Your Scent');
         $this->put('beranda', 'seventh', 'label1_text', 'string', 'Prestige');
         $this->put('beranda', 'seventh', 'label1_title', 'string', 'Purpose Prestige');
         $this->put('beranda', 'seventh', 'label2_text', 'string', 'Calm');

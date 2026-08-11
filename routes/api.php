@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CmsController;
 use App\Http\Controllers\Api\DisclaimerController;
+use App\Http\Controllers\Api\GuestController;
 use App\Http\Controllers\Api\KurirController;
 use App\Http\Controllers\Api\NewsletterController;
 use App\Http\Controllers\Api\OrderController;
@@ -51,6 +52,9 @@ Route::post('/contact/mark-read', [ContactMessageController::class, 'markUserRea
 Route::get('/trackings/{resi}', [OrderTrackingController::class, 'show']);
 
 Route::post('/checkout/guest', [OrderController::class, 'guestCheckout']);
+Route::post('/guest/cart-email', [GuestController::class, 'emailCart'])->middleware('throttle:8,1');
+Route::post('/guest/orders', [GuestController::class, 'orders'])->middleware('throttle:12,1');
+Route::post('/guest/trackings', [GuestController::class, 'trackings'])->middleware('throttle:12,1');
 
 Route::get('/disclaimers', [DisclaimerController::class, 'index']);
 Route::get('/disclaimers/{id}', [DisclaimerController::class, 'show']);
@@ -111,6 +115,7 @@ Route::middleware(['auth:sanctum', 'last.seen'])->group(function () {
     Route::get('/shopping-history', [UserController::class, 'shoppingHistory']);
     Route::get('/badges', [UserController::class, 'badges']);
     Route::get('/payments/pending', [OrderPaymentController::class, 'pending']);
+    Route::get('/my-trackings', [OrderTrackingController::class, 'mine']);
 
     Route::post('/checkout', [OrderController::class, 'checkout']);
     Route::patch('/orders/{id}/confirm', [OrderController::class, 'confirmReceipt']);
