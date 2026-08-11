@@ -22,6 +22,9 @@ class BerandaCmsDefaultsTest extends TestCase
         $this->assertSame('42px', $map['hero|headline_1_fs_desktop'][1]);
         $this->assertSame('600', $map['hero|headline_1_font_weight'][1]);
         $this->assertSame('1', $map['hero|headline_1_max_lines'][1]);
+        $this->assertSame('0.28em', $map['hero|headline_2_gap_horizontal_mobile'][1]);
+        $this->assertSame('0.28em', $map['hero|headline_4_gap_horizontal_desktop'][1]);
+        $this->assertSame('0', $map['hero|headline_1_gap_horizontal_mobile'][1]);
 
         $this->assertSame("Rebel\nBrave", $map['second|card3_name'][1]);
         $this->assertSame('16px', $map['second|card1_name_fs_mobile'][1]);

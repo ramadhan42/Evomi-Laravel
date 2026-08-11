@@ -55,10 +55,11 @@
                         <button
                             type="button"
                             role="tab"
+                            data-drawer-tab="cart"
                             class="evomi-account-drawer__tab"
                             :class="{ 'is-active': drawerTab === 'cart' }"
                             :aria-selected="(drawerTab === 'cart').toString()"
-                            @click="drawerTab = 'cart'"
+                            @click="switchDrawerTab('cart')"
                         >
                             @include('partials.icons.bag', ['class' => 'w-3.5 h-3.5 shrink-0'])
                             <span>{{ evomi_l('Keranjang', 'Cart') }}</span>
@@ -72,10 +73,11 @@
                         <button
                             type="button"
                             role="tab"
+                            data-drawer-tab="track"
                             class="evomi-account-drawer__tab"
                             :class="{ 'is-active': drawerTab === 'track' }"
                             :aria-selected="(drawerTab === 'track').toString()"
-                            @click="drawerTab = 'track'"
+                            @click="switchDrawerTab('track')"
                         >
                             @include('partials.icons.truck', ['class' => 'w-3.5 h-3.5 shrink-0'])
                             <span>{{ evomi_l('Lacak Pesanan', 'Track Order') }}</span>
@@ -91,7 +93,17 @@
 
                 <div class="evomi-account-drawer__body flex-1 min-h-0 overflow-y-auto overscroll-contain px-5">
                     {{-- Keranjang tab --}}
-                    <div x-show="drawerTab === 'cart'" x-cloak class="pb-4 min-h-full flex flex-col">
+                    <div
+                        x-show="drawerTab === 'cart'"
+                        x-cloak
+                        class="pb-4 min-h-full flex flex-col"
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 translate-x-3"
+                        x-transition:enter-end="opacity-100 translate-x-0"
+                        x-transition:leave="transition ease-in duration-200"
+                        x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0"
+                    >
                         <div
                             x-show="!isLoggedIn"
                             x-cloak
@@ -178,7 +190,17 @@
                     </div>
 
                     {{-- Lacak Pesanan tab (data dari dashboard tracking/status) --}}
-                    <div x-show="drawerTab === 'track'" x-cloak class="pb-6 space-y-4">
+                    <div
+                        x-show="drawerTab === 'track'"
+                        x-cloak
+                        class="pb-6 space-y-4"
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 translate-x-3"
+                        x-transition:enter-end="opacity-100 translate-x-0"
+                        x-transition:leave="transition ease-in duration-200"
+                        x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0"
+                    >
                         {{-- Guest: form no resi / no pesanan (hasil tetap di sidebar) --}}
                         <div x-show="!isLoggedIn" x-cloak class="evomi-account-drawer__track-card">
                             <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1172BA]/10 text-[#1172BA] mb-3">
@@ -226,7 +248,7 @@
                             <button
                                 type="button"
                                 class="evomi-account-drawer__btn-primary mt-4 rounded-2xl px-5 py-2.5 text-[12px] font-bold text-white"
-                                @click="drawerTab = 'cart'"
+                                @click="switchDrawerTab('cart')"
                             >{{ evomi_l('Belanja dulu', 'Shop first') }}</button>
                         </div>
 

@@ -732,36 +732,58 @@ function emitEvomiEvent(name) {
 }
 
 /**
- * YouTube-live style floating stars that rise, sway, then streak into the cart.
- * Smooth multi-phase motion (float up → falling-star arc → cart catch).
+ * YouTube-live style floating stars that rise, sway, then streak into a target.
+ * Used for cart catch and drawer "Lacak Pesanan" transitions.
  *
- * @param {{ imageUrl?: string, accent?: string, sourceEl?: Element|null, particleCount?: number }} opts
+ * @param {{ imageUrl?: string, accent?: string, sourceEl?: Element|null, targetEl?: Element|null, particleCount?: number, mode?: 'cart'|'track' }} opts
  */
 function flyToCart(opts = {}) {
+    return flyStarsToTarget({
+        ...opts,
+        mode: opts.mode || 'cart',
+        targetEl: opts.targetEl || getVisibleCartButton(),
+    });
+}
+
+/**
+ * @param {{ imageUrl?: string, accent?: string, sourceEl?: Element|null, targetEl?: Element|null, particleCount?: number, mode?: 'cart'|'track' }} opts
+ */
+function flyStarsToTarget(opts = {}) {
     const {
         imageUrl = '',
         accent = '#1172BA',
         sourceEl = null,
+        targetEl = null,
         particleCount = null,
+        mode = 'cart',
     } = opts;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const cart = getVisibleCartButton();
+    const target = targetEl || getVisibleCartButton();
 
-    if (reduceMotion || !cart) {
-        bumpCartCatch(cart);
+    if (reduceMotion || !target) {
+        if (mode === 'cart') bumpCartCatch(target);
+        else bumpDrawerTabCatch('track');
         return Promise.resolve();
     }
 
     const fromRect = resolveFlySourceRect(sourceEl);
-    const toRect = cart.getBoundingClientRect();
+    const toRect = target.getBoundingClientRect();
     if (toRect.width < 2 || toRect.height < 2) {
-        bumpCartCatch(cart);
+        if (mode === 'cart') bumpCartCatch(target);
+        else bumpDrawerTabCatch('track');
         return Promise.resolve();
+    }
+
+    if (mode === 'cart' || target.classList.contains('nav-cart-btn')) {
+        setCartMagnet(target, true);
+    } else {
+        target.classList.add('is-magnet');
     }
 
     const layer = document.createElement('div');
     layer.className = 'evomi-cart-fly';
+    layer.dataset.flyMode = mode;
     layer.setAttribute('aria-hidden', 'true');
     document.body.appendChild(layer);
 
@@ -771,90 +793,159 @@ function flyToCart(opts = {}) {
     const endY = toRect.top + toRect.height / 2;
 
     const isMobile = window.matchMedia('(max-width: 767px)').matches;
-    const count = particleCount ?? (isMobile ? 12 : 16);
-    const floatH = isMobile ? 110 : 160;
-
+    const count = particleCount ?? (mode === 'cart'
+        ? 0
+        : (isMobile ? 10 : 14));
+    const floatH = mode === 'cart'
+        ? (isMobile ? 120 : 170)
+        : (isMobile ? 110 : 160);
     const jobs = [];
+    const palette = reactionPalette(accent);
 
-    // Soft product orb (subtle, not the focus — stars are)
-    if (imageUrl) {
+    if (mode === 'cart') {
         const thumb = document.createElement('div');
-        thumb.className = 'evomi-cart-fly__orb';
+        thumb.className = 'evomi-cart-fly__orb evomi-cart-fly__orb--hero';
         thumb.style.setProperty('--fly-accent', accent);
-        const img = document.createElement('img');
-        img.src = imageUrl;
-        img.alt = '';
-        img.draggable = false;
-        thumb.appendChild(img);
+        if (imageUrl) {
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.alt = '';
+            img.draggable = false;
+            thumb.appendChild(img);
+        } else {
+            thumb.classList.add('evomi-cart-fly__orb--empty');
+            thumb.innerHTML = REACTION_STAR_SVG;
+        }
         layer.appendChild(thumb);
         jobs.push(
-            animateCartStar(thumb, {
+            animateReactionParticle(thumb, {
                 startX,
                 startY,
                 endX,
                 endY,
-                floatH: floatH * 0.55,
-                sway: 18,
+                floatH: floatH * 0.7,
+                sway: isMobile ? 22 : 34,
                 delay: 0,
                 duration: isMobile ? 980 : 1180,
-                sizeScale: isMobile ? 0.9 : 1,
-                rotate: 12,
+                sizeScale: isMobile ? 1.05 : 1.2,
+                rotate: 14,
                 isOrb: true,
+                wobble: isMobile ? 12 : 18,
             }),
         );
+    } else {
+        for (let i = 0; i < count; i++) {
+            const kind = REACTION_KINDS[i % REACTION_KINDS.length];
+            const color = palette[i % palette.length];
+            const el = document.createElement('span');
+            el.className = `evomi-cart-fly__react evomi-cart-fly__react--${kind.key} evomi-cart-fly__react--tone${i % 5}`;
+            el.style.setProperty('--fly-accent', color);
+            el.style.setProperty('--react-face', color);
+            el.innerHTML =
+                `<span class="evomi-cart-fly__react-bubble" aria-hidden="true"></span>` +
+                `<span class="evomi-cart-fly__react-icon">${kind.svg}</span>`;
+            layer.appendChild(el);
+
+            const side = i % 2 === 0 ? -1 : 1;
+            const sway = (isMobile ? 48 : 68) * side * (0.55 + (i % 5) * 0.14) + (Math.random() * 18 - 9);
+            const sizeScale = 0.55 + (i % 6) * 0.1 + Math.random() * 0.08;
+            const delay = 40 + i * (isMobile ? 55 : 70);
+            const duration = (isMobile ? 1180 : 1420) + (i % 5) * 110 + Math.random() * 80;
+            const float = floatH * (0.72 + (i % 5) * 0.09) + Math.random() * 24;
+            const rotate = side * (12 + (i % 4) * 8);
+            const wobble = (isMobile ? 18 : 28) * (0.6 + (i % 3) * 0.2);
+
+            jobs.push(
+                animateReactionParticle(el, {
+                    startX: startX + (Math.random() * 28 - 14),
+                    startY: startY + (Math.random() * 16 - 6),
+                    endX: endX + (Math.random() * 12 - 6),
+                    endY: endY + (Math.random() * 10 - 5),
+                    floatH: float,
+                    sway,
+                    delay,
+                    duration,
+                    sizeScale,
+                    rotate,
+                    isOrb: false,
+                    wobble,
+                }),
+            );
+        }
     }
 
-    for (let i = 0; i < count; i++) {
-        const star = document.createElement('span');
-        const variant = i % 4;
-        star.className = `evomi-cart-fly__star evomi-cart-fly__star--${variant}`;
-        star.style.setProperty('--fly-accent', accent);
-        star.innerHTML = CART_STAR_SVG;
-        layer.appendChild(star);
-
-        const side = i % 2 === 0 ? -1 : 1;
-        const sway = (isMobile ? 36 : 52) * side * (0.45 + (i % 5) * 0.12);
-        const sizeScale = 0.55 + (i % 5) * 0.12;
-        const delay = 40 + i * (isMobile ? 55 : 70);
-        const duration = (isMobile ? 1050 : 1280) + (i % 4) * 90;
-        const float = floatH * (0.75 + (i % 4) * 0.08);
-        const rotate = side * (80 + (i % 6) * 28);
-
-        jobs.push(
-            animateCartStar(star, {
-                startX: startX + (Math.random() * 20 - 10),
-                startY: startY + (Math.random() * 12 - 6),
-                endX: endX + (Math.random() * 10 - 5),
-                endY: endY + (Math.random() * 8 - 4),
-                floatH: float,
-                sway,
-                delay,
-                duration,
-                sizeScale,
-                rotate,
-                isOrb: false,
-            }),
-        );
-    }
-
-    // Catch pulse slightly before the last stars arrive
-    const catchAt = (isMobile ? 900 : 1100) + count * 20;
-    window.setTimeout(() => bumpCartCatch(cart), catchAt);
+    const catchAt = mode === 'cart'
+        ? (isMobile ? 720 : 880)
+        : ((isMobile ? 980 : 1180) + count * 24);
+    window.setTimeout(() => {
+        if (mode === 'cart' || target.classList.contains('nav-cart-btn')) {
+            bumpCartCatch(target, accent);
+        } else {
+            bumpDrawerTabCatch(mode === 'track' ? 'track' : 'cart', accent);
+        }
+        spawnCatchSparkles(target, accent, mode === 'cart' ? 0 : 10);
+    }, catchAt);
 
     return Promise.allSettled(jobs).then(() => {
         layer.remove();
+        if (mode === 'cart' || target.classList.contains('nav-cart-btn')) {
+            setCartMagnet(target, false);
+        } else {
+            target.classList.remove('is-magnet');
+        }
     });
 }
 
-const CART_STAR_SVG =
+function reactionPalette(accent) {
+    const base = String(accent || '#1172BA');
+    return [
+        base,
+        '#FF5A7A', // love / YT like
+        '#FFB020', // wow / warm
+        '#5AC8FA', // like blue
+        '#A78BFA', // soft violet
+        '#34D399', // care / soft green
+        '#FFFFFF',
+    ];
+}
+
+const REACTION_STAR_SVG =
     '<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true" focusable="false">' +
-    '<path fill="currentColor" d="M12 1.6l2.35 6.55h6.9l-5.58 4.05 2.13 6.55L12 14.7l-5.8 4.05 2.13-6.55-5.58-4.05h6.9L12 1.6z"/>' +
+    '<path fill="currentColor" d="M12 2.1l2.55 6.2 6.75.55-5.15 4.45 1.55 6.55L12 16.7 6.3 19.85l1.55-6.55L2.7 8.85l6.75-.55L12 2.1z"/>' +
     '</svg>';
 
+const REACTION_HEART_SVG =
+    '<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true" focusable="false">' +
+    '<path fill="currentColor" d="M12 21.2s-7.4-4.55-9.7-9.05C.5 8.9 1.85 5.45 5.1 4.55c1.85-.5 3.75.15 5.05 1.55C11.45 4.7 13.35 4.05 15.2 4.55c3.25.9 4.6 4.35 2.8 7.6C19.4 16.65 12 21.2 12 21.2z"/>' +
+    '</svg>';
+
+const REACTION_SPARK_SVG =
+    '<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true" focusable="false">' +
+    '<path fill="currentColor" d="M12 1.5l1.55 7.05L20.5 12l-6.95 3.45L12 22.5l-1.55-7.05L3.5 12l6.95-3.45L12 1.5z"/>' +
+    '</svg>';
+
+const REACTION_BURST_SVG =
+    '<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true" focusable="false">' +
+    '<path fill="currentColor" d="M12 3.2l1.2 4.35 4.55.2-3.55 2.85 1.15 4.4L12 12.9 8.65 15l1.15-4.4L6.25 7.75l4.55-.2L12 3.2zm0 9.05l.55 2 2.05.1-1.6 1.3.5 2L12 16.4l-1.55 1.25.5-2-1.6-1.3 2.05-.1.55-2z"/>' +
+    '</svg>';
+
+const REACTION_KINDS = [
+    { key: 'star', svg: REACTION_STAR_SVG },
+    { key: 'heart', svg: REACTION_HEART_SVG },
+    { key: 'spark', svg: REACTION_SPARK_SVG },
+    { key: 'star', svg: REACTION_STAR_SVG },
+    { key: 'burst', svg: REACTION_BURST_SVG },
+    { key: 'heart', svg: REACTION_HEART_SVG },
+];
+
+const CART_STAR_SVG = REACTION_STAR_SVG;
+const TRACK_STAR_SVG = REACTION_SPARK_SVG;
+
 /**
- * YouTube-like float up with sway, then falling-star arc into cart.
+ * Facebook reaction / YouTube-live like motion:
+ * pop → float up with sway → hang → swoop into cart.
  */
-function animateCartStar(el, cfg) {
+function animateReactionParticle(el, cfg) {
     const {
         startX,
         startY,
@@ -867,75 +958,97 @@ function animateCartStar(el, cfg) {
         sizeScale,
         rotate,
         isOrb,
+        wobble = 20,
     } = cfg;
 
+    const rise1X = startX + sway * 0.35;
+    const rise1Y = startY - floatH * 0.38;
     const peakX = startX + sway;
     const peakY = startY - floatH;
-    // Control point for falling-star diagonal into cart
-    const midX = peakX + (endX - peakX) * 0.42 + sway * 0.25;
-    const midY = peakY + (endY - peakY) * 0.35;
+    const hangX = peakX + wobble * 0.35;
+    const hangY = peakY - 8;
+    const midX = hangX + (endX - hangX) * 0.48;
+    const midY = hangY + (endY - hangY) * 0.42;
 
-    const pop = isOrb ? 0.92 : 0.35 * sizeScale;
-    const floatScale = isOrb ? 0.78 : 0.95 * sizeScale;
-    const endScale = isOrb ? 0.12 : 0.08;
+    const pop = isOrb ? 0.9 : 0.42 * sizeScale;
+    const floatScale = isOrb ? 0.76 : 1.05 * sizeScale;
+    const endScale = isOrb ? 0.12 : 0.1;
 
     el.style.left = '0px';
     el.style.top = '0px';
     el.style.opacity = '0';
-    el.style.transform = `translate(${startX}px, ${startY}px) translate(-50%, -50%) scale(${pop}) rotate(0deg)`;
-
-    const easing = 'cubic-bezier(0.22, 0.8, 0.28, 1)';
+    el.style.transform = `translate(${startX}px, ${startY}px) translate(-50%, -50%) scale(${pop * 0.2})`;
 
     return el.animate(
         [
             {
+                // Spawn tiny under fingertip
                 offset: 0,
                 opacity: 0,
-                transform: `translate(${startX}px, ${startY}px) translate(-50%, -50%) scale(${pop * 0.4}) rotate(${rotate * 0.1}deg)`,
-                filter: 'blur(0px) brightness(1.1)',
+                transform: `translate(${startX}px, ${startY + 8}px) translate(-50%, -50%) scale(${pop * 0.15}) rotate(${-rotate}deg)`,
+                filter: 'blur(0px) brightness(1)',
             },
             {
-                // Pop in (YouTube like burst)
-                offset: 0.08,
+                // Elastic pop (FB reaction)
+                offset: 0.1,
                 opacity: 1,
-                transform: `translate(${startX + sway * 0.08}px, ${startY - 10}px) translate(-50%, -50%) scale(${pop * 1.25}) rotate(${rotate * 0.2}deg)`,
-                filter: 'blur(0px) brightness(1.25)',
+                transform: `translate(${startX + sway * 0.05}px, ${startY - 14}px) translate(-50%, -50%) scale(${pop * 1.45}) rotate(${rotate * 0.2}deg)`,
+                filter: 'blur(0px) brightness(1.2)',
             },
             {
-                // Float up + sway (livestream love)
-                offset: 0.38,
+                // Settle after bounce
+                offset: 0.18,
                 opacity: 1,
-                transform: `translate(${peakX * 0.55 + startX * 0.45}px, ${startY - floatH * 0.55}px) translate(-50%, -50%) scale(${floatScale}) rotate(${rotate * 0.55}deg)`,
+                transform: `translate(${startX + sway * 0.12}px, ${startY - 28}px) translate(-50%, -50%) scale(${floatScale}) rotate(${rotate * 0.35}deg)`,
+                filter: 'blur(0px) brightness(1.12)',
+            },
+            {
+                // Rise + sway (YouTube like)
+                offset: 0.4,
+                opacity: 1,
+                transform: `translate(${rise1X}px, ${rise1Y}px) translate(-50%, -50%) scale(${floatScale * 1.06}) rotate(${-rotate * 0.4}deg)`,
                 filter: 'blur(0px) brightness(1.15)',
             },
             {
-                // Peak — hang briefly
-                offset: 0.52,
-                opacity: 0.95,
-                transform: `translate(${peakX}px, ${peakY}px) translate(-50%, -50%) scale(${floatScale * 0.92}) rotate(${rotate * 0.75}deg)`,
-                filter: 'blur(0.2px) brightness(1.2)',
+                // Peak float
+                offset: 0.55,
+                opacity: 0.98,
+                transform: `translate(${peakX}px, ${peakY}px) translate(-50%, -50%) scale(${floatScale}) rotate(${rotate * 0.55}deg)`,
+                filter: 'blur(0px) brightness(1.18)',
             },
             {
-                // Falling-star streak toward cart
-                offset: 0.78,
-                opacity: 0.85,
-                transform: `translate(${midX}px, ${midY}px) translate(-50%, -50%) scale(${floatScale * 0.55}) rotate(${rotate}deg)`,
-                filter: 'blur(0.4px) brightness(1.35)',
+                // Soft hang / wobble
+                offset: 0.66,
+                opacity: 0.95,
+                transform: `translate(${hangX}px, ${hangY}px) translate(-50%, -50%) scale(${floatScale * 0.96}) rotate(${-rotate * 0.25}deg)`,
+                filter: 'blur(0.15px) brightness(1.22)',
+            },
+            {
+                // Falling-star swoop to cart
+                offset: 0.84,
+                opacity: 0.82,
+                transform: `translate(${midX}px, ${midY}px) translate(-50%, -50%) scale(${floatScale * 0.55}) rotate(${rotate * 0.9}deg)`,
+                filter: 'blur(0.35px) brightness(1.35)',
             },
             {
                 offset: 1,
                 opacity: 0,
-                transform: `translate(${endX}px, ${endY}px) translate(-50%, -50%) scale(${endScale}) rotate(${rotate * 1.15}deg)`,
-                filter: 'blur(1px) brightness(1.5)',
+                transform: `translate(${endX}px, ${endY}px) translate(-50%, -50%) scale(${endScale}) rotate(${rotate * 1.2}deg)`,
+                filter: 'blur(0.8px) brightness(1.45)',
             },
         ],
         {
             duration,
             delay,
-            easing,
+            easing: 'cubic-bezier(0.2, 0.85, 0.25, 1)',
             fill: 'forwards',
         },
     ).finished;
+}
+
+/** @deprecated alias — keep callers working */
+function animateCartStar(el, cfg) {
+    return animateReactionParticle(el, { wobble: 18, ...cfg });
 }
 
 function resolveFlySourceRect(sourceEl) {
@@ -975,16 +1088,128 @@ function getVisibleCartButton() {
     );
 }
 
-function bumpCartCatch(cartBtn) {
+function getDrawerTabButton(tab) {
+    return document.querySelector(`[data-drawer-tab="${tab}"]`);
+}
+
+function setCartMagnet(cartBtn, on) {
     const btn = cartBtn || getVisibleCartButton();
     if (!btn) return;
+    btn.classList.toggle('nav-cart-btn--magnet', Boolean(on));
+}
+
+function bumpCartCatch(cartBtn, accent = '#1172BA') {
+    const btn = cartBtn || getVisibleCartButton();
+    if (!btn) return;
+    btn.style.setProperty('--fly-accent', accent);
     btn.classList.remove('nav-cart-btn--catch');
     void btn.offsetWidth;
-    btn.classList.add('nav-cart-btn--catch');
-    window.setTimeout(() => btn.classList.remove('nav-cart-btn--catch'), 800);
+    btn.classList.add('nav-cart-btn--catch', 'nav-cart-btn--magnet');
+    window.setTimeout(() => {
+        btn.classList.remove('nav-cart-btn--catch');
+        // keep hover glow briefly after bounce
+        window.setTimeout(() => btn.classList.remove('nav-cart-btn--magnet'), 420);
+    }, 900);
+}
+
+function bumpDrawerTabCatch(tab = 'track', accent = '#1172BA') {
+    const btn = getDrawerTabButton(tab);
+    if (!btn) return;
+    btn.style.setProperty('--fly-accent', accent);
+    btn.classList.remove('is-catch');
+    void btn.offsetWidth;
+    btn.classList.add('is-catch', 'is-magnet');
+    window.setTimeout(() => {
+        btn.classList.remove('is-catch');
+        window.setTimeout(() => btn.classList.remove('is-magnet'), 380);
+    }, 850);
+}
+
+function spawnCatchSparkles(targetEl, accent = '#1172BA', count = 12) {
+    if (!targetEl || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const rect = targetEl.getBoundingClientRect();
+    if (rect.width < 2) return;
+
+    const layer = document.createElement('div');
+    layer.className = 'evomi-cart-fly evomi-cart-fly--spark';
+    layer.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(layer);
+
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const jobs = [];
+
+    for (let i = 0; i < count; i++) {
+        const spark = document.createElement('span');
+        spark.className = `evomi-cart-fly__spark evomi-cart-fly__spark--${i % 3}`;
+        spark.style.setProperty('--fly-accent', accent);
+        spark.innerHTML = CART_STAR_SVG;
+        layer.appendChild(spark);
+
+        const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.35 - 0.17);
+        const dist = 28 + Math.random() * 42;
+        const tx = cx + Math.cos(angle) * dist;
+        const ty = cy + Math.sin(angle) * dist - 8;
+        const size = 0.45 + Math.random() * 0.55;
+
+        spark.style.left = '0px';
+        spark.style.top = '0px';
+        jobs.push(
+            spark.animate(
+                [
+                    {
+                        offset: 0,
+                        opacity: 0,
+                        transform: `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${0.2 * size}) rotate(0deg)`,
+                    },
+                    {
+                        offset: 0.18,
+                        opacity: 1,
+                        transform: `translate(${cx + Math.cos(angle) * 8}px, ${cy + Math.sin(angle) * 8}px) translate(-50%, -50%) scale(${1.15 * size}) rotate(${angle * 40}deg)`,
+                    },
+                    {
+                        offset: 1,
+                        opacity: 0,
+                        transform: `translate(${tx}px, ${ty}px) translate(-50%, -50%) scale(${0.15 * size}) rotate(${angle * 90}deg)`,
+                    },
+                ],
+                {
+                    duration: 520 + Math.random() * 280,
+                    delay: i * 18,
+                    easing: 'cubic-bezier(0.22, 0.9, 0.3, 1)',
+                    fill: 'forwards',
+                },
+            ).finished,
+        );
+    }
+
+    Promise.allSettled(jobs).then(() => layer.remove());
+}
+
+/**
+ * Fly stars from a UI control into the cart / drawer tab, then open drawer.
+ */
+async function flyOpenDrawer(tab = 'cart', sourceEl = null, accent = '#1172BA') {
+    const cart = getVisibleCartButton();
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!reduceMotion && cart) {
+        await flyStarsToTarget({
+            sourceEl,
+            targetEl: cart,
+            accent,
+            mode: tab === 'track' ? 'track' : 'cart',
+            particleCount: window.matchMedia('(max-width: 767px)').matches ? 10 : 14,
+        });
+    } else if (cart && tab === 'cart') {
+        bumpCartCatch(cart, accent);
+    }
+
+    return { cart, tab };
 }
 
 window.evomiFlyToCart = flyToCart;
+window.evomiFlyOpenDrawer = flyOpenDrawer;
 
 function productTitle(product) {
     return product?.title || product?.name || 'Produk';
@@ -2177,11 +2402,13 @@ document.addEventListener('alpine:init', () => {
         },
 
         async openAccountDrawer(tab = 'cart') {
+            const nextTab = tab === 'track' ? 'track' : 'cart';
+
             this.open = false;
             this.accountMenuOpen = false;
             this.guestEmailInput = readGuestEmail() || this.guestEmailInput;
             this.guestTrackEmail = readGuestEmail() || this.guestTrackEmail;
-            this.drawerTab = tab === 'track' ? 'track' : 'cart';
+            this.drawerTab = nextTab;
             this.accountDrawerOpen = true;
             document.documentElement.classList.add('overflow-hidden');
 
@@ -2190,10 +2417,15 @@ document.addEventListener('alpine:init', () => {
                 tasks.push(this.loadDrawerCart());
             }
             if (this.isLoggedIn) {
-                // Prefetch trackings so "Lacak Pesanan" badge count is ready on both tabs.
                 tasks.push(this.loadDrawerTrackings());
             }
             await Promise.all(tasks);
+        },
+
+        switchDrawerTab(tab) {
+            const nextTab = tab === 'track' ? 'track' : 'cart';
+            if (this.drawerTab === nextTab) return;
+            this.drawerTab = nextTab;
         },
 
         closeAccountDrawer() {

@@ -299,7 +299,7 @@
                     <div class="flex items-center space-x-2">
                         <a
                             href="{{ route('login') }}"
-                            class="nav-login-link relative z-[1] flex justify-center items-center px-3 md:px-4 text-[14px] md:text-[17px] py-2 font-medium text-white nav-soft"
+                            class="nav-pill nav-login-link relative z-[1] inline-flex justify-center items-center px-3 md:px-4 text-[14px] md:text-[17px] py-2 font-medium rounded-full text-white nav-soft"
                             data-soft-nav
                         >
                             <span class="relative z-[1]">{{ $navLogin }}</span>

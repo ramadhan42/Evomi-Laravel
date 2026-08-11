@@ -11,6 +11,7 @@ import {
     ensureFontCompanionFields,
     ensureSectionSpacingFields,
     ensureBerandaContentFields,
+    ensureHeroHeadlineGapFields,
     defaultFaqTypographyFields,
     isTypographyBaseField,
     defaultMaxLines,
@@ -2546,7 +2547,7 @@ export function registerAdminCrud(Alpine, deps) {
     function looksLikeCssNumber(value) {
         const v = String(value ?? '').trim();
         if (!v) return false;
-        return /^-?\d+(\.\d+)?\s*(px|%|deg)?$/i.test(v);
+        return /^-?\d+(\.\d+)?\s*(px|%|deg|em|rem)?$/i.test(v);
     }
 
     function isCmsFontFamilyField(key) {
@@ -2580,9 +2581,9 @@ export function registerAdminCrud(Alpine, deps) {
     function parseNumericCmsValue(raw) {
         const value = String(raw ?? '').trim();
         if (!value) return { num: '', unit: '' };
-        const spaced = value.match(/^(-?\d+(?:\.\d+)?)\s*(px|%|deg)$/i);
+        const spaced = value.match(/^(-?\d+(?:\.\d+)?)\s*(px|%|deg|em|rem)$/i);
         if (spaced) return { num: spaced[1], unit: spaced[2].toLowerCase() };
-        const unitMatch = value.match(/(px|%|deg)$/i);
+        const unitMatch = value.match(/(px|%|deg|em|rem)$/i);
         const unit = unitMatch ? unitMatch[1].toLowerCase() : '';
         const numPart = unit ? value.slice(0, -unit.length).trim() : value;
         if (numPart === '' || /^-?\d*\.?\d*$/.test(numPart)) {
@@ -2596,6 +2597,7 @@ export function registerAdminCrud(Alpine, deps) {
     function inferNumericUnit(key) {
         if ((key || '').endsWith('_max_lines')) return '';
         if (/_rotate_/.test(key) || /product\d+_size_/.test(key)) return '';
+        if (/headline_\d+_gap_horizontal_/.test(key || '')) return 'em';
         if (
             /_fs_/.test(key) ||
             /_gap_/.test(key) ||
@@ -2631,6 +2633,7 @@ export function registerAdminCrud(Alpine, deps) {
     }
 
     function numericStepForField(key, unit) {
+        if (unit === 'em' || unit === 'rem') return 0.01;
         if (unit === '%' || /_left_|_top_|_right_|_bottom_|^wave_/.test(key)) return 0.1;
         return 1;
     }
@@ -3016,10 +3019,11 @@ export function registerAdminCrud(Alpine, deps) {
                     const baseFields = unwrapList(data).map(normalizeField);
                     // Beranda defaults (copy + typography + gaps) come from the
                     // backend catalog so they match the live storefront UI.
-                    // Generic JS injects stay for other CMS pages only.
+                    // Also inject hero headline word-gap fields client-side so
+                    // they always appear even if API cache is stale.
                     this.fields =
                         page === 'beranda'
-                            ? baseFields
+                            ? ensureHeroHeadlineGapFields(baseFields, page)
                             : ensureSectionSpacingFields(
                                   ensureFontCompanionFields(
                                       ensureBerandaContentFields(baseFields, page),

@@ -23,10 +23,18 @@ export function withFontFieldOrder(order, contentKeys) {
 
 export const HERO_FIELD_ORDER = [
     'gap_horizontal_mobile', 'gap_horizontal_desktop', 'gap_vertical_mobile', 'gap_vertical_desktop',
-    'headline_1', 'headline_1_color', 'headline_1_font_family', 'headline_1_font_weight', 'headline_1_font_style', 'headline_1_fs_mobile', 'headline_1_fs_desktop', 'headline_1_max_lines',
-    'headline_2', 'headline_2_color', 'headline_2_font_family', 'headline_2_font_weight', 'headline_2_font_style', 'headline_2_fs_mobile', 'headline_2_fs_desktop', 'headline_2_max_lines',
-    'headline_3', 'headline_3_color', 'headline_3_font_family', 'headline_3_font_weight', 'headline_3_font_style', 'headline_3_fs_mobile', 'headline_3_fs_desktop', 'headline_3_max_lines',
-    'headline_4', 'headline_4_color', 'headline_4_font_family', 'headline_4_font_weight', 'headline_4_font_style', 'headline_4_fs_mobile', 'headline_4_fs_desktop', 'headline_4_max_lines',
+    'headline_1', 'headline_1_color',
+    'headline_1_gap_horizontal_mobile', 'headline_1_gap_horizontal_desktop',
+    'headline_1_font_family', 'headline_1_font_weight', 'headline_1_font_style', 'headline_1_fs_mobile', 'headline_1_fs_desktop', 'headline_1_max_lines',
+    'headline_2', 'headline_2_color',
+    'headline_2_gap_horizontal_mobile', 'headline_2_gap_horizontal_desktop',
+    'headline_2_font_family', 'headline_2_font_weight', 'headline_2_font_style', 'headline_2_fs_mobile', 'headline_2_fs_desktop', 'headline_2_max_lines',
+    'headline_3', 'headline_3_color',
+    'headline_3_gap_horizontal_mobile', 'headline_3_gap_horizontal_desktop',
+    'headline_3_font_family', 'headline_3_font_weight', 'headline_3_font_style', 'headline_3_fs_mobile', 'headline_3_fs_desktop', 'headline_3_max_lines',
+    'headline_4', 'headline_4_color',
+    'headline_4_gap_horizontal_mobile', 'headline_4_gap_horizontal_desktop',
+    'headline_4_font_family', 'headline_4_font_weight', 'headline_4_font_style', 'headline_4_fs_mobile', 'headline_4_fs_desktop', 'headline_4_max_lines',
     'headline_pos_top_mobile', 'headline_pos_top_desktop', 'headline_pos_left_mobile', 'headline_pos_left_desktop',
     'badge_left', 'badge_left_icon', 'badge_left_font_family', 'badge_left_font_weight', 'badge_left_font_style', 'badge_left_fs_mobile', 'badge_left_fs_desktop', 'badge_left_max_lines',
     'badge_left_icon_size_mobile', 'badge_left_icon_size_desktop', 'badge_left_left_mobile', 'badge_left_left_desktop', 'badge_left_top_mobile', 'badge_left_top_desktop',
@@ -177,6 +185,39 @@ export function ensureFontCompanionFields(fields) {
     return extras.length ? [...list, ...extras] : list;
 }
 
+/** Hero headline 1–4 horizontal gap controls (margin-left per kata) */
+export const HERO_HEADLINE_GAP_KEYS = [
+    ['headline_1_gap_horizontal_mobile', '0'],
+    ['headline_1_gap_horizontal_desktop', '0'],
+    ['headline_2_gap_horizontal_mobile', '0.28em'],
+    ['headline_2_gap_horizontal_desktop', '0.28em'],
+    ['headline_3_gap_horizontal_mobile', '0'],
+    ['headline_3_gap_horizontal_desktop', '0'],
+    ['headline_4_gap_horizontal_mobile', '0.28em'],
+    ['headline_4_gap_horizontal_desktop', '0.28em'],
+];
+
+/**
+ * Ensure beranda hero has per-headline horizontal gap fields in the CMS editor.
+ */
+export function ensureHeroHeadlineGapFields(fields, page = 'beranda') {
+    if (page !== 'beranda') return Array.isArray(fields) ? fields : [];
+    const list = Array.isArray(fields) ? [...fields] : [];
+    const hasHero = list.some((f) => (f.section || '') === 'hero');
+    if (!hasHero && list.length > 0) {
+        // Still inject into hero so the section appears when only partial data exists
+    }
+    const existing = new Set(
+        list.filter((f) => (f.section || '') === 'hero').map((f) => f.key),
+    );
+    const extras = [];
+    for (const [key, value] of HERO_HEADLINE_GAP_KEYS) {
+        if (existing.has(key)) continue;
+        extras.push({ section: 'hero', key, type: 'string', value });
+    }
+    return extras.length ? [...list, ...extras] : list;
+}
+
 /** Spacing controls shared by every beranda section */
 export const SECTION_SPACING_KEYS = [
     'gap_horizontal_mobile',
@@ -299,6 +340,14 @@ export const BERANDA_CONTENT_DEFAULTS = {
         headline_2: 'karakter',
         headline_3: 'aromamu',
         headline_4: 'di Evomi',
+        headline_1_gap_horizontal_mobile: '0',
+        headline_1_gap_horizontal_desktop: '0',
+        headline_2_gap_horizontal_mobile: '0.28em',
+        headline_2_gap_horizontal_desktop: '0.28em',
+        headline_3_gap_horizontal_mobile: '0',
+        headline_3_gap_horizontal_desktop: '0',
+        headline_4_gap_horizontal_mobile: '0.28em',
+        headline_4_gap_horizontal_desktop: '0.28em',
         badge_left: 'Eau de Parfum',
         badge_right: 'Recycle Bottle Cap',
         marquee_text: 'Every Version of Me',
@@ -364,7 +413,7 @@ export const BERANDA_CONTENT_DEFAULTS = {
         headline_3: 'dengan',
         headline_4: 'bermain',
         headline_5: 'kuis',
-        cta_label: 'Mulai Kuis',
+        cta_label: 'Temukan Aromamu',
     },
 };
 
@@ -456,7 +505,7 @@ export const SEVENTH_FIELD_ORDER = withFontFieldOrder(SEVENTH_BASE, [
 /** Section display order: Hero → 1 → 2 → 3 → … */
 export const SECTION_ORDER = {
     beranda: ['hero', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'],
-    belanja: ['hero', 'list', 'cards', 'badges', 'images'],
+    belanja: ['hero', 'cards', 'images', 'badges', 'list'],
     belanja_details: ['labels', 'disclaimer', 'guarantee', 'chat', 'content', 'images', 'badges'],
     checkout: ['header', 'sections', 'labels', 'messages', 'images'],
     kontak: ['header', 'info'],
@@ -487,14 +536,14 @@ export const SECTION_LABELS = {
     nav: 'Navbar Extra',
     auth: 'Auth',
     list: 'Daftar Produk',
-    cards: 'Gambar Card Produk',
+    cards: 'Produk (Gambar, Judul, Deskripsi, Harga)',
     badges: 'Badge Karakter',
     labels: 'Label UI',
     guarantee: 'Jaminan Produk',
     chat: 'Chat',
     content: 'Konten',
     disclaimer: 'Disclaimer',
-    images: 'Gambar & Dekorasi',
+    images: 'Gambar / Maskot',
     sections: 'Section',
     messages: 'Pesan',
     profile: 'Profile',
@@ -541,6 +590,14 @@ const FIELD_LABELS = {
     headline_4_font_style: 'Headline 4 — Font Style',
     headline_4_fs_mobile: 'Headline 4 — Font Size Mobile',
     headline_4_fs_desktop: 'Headline 4 — Font Size Desktop',
+    headline_1_gap_horizontal_mobile: 'Headline 1 — Jarak Horizontal (Mobile)',
+    headline_1_gap_horizontal_desktop: 'Headline 1 — Jarak Horizontal (Desktop)',
+    headline_2_gap_horizontal_mobile: 'Headline 2 — Jarak Horizontal (Mobile)',
+    headline_2_gap_horizontal_desktop: 'Headline 2 — Jarak Horizontal (Desktop)',
+    headline_3_gap_horizontal_mobile: 'Headline 3 — Jarak Horizontal (Mobile)',
+    headline_3_gap_horizontal_desktop: 'Headline 3 — Jarak Horizontal (Desktop)',
+    headline_4_gap_horizontal_mobile: 'Headline 4 — Jarak Horizontal (Mobile)',
+    headline_4_gap_horizontal_desktop: 'Headline 4 — Jarak Horizontal (Desktop)',
     headline_5: 'Headline 5',
     title_1: 'Judul Bagian 1',
     title_2: 'Judul Bagian 2',
@@ -550,22 +607,26 @@ const FIELD_LABELS = {
     deco_peaceful: 'Maskot Peaceful (kanan atas)',
     deco_rebel: 'Maskot Rebel (kiri bawah)',
     deco_sweet: 'Maskot Sweet (kanan bawah)',
-    card_purpose_image: 'Gambar Card — Purpose Prestige',
-    card_peaceful_image: 'Gambar Card — Peaceful Calm',
-    card_rebel_image: 'Gambar Card — Rebel Brave',
-    card_sweet_image: 'Gambar Card — Sweet Shy',
-    card_purpose_title: 'Judul Card — Purpose',
-    card_peaceful_title: 'Judul Card — Peaceful',
-    card_rebel_title: 'Judul Card — Rebel',
-    card_sweet_title: 'Judul Card — Sweet',
-    card_purpose_desc: 'Deskripsi Card — Purpose',
-    card_peaceful_desc: 'Deskripsi Card — Peaceful',
-    card_rebel_desc: 'Deskripsi Card — Rebel',
-    card_sweet_desc: 'Deskripsi Card — Sweet',
-    card_purpose_price: 'Harga Card — Purpose',
-    card_peaceful_price: 'Harga Card — Peaceful',
-    card_rebel_price: 'Harga Card — Rebel',
-    card_sweet_price: 'Harga Card — Sweet',
+    deco_gap_vertical_desktop: 'Jarak Vertikal Antar Maskot — Desktop',
+    deco_gap_horizontal_desktop: 'Jarak Horizontal Maskot ke Tepi — Desktop',
+    deco_gap_vertical_mobile: 'Jarak Vertikal Antar Maskot — Mobile',
+    deco_gap_horizontal_mobile: 'Jarak Horizontal Maskot ke Tepi — Mobile',
+    card_purpose_image: 'Gambar Produk — Purpose Prestige',
+    card_peaceful_image: 'Gambar Produk — Peaceful Calm',
+    card_rebel_image: 'Gambar Produk — Rebel Brave',
+    card_sweet_image: 'Gambar Produk — Sweet Shy',
+    card_purpose_title: 'Judul Produk — Purpose',
+    card_peaceful_title: 'Judul Produk — Peaceful',
+    card_rebel_title: 'Judul Produk — Rebel',
+    card_sweet_title: 'Judul Produk — Sweet',
+    card_purpose_desc: 'Deskripsi Produk — Purpose',
+    card_peaceful_desc: 'Deskripsi Produk — Peaceful',
+    card_rebel_desc: 'Deskripsi Produk — Rebel',
+    card_sweet_desc: 'Deskripsi Produk — Sweet',
+    card_purpose_price: 'Harga Produk — Purpose',
+    card_peaceful_price: 'Harga Produk — Peaceful',
+    card_rebel_price: 'Harga Produk — Rebel',
+    card_sweet_price: 'Harga Produk — Sweet',
     card_image_width_mobile: 'Lebar Gambar Card — Mobile',
     card_image_width_desktop: 'Lebar Gambar Card — Desktop',
     card_image_rotate_mobile: 'Rotasi Gambar Card — Mobile',
@@ -655,6 +716,17 @@ export const BELANJA_CARDS_FIELD_ORDER = [
     'card_image_top_desktop',
 ];
 
+export const BELANJA_IMAGES_FIELD_ORDER = [
+    'deco_gap_vertical_desktop',
+    'deco_gap_horizontal_desktop',
+    'deco_gap_vertical_mobile',
+    'deco_gap_horizontal_mobile',
+    'deco_purpose',
+    'deco_peaceful',
+    'deco_rebel',
+    'deco_sweet',
+];
+
 function fieldOrderForSection(section) {
     switch (section) {
         case 'hero':
@@ -681,6 +753,8 @@ function fieldOrderForSection(section) {
             return SITE_FIELD_ORDER;
         case 'cards':
             return BELANJA_CARDS_FIELD_ORDER;
+        case 'images':
+            return BELANJA_IMAGES_FIELD_ORDER;
         default:
             return null;
     }

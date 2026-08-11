@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Faq;
 use App\Models\SiteContent;
 use App\Support\BerandaCmsDefaults;
+use App\Support\BelanjaCmsDefaults;
 use App\Support\LocaleResolver;
 use App\Support\PublicContentCache;
 use Illuminate\Http\Request;
@@ -86,10 +87,13 @@ class CmsController extends Controller
             });
         }
 
-        // Beranda: merge canonical frontend defaults so Dashboard shows editable
-        // fields even when DB rows are missing. Existing DB values always win.
+        // Beranda / Belanja: merge canonical frontend defaults so Dashboard shows
+        // editable fields even when DB rows are missing. Existing DB values always win.
         if ($page === 'beranda') {
             $rows = BerandaCmsDefaults::mergeAdminRows($rows, $locale);
+        }
+        if ($page === 'belanja') {
+            $rows = BelanjaCmsDefaults::mergeAdminRows($rows, $locale);
         }
 
         return response()->json([

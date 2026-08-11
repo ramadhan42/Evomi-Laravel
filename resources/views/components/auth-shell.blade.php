@@ -34,7 +34,21 @@
     data-auth-page="1"
 >
     <div class="pointer-events-none absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[120px]"></div>
-    <div class="pointer-events-none absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-slate-50 rounded-full blur-[120px]"></div>
+    <div class="pointerpointer-events-none absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-slate-50 rounded-full blur-[120px]"></div>
+
+    <a
+        href="{{ route('beranda') }}"
+        data-soft-nav
+        class="auth-back-home absolute top-4 left-4 sm:top-6 sm:left-6 z-20 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-colors"
+        style="background-color: rgba(0, 0, 0, 0.55);"
+        onmouseover="this.style.backgroundColor='rgba(0,0,0,0.72)'"
+        onmouseout="this.style.backgroundColor='rgba(0,0,0,0.55)'"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6"/>
+        </svg>
+        <span>{{ evomi_l('Beranda', 'Home') }}</span>
+    </a>
 
     @foreach ($authChars as $char)
         <div class="{{ $char['wrap'] }} pointer-events-none sm:pointer-events-auto">

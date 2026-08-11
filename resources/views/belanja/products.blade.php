@@ -5,15 +5,15 @@
     $emptyHint = $cms->get('list', 'empty_hint', evomi_l('Produk akan muncul di sini setelah tersedia.', 'Products will appear here when available.'));
 @endphp
 
-<section class="belanja-products bg-[#f6f6f6] flex flex-col items-center w-full pt-0 pb-16 md:pb-24 px-3 md:px-6 relative overflow-hidden">
+<section class="belanja-products bg-[#f6f6f6] flex flex-col items-center w-full pt-0 pb-0 px-3 md:px-6 relative overflow-visible">
     @if (count($products) === 0)
         <div class="relative z-10 w-full max-w-xl mx-auto px-4 py-16 text-center">
             <h2 class="text-lg font-semibold text-gray-900">{{ $emptyTitle }}</h2>
             <p class="mt-2 text-sm text-gray-600">{{ $emptyHint }}</p>
         </div>
     @else
-        {{-- Figma: gap ~32px, cards 198.5 × 373 --}}
-        <div class="belanja-products__grid relative z-10 w-full max-w-[920px] grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 lg:gap-8 justify-items-center py-6 md:py-8">
+        {{-- Figma: gap ~32px, container 920 — jarak antar produk seperti semula --}}
+        <div class="belanja-products__grid relative z-10 w-full max-w-[920px] grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 lg:gap-8 justify-items-center py-4 md:py-6">
             @foreach ($products as $index => $product)
                 @php
                     $accent = $product['accent'] ?? '#1172BA';

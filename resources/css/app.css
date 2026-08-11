@@ -130,10 +130,22 @@ body {
     overflow-x: hidden;
     color: var(--foreground);
     background: var(--background);
-    cursor: auto;
 }
 
-/* ——— Full-page loader (parity with Next.js LoadingScreen) ——— */
+/* Custom cursor — local asset (same hotspot as Next.js Evomi); avoid CDN block/cache on live */
+html,
+html *,
+body,
+body *,
+.evomi-site,
+.evomi-site *,
+.admin-shell,
+.admin-shell * {
+    cursor:
+        url('/src/images/cursor/evomi.png') 33 30,
+        url('/src/images/cursor/evomi.webp') 33 30,
+        auto !important;
+}
 .evomi-loader-inner {
     position: relative;
     z-index: 10;
@@ -268,15 +280,7 @@ body {
     }
 }
 
-/* Custom cursor — same asset & hotspot as Next.js Evomi */
-.evomi-site,
-.evomi-site *,
-.admin-shell,
-.admin-shell * {
-    cursor:
-        url('https://cdn.cursors-4u.net/previews/normal-9e607e2c-48.webp') 33 30,
-        auto !important;
-}
+/* loader styles continue below */
 
 .font-nohemi {
     font-family: var(--font-nohemi), sans-serif;
@@ -693,8 +697,8 @@ body,
     position: absolute;
     inset: 0;
     border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
     opacity: 0;
     transform: scale(0.92);
     transition:
@@ -1107,15 +1111,29 @@ body.evomi-detail-seamless #evomi-footer-wrap.belanja-detail-footer-seam {
     }
 }
 
-/* Footer CTA follows product/theme accent so detail divider ↔ footer stay unified */
+/* Footer bulletin CTA — stay white; hover/click use shadow only (not footer blue) */
 .footer-daftar-btn {
     color: var(--footer-accent, var(--evomi-theme, #1172ba));
-    border: 1px solid var(--footer-accent, var(--evomi-theme, #1172ba));
+    background-color: #ffffff;
+    border: 1px solid transparent;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    transition:
+        box-shadow 0.2s ease,
+        transform 0.15s ease,
+        opacity 0.15s ease;
 }
 
 .footer-daftar-btn:hover:not(:disabled) {
-    background-color: var(--footer-accent, var(--evomi-theme, #1172ba));
-    color: #fff;
+    background-color: #ffffff;
+    color: var(--footer-accent, var(--evomi-theme, #1172ba));
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.22);
+}
+
+.footer-daftar-btn:active:not(:disabled) {
+    background-color: #ffffff;
+    color: var(--footer-accent, var(--evomi-theme, #1172ba));
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.18);
+    transform: translateY(1px);
 }
 
 /*
@@ -1234,8 +1252,50 @@ body.evomi-belanja-page #evomi-main.page-shell {
     background-color: #f6f6f6 !important;
 }
 
+body.evomi-belanja-page #evomi-main.page-shell {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+body.evomi-belanja-page .evomi-site {
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
 body.evomi-belanja-page #evomi-header-spacer {
     background-color: #1172ba !important;
+}
+
+/* Title + product grid sit vertically between header and footer */
+.belanja-page {
+    flex: 1 1 auto;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Tall enough for mascots; content stays fully visible (no clipping) */
+    min-height: calc(100dvh - 11.5rem);
+    position: relative;
+    overflow: visible;
+}
+
+/* Desktop: product block stays in first view — no inner scroll, no clip */
+@media (min-width: 1024px) {
+    body.evomi-belanja-page #evomi-main.page-shell {
+        overflow: visible;
+    }
+
+    .belanja-page {
+        justify-content: center;
+        overflow: visible;
+    }
+
+    .belanja-products,
+    .belanja-products__grid {
+        overflow: visible;
+    }
 }
 
 .belanja-hero__star {
@@ -1261,24 +1321,54 @@ body.evomi-belanja-page #evomi-header-spacer {
 }
 
 /*
- * Belanja mascots — Figma WEBSITE-BRAND / BELANJA 1433:748
- * Parent `.belanja-page__deco` is max-w 1322px centered (Figma artboard).
- * PNGs are flattened exports with Figma rotate already applied — do not re-rotate.
- * Purpose 1532:2366 | Peaceful 1532:2389 | Rebel 1532:2417 | Sweet 1532:2462
+ * Belanja mascots — left/right columns + space-between
+ * creates real vertical gap between top & bottom on each side.
  */
 .belanja-page__deco {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: none;
+    justify-content: space-between;
+    align-items: stretch;
     overflow: visible;
+    pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+    .belanja-page__deco {
+        display: flex;
+    }
+}
+
+.belanja-page__deco-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+    min-height: 100%;
+    padding-block: 0.25rem;
+    gap: var(--belanja-deco-gap-y, 80px);
+}
+
+.belanja-page__deco-col--left {
+    margin-left: calc(-1 * var(--belanja-deco-gap-x, 12px));
+}
+
+.belanja-page__deco-col--right {
+    margin-right: calc(-1 * var(--belanja-deco-gap-x, 12px));
 }
 
 .belanja-deco {
-    position: absolute;
+    position: relative;
     z-index: 5;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     pointer-events: none;
     user-select: none;
-    filter: drop-shadow(0 10px 18px rgba(17, 114, 186, 0.12));
 }
 
 .belanja-deco img {
@@ -1287,40 +1377,81 @@ body.evomi-belanja-page #evomi-header-spacer {
     height: 100%;
     max-width: none;
     object-fit: contain;
+    object-position: center;
+    image-rendering: auto;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    filter: drop-shadow(0 10px 18px rgba(17, 114, 186, 0.14));
 }
 
-/* Purpose (blue star) — Figma x≈-63..94, y=178 → top 106 below nav */
 .belanja-deco--purpose {
-    left: -33px;
-    top: 106px;
-    width: 134px;
-    height: 191px;
+    width: 150px;
+    height: 214px;
 }
 
-/* Peaceful (green) — Figma x=1156, y=280 */
 .belanja-deco--peaceful {
-    left: auto;
-    right: -46px;
-    top: 208px;
-    width: 166px;
-    height: 225px;
+    width: 168px;
+    height: 228px;
+    margin-top: 1.75rem; /* stagger top-right slightly lower */
 }
 
-/* Rebel (red) — Figma x≈-67..74, y=358 */
 .belanja-deco--rebel {
-    left: -46px;
-    top: 286px;
-    width: 157px;
-    height: 225px;
+    width: 160px;
+    height: 230px;
+    margin-bottom: 1.75rem; /* stagger bottom-left slightly higher */
 }
 
-/* Sweet (pink) — Figma x=1179, y=484 */
 .belanja-deco--sweet {
-    left: auto;
-    right: -53px;
-    top: 412px;
-    width: 143px;
-    height: 215px;
+    width: 148px;
+    height: 222px;
+}
+
+@media (min-width: 1280px) {
+    .belanja-deco--purpose {
+        width: 160px;
+        height: 228px;
+    }
+
+    .belanja-deco--peaceful {
+        width: 178px;
+        height: 242px;
+        margin-top: 2.25rem;
+    }
+
+    .belanja-deco--rebel {
+        width: 170px;
+        height: 244px;
+        margin-bottom: 2.25rem;
+    }
+
+    .belanja-deco--sweet {
+        width: 156px;
+        height: 234px;
+    }
+}
+
+@media (max-width: 1279px) and (min-width: 1024px) {
+    .belanja-deco--purpose {
+        width: 120px;
+        height: 171px;
+    }
+
+    .belanja-deco--peaceful {
+        width: 132px;
+        height: 179px;
+        margin-top: 1.25rem;
+    }
+
+    .belanja-deco--rebel {
+        width: 126px;
+        height: 181px;
+        margin-bottom: 1.25rem;
+    }
+
+    .belanja-deco--sweet {
+        width: 118px;
+        height: 177px;
+    }
 }
 
 /* Auth: sembunyikan navbar/footer, biarkan kartu login memenuhi viewport */
@@ -1339,6 +1470,18 @@ body.evomi-auth-mode #evomi-main {
 body.evomi-auth-mode #evomi-main {
     min-height: 100vh;
     min-height: 100dvh;
+}
+
+.auth-back-home {
+    background-color: rgba(0, 0, 0, 0.55) !important;
+    color: #fff !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(6px);
+}
+
+.auth-back-home:hover {
+    background-color: rgba(0, 0, 0, 0.72) !important;
 }
 
 /* Payment page: compact cards, footer tetap tampil */
@@ -2172,13 +2315,13 @@ select.admin-field-input {
     box-shadow: 0 20px 40px -20px rgba(17, 114, 186, 0.35);
 }
 
-/* Belanja product cards — Figma BELANJA 1433:748 */
+/* Belanja product cards — Figma BELANJA 1433:748 (jarak grid 920 + gap-8) */
 .belanja-card {
     width: 100%;
-    max-width: 168px;
+    max-width: 176px;
     border-width: 0.75px;
     border-style: solid;
-    border-radius: 15.85px;
+    border-radius: 16.5px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -2446,21 +2589,29 @@ select.admin-field-input {
     --hero-hl1-fst: normal;
     --hero-hl1-fs-m: 28px;
     --hero-hl1-fs-d: 42px;
+    --hero-hl1-gap-x-m: 0;
+    --hero-hl1-gap-x-d: 0;
     --hero-hl2-ff: 'Nohemi', sans-serif;
     --hero-hl2-fw: 600;
     --hero-hl2-fst: normal;
     --hero-hl2-fs-m: 28px;
     --hero-hl2-fs-d: 42px;
+    --hero-hl2-gap-x-m: 0.28em;
+    --hero-hl2-gap-x-d: 0.28em;
     --hero-hl3-ff: 'Nohemi', sans-serif;
     --hero-hl3-fw: 600;
     --hero-hl3-fst: normal;
     --hero-hl3-fs-m: 28px;
     --hero-hl3-fs-d: 42px;
+    --hero-hl3-gap-x-m: 0;
+    --hero-hl3-gap-x-d: 0;
     --hero-hl4-ff: 'Nohemi', sans-serif;
     --hero-hl4-fw: 600;
     --hero-hl4-fst: normal;
     --hero-hl4-fs-m: 28px;
     --hero-hl4-fs-d: 42px;
+    --hero-hl4-gap-x-m: 0.28em;
+    --hero-hl4-gap-x-d: 0.28em;
     --hero-hl-top-m: 0px;
     --hero-hl-top-d: 0px;
     --hero-hl-left-m: 0px;
@@ -2670,6 +2821,8 @@ select.admin-field-input {
     left: var(--hero-hl-left-m);
     min-height: calc(var(--hero-hl1-fs-m) * 1.1 * 2);
     box-sizing: content-box;
+    display: block;
+    text-align: center;
 }
 
 .hero-hl-1 {
@@ -2677,6 +2830,7 @@ select.admin-field-input {
     font-weight: var(--hero-hl1-fw);
     font-style: var(--hero-hl1-fst);
     font-size: var(--hero-hl1-fs-m);
+    margin-left: var(--hero-hl1-gap-x-m);
 }
 
 .hero-hl-2 {
@@ -2684,6 +2838,7 @@ select.admin-field-input {
     font-weight: var(--hero-hl2-fw);
     font-style: var(--hero-hl2-fst);
     font-size: var(--hero-hl2-fs-m);
+    margin-left: var(--hero-hl2-gap-x-m);
 }
 
 .hero-hl-3 {
@@ -2691,6 +2846,7 @@ select.admin-field-input {
     font-weight: var(--hero-hl3-fw);
     font-style: var(--hero-hl3-fst);
     font-size: var(--hero-hl3-fs-m);
+    margin-left: var(--hero-hl3-gap-x-m);
 }
 
 .hero-hl-4 {
@@ -2698,6 +2854,7 @@ select.admin-field-input {
     font-weight: var(--hero-hl4-fw);
     font-style: var(--hero-hl4-fst);
     font-size: var(--hero-hl4-fs-m);
+    margin-left: var(--hero-hl4-gap-x-m);
 }
 
 .hero-visual-stage {
@@ -2815,18 +2972,22 @@ select.admin-field-input {
 
     .hero-hl-1 {
         font-size: var(--hero-hl1-fs-d);
+        margin-left: var(--hero-hl1-gap-x-d);
     }
 
     .hero-hl-2 {
         font-size: var(--hero-hl2-fs-d);
+        margin-left: var(--hero-hl2-gap-x-d);
     }
 
     .hero-hl-3 {
         font-size: var(--hero-hl3-fs-d);
+        margin-left: var(--hero-hl3-gap-x-d);
     }
 
     .hero-hl-4 {
         font-size: var(--hero-hl4-fs-d);
+        margin-left: var(--hero-hl4-gap-x-d);
     }
 
     .hero-badge-left {
@@ -3544,8 +3705,8 @@ select.admin-field-input {
   position: absolute;
   inset: 0;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
   opacity: 0;
   transform: scale(0.92);
   transition:
@@ -3603,9 +3764,34 @@ select.admin-field-input {
   }
 }
 
-/* Cart catch bounce when fly-to-cart lands */
+/* Cart catch bounce + hover-like magnet when fly-to-cart lands */
+.nav-cart-btn--magnet {
+  color: var(--nav-color, #1172ba);
+}
+
+.nav-cart-btn--magnet::before {
+  opacity: 1;
+  transform: scale(1);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.12),
+    0 0 0 3px color-mix(in srgb, var(--fly-accent, var(--nav-color, #1172ba)) 28%, transparent),
+    0 0 24px color-mix(in srgb, var(--fly-accent, var(--nav-color, #1172ba)) 35%, transparent);
+}
+
 .nav-cart-btn--catch {
-  animation: nav-cart-catch 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: nav-cart-catch 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-cart-btn--catch::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--fly-accent, var(--nav-color, #1172ba)) 45%, transparent),
+    0 0 28px color-mix(in srgb, var(--fly-accent, var(--nav-color, #1172ba)) 40%, transparent);
+  animation: nav-cart-ring 0.85s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .nav-cart-btn--catch .nav-cart-badge {
@@ -3616,17 +3802,32 @@ select.admin-field-input {
   0% {
     transform: scale(1);
   }
-  30% {
-    transform: scale(1.28);
+  28% {
+    transform: scale(1.32) rotate(-4deg);
   }
-  55% {
-    transform: scale(0.92);
+  52% {
+    transform: scale(0.9) rotate(3deg);
   }
-  75% {
+  72% {
+    transform: scale(1.12) rotate(-1deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes nav-cart-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  35% {
+    opacity: 1;
     transform: scale(1.08);
   }
   100% {
-    transform: scale(1);
+    opacity: 0;
+    transform: scale(1.35);
   }
 }
 
@@ -3637,6 +3838,10 @@ select.admin-field-input {
   z-index: 480;
   pointer-events: none;
   overflow: visible;
+}
+
+.evomi-cart-fly--spark {
+  z-index: 490;
 }
 
 .evomi-cart-fly__orb {
@@ -3653,6 +3858,23 @@ select.admin-field-input {
     0 0 0 2px color-mix(in srgb, var(--fly-accent, #1172ba) 40%, transparent),
     0 0 18px color-mix(in srgb, var(--fly-accent, #1172ba) 35%, transparent);
   will-change: transform, opacity, filter;
+}
+
+.evomi-cart-fly__orb--hero {
+  width: 56px;
+  height: 56px;
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.22),
+    0 0 0 3px rgba(255, 255, 255, 0.95),
+    0 0 0 5px color-mix(in srgb, var(--fly-accent, #1172ba) 35%, transparent),
+    0 0 24px color-mix(in srgb, var(--fly-accent, #1172ba) 30%, transparent);
+}
+
+.evomi-cart-fly__orb--empty {
+  display: grid;
+  place-items: center;
+  color: var(--fly-accent, #1172ba);
+  padding: 28%;
 }
 
 .evomi-cart-fly__orb img {
@@ -3707,10 +3929,135 @@ select.admin-field-input {
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--fly-accent, #1172ba) 45%, #ff9ec8));
 }
 
+/* Facebook reaction / YouTube-like emotion bubbles */
+.evomi-cart-fly__react {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: var(--react-face, var(--fly-accent, #1172ba));
+  will-change: transform, opacity, filter;
+  filter: drop-shadow(0 8px 16px rgba(15, 23, 42, 0.18));
+}
+
+.evomi-cart-fly__react-bubble {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.82) 42%, color-mix(in srgb, var(--fly-accent, #1172ba) 18%, #ffffff) 100%);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.95),
+    0 0 0 3px color-mix(in srgb, var(--fly-accent, #1172ba) 35%, transparent),
+    0 10px 22px rgba(15, 23, 42, 0.16),
+    0 0 18px color-mix(in srgb, var(--fly-accent, #1172ba) 28%, transparent);
+}
+
+.evomi-cart-fly__react-icon {
+  position: relative;
+  z-index: 1;
+  width: 54%;
+  height: 54%;
+  display: grid;
+  place-items: center;
+  color: inherit;
+}
+
+.evomi-cart-fly__react-icon svg {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.12));
+}
+
+.evomi-cart-fly__react--heart {
+  width: 40px;
+  height: 40px;
+  color: #ff4d6d;
+}
+
+.evomi-cart-fly__react--heart .evomi-cart-fly__react-bubble {
+  background:
+    radial-gradient(circle at 30% 28%, #ffffff, #ffe3ea 55%, #ffd0db 100%);
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 3px rgba(255, 77, 109, 0.35),
+    0 10px 22px rgba(255, 77, 109, 0.22);
+}
+
+.evomi-cart-fly__react--spark {
+  width: 34px;
+  height: 34px;
+}
+
+.evomi-cart-fly__react--burst {
+  width: 36px;
+  height: 36px;
+}
+
+.evomi-cart-fly__react--tone1 {
+  width: 32px;
+  height: 32px;
+}
+
+.evomi-cart-fly__react--tone2 {
+  width: 42px;
+  height: 42px;
+}
+
+.evomi-cart-fly__react--tone3 {
+  width: 30px;
+  height: 30px;
+}
+
+.evomi-cart-fly__react--tone4 .evomi-cart-fly__react-bubble {
+  background:
+    radial-gradient(circle at 35% 30%, #ffffff, color-mix(in srgb, var(--fly-accent, #1172ba) 12%, #fff7e8) 100%);
+}
+
+.evomi-cart-fly__spark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--fly-accent, #1172ba);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--fly-accent, #1172ba) 55%, transparent));
+  will-change: transform, opacity;
+}
+
+.evomi-cart-fly__spark--0 {
+  width: 16px;
+  height: 16px;
+  color: #ffffff;
+  filter:
+    drop-shadow(0 0 0 1px var(--fly-accent, #1172ba))
+    drop-shadow(0 0 10px color-mix(in srgb, var(--fly-accent, #1172ba) 55%, transparent));
+}
+
+.evomi-cart-fly__spark--1 {
+  width: 11px;
+  height: 11px;
+  color: color-mix(in srgb, var(--fly-accent, #1172ba) 65%, #ffffff);
+}
+
+.evomi-cart-fly__spark--2 {
+  width: 13px;
+  height: 13px;
+  color: color-mix(in srgb, var(--fly-accent, #1172ba) 45%, #ffd6ea);
+}
+
 @media (max-width: 767px) {
   .evomi-cart-fly__orb {
     width: 30px;
     height: 30px;
+  }
+
+  .evomi-cart-fly__orb--hero {
+    width: 48px;
+    height: 48px;
   }
 
   .evomi-cart-fly__star--0 {
@@ -3732,6 +4079,21 @@ select.admin-field-input {
     width: 17px;
     height: 17px;
   }
+
+  .evomi-cart-fly__react {
+    width: 32px;
+    height: 32px;
+  }
+
+  .evomi-cart-fly__react--heart {
+    width: 34px;
+    height: 34px;
+  }
+
+  .evomi-cart-fly__react--tone2 {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3739,17 +4101,12 @@ select.admin-field-input {
     display: none !important;
   }
 
-  .nav-cart-btn--catch {
+  .nav-cart-btn--catch,
+  .nav-cart-btn--magnet,
+  .evomi-account-drawer__tab.is-catch,
+  .evomi-account-drawer__tab.is-magnet {
     animation: none;
   }
-}
-
-.nav-login-link {
-  transition: opacity 0.2s ease;
-}
-
-.nav-login-link:hover {
-  opacity: 0.85;
 }
 
 /* Figma CartSidebar */
@@ -3824,6 +4181,37 @@ select.admin-field-input {
   color: #1e2939;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.evomi-account-drawer__tab.is-magnet {
+  color: var(--fly-accent, #1172ba);
+  background: #fff;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--fly-accent, #1172ba) 28%, transparent),
+    0 6px 18px color-mix(in srgb, var(--fly-accent, #1172ba) 22%, transparent);
+  transform: scale(1.03);
+}
+
+.evomi-account-drawer__tab.is-catch {
+  animation: drawer-tab-catch 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes drawer-tab-catch {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.1);
+  }
+  55% {
+    transform: scale(0.96);
+  }
+  78% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .evomi-account-drawer__close {

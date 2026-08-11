@@ -5,27 +5,50 @@
 @section('content')
     @php
         $cms = \App\Support\CmsStorefront::forPage('belanja');
-        $charPurpose = $cms->image('images', 'deco_purpose', asset('src/images/belanja/deco/char-purpose.png'));
-        $charPeaceful = $cms->image('images', 'deco_peaceful', asset('src/images/belanja/deco/char-peaceful.png'));
-        $charRebel = $cms->image('images', 'deco_rebel', asset('src/images/belanja/deco/char-rebel.png'));
-        $charSweet = $cms->image('images', 'deco_sweet', asset('src/images/belanja/deco/char-sweet.png'));
+        // Prefer local HiDPI deco PNGs; only use CMS when it is an uploaded storage file.
+        $decoSrc = static function (string $cmsKey, string $file) use ($cms): string {
+            $fallback = asset('src/images/belanja/deco/'.$file);
+            $fromCms = trim($cms->image('images', $cmsKey, ''));
+            $isUpload = $fromCms !== ''
+                && ! str_contains($fromCms, '/src/images/belanja/deco/')
+                && ! str_contains($fromCms, 'belanja/deco/char-');
+            if ($isUpload) {
+                return $fromCms;
+            }
+            $path = public_path('src/images/belanja/deco/'.$file);
+            $v = @filemtime($path) ?: time();
+
+            return $fallback.(str_contains($fallback, '?') ? '&' : '?').'v='.$v;
+        };
+        $charPurpose = $decoSrc('deco_purpose', 'char-purpose.png');
+        $charPeaceful = $decoSrc('deco_peaceful', 'char-peaceful.png');
+        $charRebel = $decoSrc('deco_rebel', 'char-rebel.png');
+        $charSweet = $decoSrc('deco_sweet', 'char-sweet.png');
+        $decoStyle = \App\Support\BelanjaCmsDefaults::decoStyleAttr($cms);
     @endphp
 
     {{-- Figma BELANJA content (header/footer tetap dari layout) --}}
-    <div class="belanja-page relative w-full min-h-0 flex flex-col items-center bg-[#f6f6f6] overflow-visible">
-        {{-- Mascots: Figma 1433:748 — locked to 1322 artboard so edges match design --}}
-        <div class="belanja-page__deco pointer-events-none absolute inset-y-0 left-1/2 z-[5] hidden w-full max-w-[1322px] -translate-x-1/2 lg:block" aria-hidden="true">
-            <div class="belanja-deco belanja-deco--purpose">
-                <img src="{{ $charPurpose }}" alt="" width="134" height="191">
+    <div
+        class="belanja-page relative w-full flex-1 flex flex-col items-center justify-center bg-[#f6f6f6] overflow-visible py-8 md:py-10"
+        style="{{ $decoStyle }}"
+    >
+        {{-- Mascots: left/right columns; jarak dari CMS (gap vertikal & horizontal) --}}
+        <div class="belanja-page__deco pointer-events-none absolute inset-0 z-[5] hidden lg:flex" aria-hidden="true">
+            <div class="belanja-page__deco-col belanja-page__deco-col--left">
+                <div class="belanja-deco belanja-deco--purpose auth-char-float">
+                    <img src="{{ $charPurpose }}" alt="" width="160" height="228" decoding="async" fetchpriority="low">
+                </div>
+                <div class="belanja-deco belanja-deco--rebel auth-char-float auth-char-float-delay-2">
+                    <img src="{{ $charRebel }}" alt="" width="170" height="244" decoding="async" fetchpriority="low">
+                </div>
             </div>
-            <div class="belanja-deco belanja-deco--peaceful">
-                <img src="{{ $charPeaceful }}" alt="" width="166" height="225">
-            </div>
-            <div class="belanja-deco belanja-deco--rebel">
-                <img src="{{ $charRebel }}" alt="" width="157" height="225">
-            </div>
-            <div class="belanja-deco belanja-deco--sweet">
-                <img src="{{ $charSweet }}" alt="" width="143" height="215">
+            <div class="belanja-page__deco-col belanja-page__deco-col--right">
+                <div class="belanja-deco belanja-deco--peaceful auth-char-float auth-char-float-delay-1">
+                    <img src="{{ $charPeaceful }}" alt="" width="178" height="242" decoding="async" fetchpriority="low">
+                </div>
+                <div class="belanja-deco belanja-deco--sweet auth-char-float auth-char-float-delay-3">
+                    <img src="{{ $charSweet }}" alt="" width="156" height="234" decoding="async" fetchpriority="low">
+                </div>
             </div>
         </div>
 

@@ -81,11 +81,9 @@
     {{-- Scroll parallax layer (Next: useScroll opacity + y) — entrance stagger via data-hero-enter --}}
     <div class="hero-parallax-layer w-full flex flex-col items-center justify-center flex-1 z-10 gap-0 m-0 p-0">
         <h1 class="hero-headline font-semibold">
-            <span class="hero-hl-1 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0s; --hero-enter-dur: 0.7s; color: {{ $hl1c }}">{{ $hl1 }}{{ str_ends_with(trim($hl1), ' ') ? '' : ' ' }}</span>
-            <span class="hero-hl-2 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.1s; --hero-enter-dur: 0.7s; color: {{ $hl2c }}">{{ $hl2 }}</span>
+            <span class="hero-hl-1 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0s; --hero-enter-dur: 0.7s; color: {{ $hl1c }}">{{ trim($hl1) }}</span><span class="hero-hl-2 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.1s; --hero-enter-dur: 0.7s; color: {{ $hl2c }}">{{ trim($hl2) }}</span>
             <br>
-            <span class="hero-hl-3 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.2s; --hero-enter-dur: 0.7s; color: {{ $hl3c }}">{{ $hl3 }}{{ str_ends_with(trim($hl3), ' ') ? '' : ' ' }}</span>
-            <span class="hero-hl-4 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.3s; --hero-enter-dur: 0.7s; color: {{ $hl4c }}">{{ $hl4 }}</span>
+            <span class="hero-hl-3 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.2s; --hero-enter-dur: 0.7s; color: {{ $hl3c }}">{{ trim($hl3) }}</span><span class="hero-hl-4 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.3s; --hero-enter-dur: 0.7s; color: {{ $hl4c }}">{{ trim($hl4) }}</span>
         </h1>
 
         <div class="hero-visual-stage relative mt-2 mb-0 md:mt-3 w-[100%] md:w-[90%] lg:w-full max-w-7xl mx-auto aspect-[1280/412]">
