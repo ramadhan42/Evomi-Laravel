@@ -116,9 +116,12 @@ export function defaultFsPair(key) {
     const k = key || '';
     // Product card copy — mengikuti Next FifthSection
     if (/^card\d+_title$/i.test(k)) return ['13px', '16px'];
+    if (/^card_(purpose|peaceful|rebel|sweet)_title$/i.test(k)) return ['13px', '14.532px'];
     if (/^card\d+_desc$/i.test(k)) return ['10px', '11px'];
+    if (/^card_(purpose|peaceful|rebel|sweet)_desc$/i.test(k)) return ['9px', '8.587px'];
     if (/^card\d+_badge$/i.test(k)) return ['10px', '12px'];
     if (/^card\d+_price$/i.test(k)) return ['11px', '12px'];
+    if (/^card_(purpose|peaceful|rebel|sweet)_price$/i.test(k)) return ['11px', '10.569px'];
     if (/headline|title_[12]|^title$|page_title/i.test(k)) return ['24px', '36px'];
     if (/subtitle|tagline|description|^desc$|_desc$/i.test(k)) return ['14px', '18px'];
     if (/badge|label|marquee|cta|name|price|bulletin|menu|help/i.test(k)) return ['12px', '16px'];
@@ -132,6 +135,9 @@ export function defaultFsPair(key) {
  */
 export function defaultFontWeight(key) {
     const k = key || '';
+    if (/^card_(purpose|peaceful|rebel|sweet)_desc$/i.test(k)) return '400';
+    if (/^card_(purpose|peaceful|rebel|sweet)_(title|price)$/i.test(k)) return '600';
+    if (/^(purpose|peaceful|rebel|sweet)$/i.test(k)) return '600';
     if (/headline|title|badge|price|cta|^name$|_name$/i.test(k)) return '700';
     if (/label|marquee|menu|^tab|question/i.test(k)) return '600';
     return '400';

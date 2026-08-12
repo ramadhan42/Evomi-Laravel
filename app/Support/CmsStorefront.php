@@ -44,6 +44,18 @@ final class CmsStorefront
             }
         }
 
+        if ($page === 'belanja') {
+            $catalog = $locale === 'en' ? BelanjaCmsDefaults::rowsEn() : BelanjaCmsDefaults::rows();
+            foreach ($catalog as [$section, $key, , $value]) {
+                $current = $grouped[$section][$key] ?? '';
+                $useCatalog = $current === ''
+                    || BelanjaCmsDefaults::isStaleTypographyValue($key, $current);
+                if ($useCatalog) {
+                    $grouped[$section][$key] = (string) $value;
+                }
+            }
+        }
+
         return new self($grouped);
     }
 

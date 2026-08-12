@@ -1281,6 +1281,29 @@ body.evomi-belanja-page #evomi-header-spacer {
     overflow: visible;
 }
 
+/* Nudge title + 4 cards slightly down so they sit in the white body center */
+.belanja-page__content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 1.25rem;
+    background: transparent;
+    isolation: auto;
+}
+
+@media (min-width: 768px) {
+    .belanja-page__content {
+        padding-top: 2.25rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .belanja-page__content {
+        padding-top: 3rem;
+    }
+}
+
 /* Desktop: product block stays in first view — no inner scroll, no clip */
 @media (min-width: 1024px) {
     body.evomi-belanja-page #evomi-main.page-shell {
@@ -1295,6 +1318,34 @@ body.evomi-belanja-page #evomi-header-spacer {
     .belanja-products,
     .belanja-products__grid {
         overflow: visible;
+    }
+}
+
+.belanja-hero__title {
+    font-size: 26px;
+    line-height: 44px;
+    white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+    .belanja-hero__title {
+        font-size: 30px;
+    }
+}
+
+@media (min-width: 768px) {
+    .belanja-hero__title {
+        font-size: 32px;
+    }
+}
+
+.belanja-hero__title .cms-fs {
+    font-size: var(--cms-fs-m, 26px);
+}
+
+@media (min-width: 768px) {
+    .belanja-hero__title .cms-fs {
+        font-size: var(--cms-fs-d, var(--cms-fs-m, 32px));
     }
 }
 
@@ -1327,7 +1378,7 @@ body.evomi-belanja-page #evomi-header-spacer {
 .belanja-page__deco {
     position: absolute;
     inset: 0;
-    z-index: 5;
+    z-index: 8;
     display: none;
     justify-content: space-between;
     align-items: stretch;
@@ -2368,10 +2419,16 @@ select.admin-field-input {
     background: #fff;
     padding: 2.24px 6px;
     border-radius: 9999px;
-    font-size: 7.93px;
+    font-size: var(--cms-fs-m, 7.93px);
     font-weight: 600;
     line-height: 11.89px;
     white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+    .belanja-card__badge {
+        font-size: var(--cms-fs-d, var(--cms-fs-m, 7.93px));
+    }
 }
 
 /* Figma bottle stage: wrapper 554×588, top -123, rotate 30°, inner 372×464 */
@@ -2399,7 +2456,13 @@ select.admin-field-input {
 
 .belanja-card__bottle-rot {
     flex: none;
-    rotate: 30deg;
+    rotate: var(--belanja-card-img-rotate-m, 30deg);
+}
+
+@media (min-width: 768px) {
+    .belanja-card__bottle-rot {
+        rotate: var(--belanja-card-img-rotate-d, var(--belanja-card-img-rotate-m, 30deg));
+    }
 }
 
 .belanja-card__bottle-frame {
@@ -2442,7 +2505,7 @@ select.admin-field-input {
 }
 
 .belanja-card__title {
-    font-size: 13px;
+    font-size: var(--cms-fs-m, 13px);
     font-weight: 600;
     line-height: 1.5;
     margin: 0;
@@ -2453,14 +2516,14 @@ select.admin-field-input {
 
 @media (min-width: 768px) {
     .belanja-card__title {
-        font-size: 14.532px;
+        font-size: var(--cms-fs-d, var(--cms-fs-m, 14.532px));
         line-height: 21.8px;
     }
 }
 
 .belanja-card__desc {
     margin: 2.64px 0 0;
-    font-size: 9px;
+    font-size: var(--cms-fs-m, 9px);
     font-weight: 400;
     line-height: 1.45;
     opacity: 0.7;
@@ -2473,7 +2536,7 @@ select.admin-field-input {
 
 @media (min-width: 768px) {
     .belanja-card__desc {
-        font-size: 8.587px;
+        font-size: var(--cms-fs-d, var(--cms-fs-m, 8.587px));
         line-height: 12.881px;
     }
 }
@@ -2488,7 +2551,7 @@ select.admin-field-input {
 }
 
 .belanja-card__price {
-    font-size: 11px;
+    font-size: var(--cms-fs-m, 11px);
     font-weight: 600;
     line-height: 1.2;
     font-variant-numeric: tabular-nums;
@@ -2496,7 +2559,7 @@ select.admin-field-input {
 
 @media (min-width: 768px) {
     .belanja-card__price {
-        font-size: 10.569px;
+        font-size: var(--cms-fs-d, var(--cms-fs-m, 10.569px));
         line-height: 15.854px;
     }
 }

@@ -29,7 +29,7 @@
 
     {{-- Figma BELANJA content (header/footer tetap dari layout) --}}
     <div
-        class="belanja-page relative w-full flex-1 flex flex-col items-center justify-center bg-[#f6f6f6] overflow-visible py-8 md:py-10"
+        class="belanja-page relative w-full flex-1 flex flex-col items-center justify-center bg-[#f6f6f6] overflow-visible pt-4 pb-8 md:pt-6 md:pb-10"
         style="{{ $decoStyle }}"
     >
         {{-- Mascots: left/right columns; jarak dari CMS (gap vertikal & horizontal) --}}
@@ -52,7 +52,9 @@
             </div>
         </div>
 
-        @include('belanja.hero')
-        @include('belanja.products')
+        <div class="belanja-page__content relative z-0 w-full flex flex-col items-center">
+            @include('belanja.hero')
+            @include('belanja.products')
+        </div>
     </div>
 @endsection
