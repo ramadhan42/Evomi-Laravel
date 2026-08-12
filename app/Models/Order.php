@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\OrderNumber;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -61,6 +62,7 @@ class Order extends Model
         'grand_total',
         'is_awaiting_payment',
         'payment_window_seconds',
+        'order_number',
     ];
 
     public $incrementing = false;
@@ -92,6 +94,11 @@ class Order extends Model
         }
 
         return max(0, (int) $this->payment_expires_at->getTimestamp() - now()->getTimestamp());
+    }
+
+    public function getOrderNumberAttribute(): string
+    {
+        return OrderNumber::display((string) $this->id);
     }
 
     public function isPaymentSuccessful(): bool
@@ -175,11 +182,7 @@ class Order extends Model
      */
     public static function invoiceRoot(string $orderId): string
     {
-        if (preg_match('/^(INV-\d+-\d+)(?:-\d+)?$/', $orderId, $m) === 1) {
-            return $m[1];
-        }
-
-        return $orderId;
+        return OrderNumber::invoiceRoot($orderId);
     }
 
     /**

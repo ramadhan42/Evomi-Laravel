@@ -1428,6 +1428,41 @@ function productImage(product, prefer = 'default') {
     return url || productImageFallback(product);
 }
 
+const ORDER_INVOICE_PREFIX = 'INV-';
+const ORDER_INVOICE_SUFFIX_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+
+function isInvoiceOrderCode(value) {
+    return typeof value === 'string' && /^INV-[A-Z0-9]{6}$/.test(value.trim().toUpperCase());
+}
+
+function orderInvoiceRoot(idStr) {
+    const id = String(idStr || '').trim().toUpperCase();
+    const neat = id.match(/^(INV-[A-Z0-9]{6})(?:-\d+)?$/);
+    if (neat) return neat[1];
+    const legacy = id.match(/^(INV-\d+-\d+)(?:-\d+)?$/);
+    if (legacy) return legacy[1];
+    return id;
+}
+
+function orderDisplayNumberFromOrder(order) {
+    if (order?.order_number) return String(order.order_number);
+    if (order?.invoice) return String(order.invoice);
+    return orderInvoiceRoot(order?.id || '');
+}
+
+function makePublicOrderNumber() {
+    const chars = ORDER_INVOICE_SUFFIX_CHARS;
+    let suffix = '';
+    for (let i = 0; i < 6; i++) {
+        suffix += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return `${ORDER_INVOICE_PREFIX}${suffix}`;
+}
+
+function drawerTrackPublicNumber(row) {
+    return row?.order_number || row?.invoice || row?.code || orderInvoiceRoot(row?.id);
+}
+
 function groupOrdersByCreatedAt(orders) {
     const map = new Map();
     for (const order of orders || []) {
@@ -1452,11 +1487,9 @@ function groupOrdersByCreatedAt(orders) {
             const fulfill = fulfillmentStatusConfig(status);
             const extraCount = Math.max(0, items.length - 1);
             const idStr = String(first.id);
-            const invoice = /^\d+$/.test(idStr) ? `#INV-${idStr}` : `#${idStr.toUpperCase()}`;
-            const invoiceRoot = (() => {
-                const m = idStr.match(/^(INV-\d+-\d+)(?:-\d+)?$/);
-                return m ? m[1] : idStr;
-            })();
+            const invoiceRoot = orderInvoiceRoot(idStr);
+            const orderNumber = orderDisplayNumberFromOrder(first);
+            const invoice = orderNumber;
             const awaitingPay = Boolean(first.is_awaiting_payment);
 
             return {
@@ -1482,6 +1515,7 @@ function groupOrdersByCreatedAt(orders) {
                     ),
                 })),
                 invoice,
+                orderNumber,
                 productTitle: productTitle(first.product),
                 extraCount,
                 imageUrl: productImage(first.product, 'cart'),
@@ -2406,7 +2440,7 @@ document.addEventListener('alpine:init', () => {
 
         async copyDrawerResi() {
             const selected = this.drawerTrackSelected;
-            const resi = selected?.tracking_number || selected?.id;
+            const resi = selected?.tracking_number || selected?.code || selected?.order_number;
             if (!resi) return;
             try {
                 await navigator.clipboard.writeText(String(resi));
@@ -2462,7 +2496,9 @@ document.addEventListener('alpine:init', () => {
                 const mapped = {
                     ...row,
                     id: row.id || row.orderId || row.order_id,
-                    code: row.code || row.resi || row.id || resi,
+                    invoice: row.invoice || row.order_number || row.code || resi,
+                    code: row.order_number || row.code || row.invoice || resi,
+                    order_number: row.order_number || row.code || row.invoice || resi,
                     title: row.title || storefrontL('Pesanan Evomi', 'Evomi Order'),
                     courier: row.courier && row.courier !== 'Belum ditentukan' ? row.courier : row.courier || null,
                     tracking_number: row.tracking_number || row.trackingNumber || null,
@@ -2518,19 +2554,25 @@ document.addEventListener('alpine:init', () => {
                 }
                 const data = await readApiJson(res);
                 const list = Array.isArray(data) ? data : data.data || [];
-                this.drawerTrackItems = list.map((row) => ({
-                    ...row,
-                    imageUrl: mediaUrl(row.image) || productImageFallback(row),
-                    timeline: (row.timeline || []).map((entry) => {
-                        const stamp = this.formatDrawerTrackTime(entry.time);
-                        return {
-                            ...entry,
-                            timeLabel: stamp.time,
-                            dateLabel: stamp.date,
-                            place: entry.description || '',
-                        };
-                    }),
-                }));
+                this.drawerTrackItems = list.map((row) => {
+                    const invoiceNumber = drawerTrackPublicNumber(row);
+                    return {
+                        ...row,
+                        invoice: invoiceNumber,
+                        code: invoiceNumber,
+                        order_number: invoiceNumber,
+                        imageUrl: mediaUrl(row.image) || productImageFallback(row),
+                        timeline: (row.timeline || []).map((entry) => {
+                            const stamp = this.formatDrawerTrackTime(entry.time);
+                            return {
+                                ...entry,
+                                timeLabel: stamp.time,
+                                dateLabel: stamp.date,
+                                place: entry.description || '',
+                            };
+                        }),
+                    };
+                });
                 if (
                     !this.drawerTrackSelectedId ||
                     !this.drawerTrackItems.some((i) => i.id === this.drawerTrackSelectedId)
@@ -2862,19 +2904,25 @@ document.addEventListener('alpine:init', () => {
                     );
                 }
                 const list = Array.isArray(data?.data) ? data.data : [];
-                this.drawerTrackItems = list.map((row) => ({
-                    ...row,
-                    imageUrl: mediaUrl(row.image) || productImageFallback(row),
-                    timeline: (row.timeline || []).map((entry) => {
-                        const stamp = this.formatDrawerTrackTime(entry.time);
-                        return {
-                            ...entry,
-                            timeLabel: stamp.time,
-                            dateLabel: stamp.date,
-                            place: entry.description || '',
-                        };
-                    }),
-                }));
+                this.drawerTrackItems = list.map((row) => {
+                    const invoiceNumber = drawerTrackPublicNumber(row);
+                    return {
+                        ...row,
+                        invoice: invoiceNumber,
+                        code: invoiceNumber,
+                        order_number: invoiceNumber,
+                        imageUrl: mediaUrl(row.image) || productImageFallback(row),
+                        timeline: (row.timeline || []).map((entry) => {
+                            const stamp = this.formatDrawerTrackTime(entry.time);
+                            return {
+                                ...entry,
+                                timeLabel: stamp.time,
+                                dateLabel: stamp.date,
+                                place: entry.description || '',
+                            };
+                        }),
+                    };
+                });
                 this.drawerTrackSelectedId = this.drawerTrackItems[0]?.id || null;
                 if (!this.drawerTrackItems.length) {
                     this.guestTrackEmailError = storefrontL(
@@ -6222,7 +6270,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         makeInvoiceId() {
-            return `INV-${Date.now()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+            return makePublicOrderNumber();
         },
 
         stopQrisPolling() {

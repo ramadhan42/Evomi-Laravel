@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\OrderTracking;
+use App\Support\OrderNumber;
 use App\Models\Product;
 use App\Services\Midtrans\MidtransClient;
 use App\Services\Xendit\XenditClient;
@@ -258,11 +259,7 @@ class OrderPaymentService
 
     public function invoiceRoot(string $orderId): string
     {
-        if (preg_match('/^(INV-\d+-\d+)-\d+$/', $orderId, $m) === 1) {
-            return $m[1];
-        }
-
-        return $orderId;
+        return OrderNumber::invoiceRoot($orderId);
     }
 
     private function isGatewayPaid(Order $order): bool

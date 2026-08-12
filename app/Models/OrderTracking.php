@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\OrderNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -51,26 +52,11 @@ class OrderTracking extends Model
             return $byResi;
         }
 
-        $invoiceRoot = Order::invoiceRoot($query);
+        $invoiceRoot = OrderNumber::resolveQuery($query);
 
-        $byOrder = self::query()->where('order_id', $invoiceRoot)->first()
-            ?: self::query()->where('order_id', $query)->first()
-            ?: self::query()
-                ->where('order_id', 'like', $invoiceRoot.'-%')
-                ->orderBy('id')
-                ->first();
-
-        if ($byOrder) {
-            if ((string) $byOrder->order_id !== $invoiceRoot && Order::existsForInvoice($invoiceRoot)) {
-                $byOrder->order_id = $invoiceRoot;
-                $byOrder->save();
-            }
-
-            return $byOrder;
-        }
-
-        if (Order::existsForInvoice($invoiceRoot)) {
-            return self::ensureForInvoice($invoiceRoot);
+        if ($invoiceRoot) {
+            return self::query()->where('order_id', $invoiceRoot)->first()
+                ?: self::ensureForInvoice($invoiceRoot);
         }
 
         return null;

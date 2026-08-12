@@ -8,6 +8,7 @@ use App\Mail\GuestOrdersReminderMail;
 use App\Models\Order;
 use App\Models\OrderTracking;
 use App\Support\LocaleResolver;
+use App\Support\OrderNumber;
 use App\Support\ProductLocalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -155,8 +156,7 @@ class GuestController extends Controller
 
         $groups = [];
         foreach ($orders as $order) {
-            $idStr = (string) $order->id;
-            $invoiceRoot = preg_match('/^(INV-\d+-\d+)(?:-\d+)?$/', $idStr, $m) ? $m[1] : $idStr;
+            $invoiceRoot = Order::invoiceRoot((string) $order->id);
             $groups[$invoiceRoot][] = $order;
         }
 
@@ -182,11 +182,14 @@ class GuestController extends Controller
                 ];
             })->values()->all();
 
+            $invoiceNumber = OrderNumber::display($invoiceRoot);
+
             $data[] = [
                 'id' => $invoiceRoot,
                 'order_id' => (string) $first->id,
-                'invoice' => $invoiceRoot,
-                'code' => $this->shortOrderCode($invoiceRoot),
+                'invoice' => $invoiceNumber,
+                'code' => $invoiceNumber,
+                'order_number' => $invoiceNumber,
                 'title' => $localized['title'] ?? ($product?->title ?? 'Produk Evomi'),
                 'image' => $product?->image_2
                     ?: $product?->image_1
@@ -241,15 +244,17 @@ class GuestController extends Controller
         $summaries = [];
 
         foreach ($orders as $order) {
-            $idStr = (string) $order->id;
-            $invoiceRoot = preg_match('/^(INV-\d+-\d+)(?:-\d+)?$/', $idStr, $m) ? $m[1] : $idStr;
+            $invoiceRoot = Order::invoiceRoot((string) $order->id);
+            $invoiceNumber = OrderNumber::display($invoiceRoot);
             $product = $order->product;
             $localized = $product ? ProductLocalizer::localize($product, $locale) : null;
             $awaiting = $order->isAwaitingOnlinePayment();
 
             $summaries[] = [
-                'id' => $idStr,
-                'invoice' => $invoiceRoot,
+                'id' => (string) $order->id,
+                'invoice' => $invoiceNumber,
+                'code' => $invoiceNumber,
+                'order_number' => $invoiceNumber,
                 'title' => $localized['title'] ?? ($product?->title ?? 'Produk Evomi'),
                 'status' => (string) $order->status,
                 'payment' => (string) $order->payment_status,
@@ -260,15 +265,6 @@ class GuestController extends Controller
         }
 
         return $summaries;
-    }
-
-    private function shortOrderCode(string $invoiceRoot): string
-    {
-        if (preg_match('/(\d{6,})$/', preg_replace('/\D+/', '', $invoiceRoot) ?: '', $m)) {
-            return 'EVN-'.substr($m[1], -6);
-        }
-
-        return 'EVN-'.strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $invoiceRoot) ?: '000000', -6));
     }
 
     private function storefrontStatusLabel(string $statusKey, string $trackStatus): string

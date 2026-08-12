@@ -276,7 +276,7 @@
                                                     <img :src="item.imageUrl" :alt="item.title" x-on:error="$el.style.display='none'">
                                                 </div>
                                                 <div class="evomi-track-chip__body">
-                                                    <p class="evomi-track-chip__code" x-text="item.code"></p>
+                                                    <p class="evomi-track-chip__code" x-text="item.order_number || item.code"></p>
                                                     <p
                                                         class="evomi-track-chip__title"
                                                         x-text="item.title"
@@ -298,7 +298,7 @@
                                         <div class="flex items-start justify-between gap-3">
                                             <div>
                                                 <p class="text-[11px] text-slate-400 font-medium">{{ evomi_l('Nomor Pesanan', 'Order Number') }}</p>
-                                                <p class="text-[16px] font-bold text-slate-900 mt-0.5" x-text="drawerTrackSelected.code"></p>
+                                                <p class="text-[16px] font-bold text-slate-900 mt-0.5" x-text="drawerTrackSelected.order_number || drawerTrackSelected.code"></p>
                                             </div>
                                             <span
                                                 class="evomi-track-badge"
@@ -317,7 +317,7 @@
                                             </div>
                                             <div class="col-span-2">
                                                 <p class="text-[11px] text-slate-400">{{ evomi_l('No. Resi / No. Pesanan', 'Tracking / Order No.') }}</p>
-                                                <p class="text-[13px] font-semibold text-slate-800 mt-0.5 break-all" x-text="drawerTrackSelected.tracking_number || drawerTrackSelected.id || '—'"></p>
+                                                <p class="text-[13px] font-semibold text-slate-800 mt-0.5 break-all" x-text="drawerTrackSelected.tracking_number || drawerTrackSelected.order_number || drawerTrackSelected.code || '—'"></p>
                                             </div>
                                         </div>
                                     </div>
@@ -383,11 +383,11 @@
                                                 <div>
                                                     <p class="text-[11px] text-slate-400">{{ evomi_l('No. Resi / No. Pesanan', 'Tracking / Order No.') }}</p>
                                                     <div class="mt-0.5 flex items-center gap-1.5">
-                                                        <p class="text-[12px] font-semibold text-slate-800 truncate" x-text="drawerTrackSelected.tracking_number || drawerTrackSelected.id || '—'"></p>
+                                                        <p class="text-[12px] font-semibold text-slate-800 truncate" x-text="drawerTrackSelected.tracking_number || drawerTrackSelected.order_number || drawerTrackSelected.code || '—'"></p>
                                                         <button
                                                             type="button"
                                                             class="evomi-track-copy"
-                                                            x-show="drawerTrackSelected.tracking_number || drawerTrackSelected.id"
+                                                            x-show="drawerTrackSelected.tracking_number || drawerTrackSelected.order_number || drawerTrackSelected.code"
                                                             @click="copyDrawerResi()"
                                                             :aria-label="$L('Salin', 'Copy')"
                                                         >

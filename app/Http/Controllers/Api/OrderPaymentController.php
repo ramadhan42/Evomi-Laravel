@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Support\OrderNumber;
 use App\Services\OrderPaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -39,11 +40,14 @@ class OrderPaymentController extends Controller
         $brand = is_string($product?->color) && trim($product->color) !== ''
             ? trim($product->color)
             : '#1172BA';
+        $invoiceRoot = $this->payments->invoiceRoot($primary->id);
+        $invoiceNumber = OrderNumber::display($invoiceRoot);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'invoice_id' => $this->payments->invoiceRoot($primary->id),
+                'invoice_id' => $invoiceNumber,
+                'order_number' => $invoiceNumber,
                 'payment_status' => $primary->payment_status,
                 'order_status' => $primary->status,
                 'payment_method' => $primary->metode_pembayaran,

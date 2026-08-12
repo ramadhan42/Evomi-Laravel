@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderTracking;
+use App\Support\OrderNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -80,8 +81,7 @@ class OrderTrackingController extends Controller
 
         $groups = [];
         foreach ($orders as $order) {
-            $idStr = (string) $order->id;
-            $invoiceRoot = preg_match('/^(INV-\d+-\d+)(?:-\d+)?$/', $idStr, $m) ? $m[1] : $idStr;
+            $invoiceRoot = Order::invoiceRoot((string) $order->id);
             if (! isset($groups[$invoiceRoot])) {
                 $groups[$invoiceRoot] = [];
             }
@@ -105,11 +105,14 @@ class OrderTrackingController extends Controller
             $statusKey = strtolower((string) ($first->status ?: ''));
             $trackStatus = (string) ($tracking?->status ?: '');
 
+            $invoiceNumber = OrderNumber::display($invoiceRoot);
+
             $data[] = [
                 'id' => $invoiceRoot,
                 'order_id' => (string) $first->id,
-                'invoice' => $invoiceRoot,
-                'code' => $this->shortOrderCode($invoiceRoot),
+                'invoice' => $invoiceNumber,
+                'code' => $invoiceNumber,
+                'order_number' => $invoiceNumber,
                 'title' => $localized['title'] ?? ($product?->title ?? 'Produk Evomi'),
                 'image' => $product?->image_2
                     ?: $product?->image_1
@@ -144,11 +147,7 @@ class OrderTrackingController extends Controller
 
     private function shortOrderCode(string $invoiceRoot): string
     {
-        if (preg_match('/(\d{6,})$/', preg_replace('/\D+/', '', $invoiceRoot) ?: '', $m)) {
-            return 'EVN-'.substr($m[1], -6);
-        }
-
-        return 'EVN-'.strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $invoiceRoot) ?: '000000', -6));
+        return OrderNumber::display($invoiceRoot);
     }
 
     private function shortDestination(?string $address): string
@@ -367,12 +366,13 @@ class OrderTrackingController extends Controller
         $product = $order?->product;
         $statusKey = strtolower((string) ($order?->status ?: ''));
         $trackStatus = (string) ($tracking->status ?: '');
-        $displayCode = $tracking->tracking_number ?: $tracking->order_id;
+        $invoiceNumber = OrderNumber::display($invoiceRoot);
+        $displayCode = $tracking->tracking_number ?: $invoiceNumber;
 
         return response()->json([
             'success' => true,
             'data' => [
-                'orderId' => $tracking->order_id,
+                'orderId' => $invoiceRoot,
                 'resi' => $displayCode,
                 'trackingNumber' => $tracking->tracking_number ?: null,
                 'courier' => $tracking->courier ?: 'Belum ditentukan',
@@ -393,8 +393,9 @@ class OrderTrackingController extends Controller
                 // Storefront sidebar shape (guest + logged-in parity)
                 'id' => $invoiceRoot,
                 'order_id' => (string) ($order?->id ?: $tracking->order_id),
-                'invoice' => $invoiceRoot,
-                'code' => $this->shortOrderCode($invoiceRoot),
+                'invoice' => $invoiceNumber,
+                'code' => $invoiceNumber,
+                'order_number' => $invoiceNumber,
                 'title' => $product?->title ?: 'Produk Evomi',
                 'image' => $product?->image_2
                     ?: $product?->image_1

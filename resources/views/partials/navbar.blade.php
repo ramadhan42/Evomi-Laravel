@@ -204,21 +204,21 @@
                                         type="button"
                                         role="menuitem"
                                         class="nav-account-item w-full"
-                                        @click="closeAccountMenu(); openOrdersModal()"
+                                        @click="closeAccountMenu(); openAccountDrawer('cart')"
                                     >
                                         <div class="nav-account-item__main">
-                                            <span class="nav-account-item__icon is-orders">
-                                                @include('partials.icons.orders', ['class' => 'w-[14px] h-[14px]'])
+                                            <span class="nav-account-item__icon is-cart">
+                                                @include('partials.icons.cart', ['class' => 'w-[15px] h-[15px]'])
                                             </span>
                                             <div class="min-w-0 text-left">
-                                                <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Pesanan Saya', 'My Orders') }}</p>
-                                                <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('history', $L('Lihat status & detail pesanan', 'View order status & details'), $L('Belum ada pesanan', 'No orders yet'))"></p>
+                                                <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Keranjang Saya', 'My Cart') }}</p>
+                                                <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('cart', $L('Lihat item di keranjang', 'View items in cart'), $L('Keranjang kosong', 'Cart is empty'))"></p>
                                             </div>
                                         </div>
                                         <span
                                             class="shrink-0 flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full text-[11px] font-bold"
-                                            :class="badges.history > 0 ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'"
-                                            x-text="badgeLabel('history') || '0'"
+                                            :class="badges.cart > 0 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'"
+                                            x-text="badgeLabel('cart') || '0'"
                                         ></span>
                                     </button>
 
@@ -422,12 +422,12 @@
                         <span class="relative z-[1] inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.user', ['class' => 'w-3.5 h-3.5'])</span>
                         <span class="relative z-[1]">{{ evomi_l('Pengaturan Profil', 'Profile Settings') }}</span>
                     </a>
-                    <button type="button" class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false; openOrdersModal()">
+                    <button type="button" class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false; openAccountDrawer('cart')">
                         <span class="relative z-[1] inline-flex items-center gap-2.5">
-                            <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.orders', ['class' => 'w-3.5 h-3.5'])</span>
-                            <span>{{ evomi_l('Pesanan Saya', 'My Orders') }}</span>
+                            <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.cart', ['class' => 'w-3.5 h-3.5'])</span>
+                            <span>{{ evomi_l('Keranjang Saya', 'My Cart') }}</span>
                         </span>
-                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('history') || '0'"></span>
+                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('cart') || '0'"></span>
                     </button>
                     <button type="button" class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false; openAccountDrawer('track')">
                         <span class="relative z-[1] inline-flex items-center gap-2.5">

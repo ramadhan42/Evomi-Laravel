@@ -8,6 +8,7 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderTracking;
 use App\Models\Product;
+use App\Support\OrderNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -140,6 +141,8 @@ class OrderController extends Controller
                 'message' => 'Invoice ID tidak valid',
             ], 400);
         }
+
+        $invoiceId = OrderNumber::resolveCheckoutInvoiceId($invoiceId);
 
         $now = now();
         $createdOrders = [];
@@ -299,7 +302,7 @@ class OrderController extends Controller
 
         $data = $validator->validated();
         $items = $data['items'];
-        $invoiceId = $data['invoice_id'];
+        $invoiceId = OrderNumber::resolveCheckoutInvoiceId($data['invoice_id']);
         $guestEmail = $data['guest_email'];
         $metodePembayaran = $data['payment_method'];
         $paymentStatus = Order::resolveCheckoutPaymentStatus(
