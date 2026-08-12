@@ -6,6 +6,22 @@
     $h3 = $cms->textLines('second', 'headline_3', 'kita yuk!', 1);
     $cta = $cms->textLines('second', 'cta_label', 'Lihat Semua Karakter', 1);
     $colors = ['text-[#0D71BA]', 'text-[#5EA14A]', 'text-[#E33D35]', 'text-[#DD74A5]'];
+    $personalityKeys = [
+        1 => 'prestige',
+        2 => 'peaceful_calm',
+        3 => 'rebel_brave',
+        4 => 'sweet_shy',
+    ];
+    $catalogByPersonality = [];
+    foreach (\App\Support\BelanjaCatalog::all() as $catProduct) {
+        $key = (string) ($catProduct['personality_type'] ?? '');
+        if ($key === 'purpose_prestige') {
+            $key = 'prestige';
+        }
+        if ($key !== '' && ! isset($catalogByPersonality[$key])) {
+            $catalogByPersonality[$key] = $catProduct;
+        }
+    }
 
     $characters = [];
     for ($i = 1; $i <= 4; $i++) {
@@ -18,6 +34,8 @@
         if ($lines === []) {
             $lines = [''];
         }
+        $personalityKey = $personalityKeys[$i] ?? '';
+        $match = $personalityKey !== '' ? ($catalogByPersonality[$personalityKey] ?? null) : null;
         $characters[] = [
             'lines' => $lines,
             'img' => $cms->image('second', "card{$i}_image", match ($i) {
@@ -28,6 +46,7 @@
             }),
             'title' => $cms->get('second', "card{$i}_title", trim(implode(' ', $lines))),
             'color' => $colors[$i - 1],
+            'id' => $match['id'] ?? null,
             'nameStyle' => $cms->fontInline('second', "card{$i}_name", '700'),
         ];
     }
@@ -54,6 +73,9 @@
             @foreach ($characters as $char)
                 <a
                     href="{{ route('belanja') }}"
+                    @if (!empty($char['id']))
+                        onclick="window.evomiOpenProduct({{ (int) $char['id'] }}); return false;"
+                    @endif
                     class="s2-char-card group parallax-self"
                     data-reveal
                     data-reveal-delay="{{ number_format($loop->index * 0.08, 2, '.', '') }}"
