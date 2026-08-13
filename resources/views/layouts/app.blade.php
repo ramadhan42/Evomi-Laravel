@@ -39,12 +39,12 @@
         #evomi-loader.is-fading { opacity: 0; pointer-events: none; }
         #evomi-loader.is-hidden { display: none; }
     </style>
+    @include('partials.evomi-cursor-styles')
     @php
         $route = request()->route()?->getName();
         $path = trim(request()->path(), '/');
-        $skipFullLoader = in_array($route, ['profile.history.show', 'artikel.show', 'checkout', 'pembayaran'], true)
+        $skipFullLoader = in_array($route, ['artikel.show', 'checkout', 'pembayaran'], true)
             || (bool) preg_match('#^artikel/[^/]+$#', $path)
-            || (bool) preg_match('#^profile/history/[^/]+$#', $path)
             || (bool) preg_match('#^pembayaran/#', $path)
             || $path === 'checkout';
         $surfaceBlue = in_array($route, ['beranda', 'artikel', 'artikel.show', 'login', 'register'], true)

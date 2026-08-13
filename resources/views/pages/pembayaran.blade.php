@@ -133,7 +133,12 @@
                         <div x-show="isPaid" x-cloak class="shrink-0 space-y-2.5">
                             <div class="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5 text-sm text-emerald-800">{{ evomi_l('Pembayaran berhasil. Pesanan diproses.', 'Payment successful. Order is processing.') }}</div>
                             <div class="flex gap-2">
-                                <a :href="'/pengiriman/' + encodeURIComponent(data.invoice_id)" data-soft-nav class="flex-1 inline-flex items-center justify-center py-2.5 rounded-xl text-white font-bold text-sm" :style="{ backgroundColor: brand }">{{ evomi_l('Lacak', 'Track') }}</a>
+                                <button
+                                    type="button"
+                                    class="flex-1 inline-flex items-center justify-center py-2.5 rounded-xl text-white font-bold text-sm"
+                                    :style="{ backgroundColor: brand }"
+                                    @click="window.evomiOpenTrack(data.invoice_id)"
+                                >{{ evomi_l('Lacak', 'Track') }}</button>
                                 <a href="{{ route('profile.history') }}" data-soft-nav class="flex-1 inline-flex items-center justify-center py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700">{{ evomi_l('Riwayat', 'History') }}</a>
                             </div>
                         </div>

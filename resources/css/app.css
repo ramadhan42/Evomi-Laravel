@@ -132,18 +132,21 @@ body {
     background: var(--background);
 }
 
-/* Custom cursor — local asset (same hotspot as Next.js Evomi); avoid CDN block/cache on live */
+/* Custom cursor — same CDN & size as evomi.shop (96px, hotspot 33 30)
+   Include body/* so teleported modals keep the CDN cursor. */
 html,
-html *,
 body,
 body *,
 .evomi-site,
 .evomi-site *,
 .admin-shell,
-.admin-shell * {
+.admin-shell *,
+[class*="evomi-"][class*="-modal"],
+[class*="evomi-"][class*="-modal"] *,
+[class*="evomi-"][class*="modal"],
+[class*="evomi-"][class*="modal"] * {
     cursor:
-        url('/src/images/cursor/evomi.png') 33 30,
-        url('/src/images/cursor/evomi.webp') 33 30,
+        url('https://cdn.cursors-4u.net/previews/normal-9e607e2c-48.webp') 33 30,
         auto !important;
 }
 .evomi-loader-inner {
@@ -660,21 +663,21 @@ body,
     }
 }
 
-/* Cadangan tinggi sebelum JS sync — supaya area biru navbar selalu terlihat */
+/* Cadangan tinggi sebelum JS sync — Figma Navbar = 72px desktop */
 #evomi-header-spacer {
     flex-shrink: 0;
     pointer-events: none;
     width: 100%;
-    height: var(--evomi-nav-h, 4.75rem);
-    min-height: var(--evomi-nav-h, 4.75rem);
+    height: var(--evomi-nav-h, 3.75rem);
+    min-height: var(--evomi-nav-h, 3.75rem);
     background-color: var(--evomi-theme, #1172ba);
     transition: background-color 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (min-width: 768px) {
     #evomi-header-spacer {
-        height: var(--evomi-nav-h, 7.25rem);
-        min-height: var(--evomi-nav-h, 7.25rem);
+        height: var(--evomi-nav-h, 4.5rem);
+        min-height: var(--evomi-nav-h, 4.5rem);
     }
 }
 
@@ -687,9 +690,22 @@ body,
 .nav-pill {
     isolation: isolate;
     color: #ffffff;
+    line-height: 1;
     transition:
         color 0.45s cubic-bezier(0.22, 1, 0.36, 1),
         opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Sejajarkan menu / login / avatar / cart ke optical center logo */
+@media (min-width: 768px) {
+    .nav-chrome .nav-logo {
+        transform: translateY(3px);
+    }
+
+    .nav-chrome .nav-desktop-menu,
+    .nav-chrome .nav-desktop-actions {
+        transform: translateY(13px);
+    }
 }
 
 .nav-pill::before {
@@ -1031,21 +1047,97 @@ body,
 }
 
 .profile-content-panel {
+    position: relative;
+    width: 100%;
+    height: min(80vh, 760px);
+    min-height: min(80vh, 760px);
+    max-height: min(80vh, 760px);
+    overflow: hidden;
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
     transition:
-        opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-        transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+        opacity 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+}
+
+.profile-content-panel > * {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+}
+
+.profile-page-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden;
+    border-radius: 28px;
+    border: 1px solid #f3f4f6;
+    background: #fff;
+}
+
+.profile-page-card__loader,
+.profile-page-card__body {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+}
+
+.profile-page-card__loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background: #fff;
+    border-radius: inherit;
+}
+
+.profile-page-card__body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.profile-page-card__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .profile-content-panel.is-leaving {
     opacity: 0;
-    transform: translate3d(0, 8px, 0);
+    transform: translate3d(0, 12px, 0) scale(0.985);
     pointer-events: none;
 }
 
 .profile-content-panel.is-entering {
     opacity: 0;
-    transform: translate3d(0, 10px, 0);
+    transform: translate3d(0, 16px, 0) scale(0.985);
     transition: none;
+}
+
+@media (max-width: 1023px) {
+    .profile-content-panel {
+        height: min(72vh, 680px);
+        min-height: min(72vh, 680px);
+        max-height: min(72vh, 680px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-content-panel,
+    .profile-content-panel.is-leaving,
+    .profile-content-panel.is-entering {
+        transition: none !important;
+        transform: none !important;
+    }
 }
 
 /* Soft page transitions — keep navbar mounted (Next SPA feel), no loader */
@@ -4236,6 +4328,169 @@ select.admin-field-input {
   .evomi-account-drawer__tab.is-magnet {
     animation: none;
   }
+
+  .evomi-heart-burst {
+    display: none !important;
+  }
+
+  .evomi-wishlist-btn.is-wishlist-pop .evomi-wishlist-btn__icon,
+  .evomi-wishlist-btn.is-wishlist-unpop .evomi-wishlist-btn__icon {
+    animation: none;
+  }
+}
+
+/* Twitter/X-style wishlist heart burst */
+.evomi-wishlist-btn {
+  --wishlist-color: #1172ba;
+}
+
+.evomi-wishlist-btn.is-wishlisted {
+  color: var(--wishlist-color);
+}
+
+.evomi-wishlist-btn__heart-filled {
+  fill: var(--wishlist-color) !important;
+  color: var(--wishlist-color) !important;
+  stroke: var(--wishlist-color) !important;
+}
+
+.evomi-wishlist-btn__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.evomi-wishlist-btn.is-wishlist-pop .evomi-wishlist-btn__icon {
+  animation: evomi-wishlist-pop 0.65s cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
+.evomi-wishlist-btn.is-wishlist-unpop .evomi-wishlist-btn__icon {
+  animation: evomi-wishlist-unpop 0.58s cubic-bezier(0.4, 0.05, 0.2, 1);
+}
+
+@keyframes evomi-wishlist-pop {
+  0% { transform: scale(1); }
+  18% { transform: scale(0.2); }
+  42% { transform: scale(1.35); }
+  68% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+@keyframes evomi-wishlist-unpop {
+  0% { transform: scale(1) rotate(0deg); }
+  28% { transform: scale(1.18) rotate(-6deg); }
+  55% { transform: scale(0.72) rotate(4deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.evomi-heart-burst {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  pointer-events: none;
+  overflow: visible;
+  --burst-color: #ff4d6d;
+  --burst-color-soft: #ff8fb3;
+}
+
+.evomi-heart-burst__ring {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  border-radius: 999px;
+  border: 2.5px solid var(--burst-color, #ff4d6d);
+  transform: translate(-50%, -50%) scale(0.2);
+  opacity: 0.95;
+  animation: evomi-heart-ring 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.evomi-heart-burst.is-remove .evomi-heart-burst__ring {
+  animation-name: evomi-heart-ring-out;
+}
+
+.evomi-heart-burst__ring--soft {
+  border-color: var(--burst-color-soft, rgba(249, 24, 128, 0.45));
+  animation-delay: 0.06s;
+  animation-duration: 0.85s;
+}
+
+@keyframes evomi-heart-ring {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.15);
+  }
+  40% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(3.4);
+  }
+}
+
+@keyframes evomi-heart-ring-out {
+  0% {
+    opacity: 0.75;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.6);
+  }
+}
+
+.evomi-heart-burst__heart,
+.evomi-heart-burst__dot,
+.evomi-heart-burst__hero {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 4px 8px color-mix(in srgb, var(--burst-color, #f91880) 30%, transparent));
+}
+
+.evomi-heart-burst__heart {
+  width: 16px;
+  height: 16px;
+  color: var(--burst-color, #ff4d6d);
+}
+
+.evomi-heart-burst__heart--1 { width: 13px; height: 13px; }
+.evomi-heart-burst__heart--2 { width: 18px; height: 18px; }
+.evomi-heart-burst__heart--3 { width: 12px; height: 12px; }
+
+.evomi-heart-burst__heart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.evomi-heart-burst__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
+}
+
+.evomi-heart-burst__dot--1 { width: 5px; height: 5px; }
+.evomi-heart-burst__dot--2 { width: 9px; height: 9px; }
+
+.evomi-heart-burst__hero {
+  width: 28px;
+  height: 28px;
+  color: var(--burst-color, #f91880);
+  filter:
+    drop-shadow(0 0 0 1.5px #fff)
+    drop-shadow(0 8px 16px color-mix(in srgb, var(--burst-color, #f91880) 35%, transparent));
+}
+
+.evomi-heart-burst__hero svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* Figma CartSidebar */
@@ -4799,6 +5054,204 @@ select.admin-field-input {
   background: #dbeafe;
 }
 
+/* Centered Lacak Pesanan modal */
+.evomi-track-modal__backdrop {
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.evomi-track-modal__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  max-height: min(92vh, 760px);
+  overflow: hidden;
+  background: #fff;
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+@media (min-width: 640px) {
+  .evomi-track-modal__panel {
+    border-radius: 28px;
+    max-height: min(88vh, 720px);
+  }
+}
+
+.evomi-track-modal__hero {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  padding: 1.35rem 1.35rem 1.2rem;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(255, 255, 255, 0.18) 0%, transparent 55%),
+    linear-gradient(145deg, #0d5f9e 0%, #1172ba 48%, #1a8ad4 100%);
+  color: #fff;
+}
+
+.evomi-track-modal__hero-glow {
+  position: absolute;
+  right: -18%;
+  top: -40%;
+  width: 220px;
+  height: 220px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.evomi-track-modal__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.evomi-track-modal__kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.2;
+}
+
+.evomi-track-modal__title {
+  margin-top: 0.15rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.evomi-track-modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.evomi-track-modal__close:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.evomi-track-modal__close:active {
+  transform: scale(0.96);
+}
+
+.evomi-track-modal__subtitle {
+  margin-top: 0.85rem;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.88);
+  max-width: 36rem;
+}
+
+.evomi-track-modal__search {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.evomi-track-modal__input {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  border: 0;
+  border-radius: 14px;
+  padding: 0 0.95rem;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0f172a;
+  background: #fff;
+  outline: none;
+  box-shadow: 0 8px 24px rgba(8, 47, 73, 0.12);
+}
+
+.evomi-track-modal__input::placeholder {
+  color: #94a3b8;
+}
+
+.evomi-track-modal__submit {
+  flex-shrink: 0;
+  height: 46px;
+  min-width: 96px;
+  padding: 0 1.1rem;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1172ba;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(8, 47, 73, 0.12);
+  transition: background-color 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
+}
+
+.evomi-track-modal__submit:hover:not(:disabled) {
+  background: #f0f7fc;
+}
+
+.evomi-track-modal__submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.evomi-track-modal__submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.evomi-track-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.15rem 1.25rem 1.5rem;
+  background:
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 28%);
+}
+
+.evomi-track-modal__body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.evomi-track-modal__body::-webkit-scrollbar-thumb {
+  background: rgba(17, 114, 186, 0.28);
+  border-radius: 999px;
+}
+
+.evomi-track-modal__empty {
+  padding: 2.75rem 1rem;
+  text-align: center;
+}
+
+.evomi-track-modal__empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1rem;
+  border-radius: 22px;
+  color: #1172ba;
+  background: rgba(17, 114, 186, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(17, 114, 186, 0.08);
+}
+
 .evomi-account-drawer__footer {
   border-top: 1px solid #eef2f7;
   background: #fff;
@@ -5342,6 +5795,71 @@ select.admin-field-input {
   transform: translateY(0);
 }
 
+/* Product modal loading skeleton — neutral, no accent flash */
+.evomi-product-modal__media--loading {
+  background: linear-gradient(160deg, #f8fafc 0%, #eef2f6 55%, #f4f6f8 100%) !important;
+}
+
+.evomi-product-modal__skeleton-bottle {
+  width: 72px;
+  height: 110px;
+  border-radius: 18px 18px 22px 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(226, 232, 240, 0.95) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(148, 163, 184, 0.25),
+    0 14px 28px rgba(15, 23, 42, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.evomi-product-modal__skeleton-bottle::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 14px;
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.28);
+}
+
+.evomi-product-modal__skeleton-pulse {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2.5px solid #e2e8f0;
+  border-top-color: #94a3b8;
+  animation: evomi-product-modal-spin 0.85s linear infinite;
+}
+
+.evomi-skel {
+  display: block;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #eef2f6 0%, #f8fafc 45%, #eef2f6 100%);
+  background-size: 200% 100%;
+  animation: evomi-product-modal-shimmer 1.35s ease-in-out infinite;
+}
+
+.evomi-skel--lg { height: 28px; }
+.evomi-skel--md { height: 22px; }
+.evomi-skel--sm { height: 14px; }
+.evomi-skel--xs { height: 10px; }
+.evomi-skel--line { height: 12px; border-radius: 8px; }
+.evomi-skel--block { height: 58px; border-radius: 14px; }
+.evomi-skel--pill { height: 36px; border-radius: 999px; }
+.evomi-skel--cta { height: 48px; border-radius: 16px; }
+
+@keyframes evomi-product-modal-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@keyframes evomi-product-modal-spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 767px) {
   .evomi-product-modal__panel {
     border-radius: 22px;
@@ -5355,7 +5873,469 @@ select.admin-field-input {
   .evomi-product-modal-fade-enter,
   .evomi-product-modal-fade-leave,
   .evomi-product-modal-panel-enter,
-  .evomi-product-modal-panel-leave {
+  .evomi-product-modal-panel-leave,
+  .evomi-skel,
+  .evomi-product-modal__skeleton-pulse {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Product detail — Chat & Share overlays */
+.evomi-product-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+}
+
+.evomi-product-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.evomi-product-modal__frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.evomi-product-modal__frame--chat {
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+@media (min-width: 640px) {
+  .evomi-product-modal__frame--chat {
+    align-items: center;
+    justify-content: flex-end;
+    padding: 1.25rem;
+  }
+}
+
+.evomi-overlay-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 0;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.evomi-overlay-close:hover {
+  background: rgba(255, 255, 255, 0.26);
+  transform: rotate(90deg);
+  color: #fff;
+}
+
+.evomi-chat-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 400px;
+  height: min(72vh, 560px);
+  overflow: hidden;
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+@media (min-width: 640px) {
+  .evomi-chat-panel {
+    height: 540px;
+    border-radius: 24px;
+  }
+}
+
+.evomi-chat-panel__header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  color: #fff;
+}
+
+.evomi-chat-panel__avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.18);
+  flex-shrink: 0;
+}
+
+.evomi-chat-panel__online {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: #34d399;
+  border: 2px solid #fff;
+}
+
+.evomi-chat-panel__kicker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.evomi-chat-panel__title {
+  margin-top: 0.1rem;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.evomi-chat-panel__subtitle {
+  margin-top: 0.2rem;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.evomi-chat-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(17, 114, 186, 0.06), transparent 42%),
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 40%);
+}
+
+.evomi-chat-panel__welcome {
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #eef2f7;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.evomi-chat-panel__row {
+  display: flex;
+}
+
+.evomi-chat-panel__row.is-user {
+  justify-content: flex-end;
+}
+
+.evomi-chat-panel__row.is-admin {
+  justify-content: flex-start;
+}
+
+.evomi-chat-panel__bubble {
+  max-width: 82%;
+  padding: 0.65rem 0.85rem;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.evomi-chat-panel__bubble.is-user {
+  color: #fff;
+  border-bottom-right-radius: 6px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+
+.evomi-chat-panel__bubble.is-admin {
+  color: #334155;
+  background: #fff;
+  border: 1px solid #eef2f7;
+  border-bottom-left-radius: 6px;
+}
+
+.evomi-chat-panel__footer {
+  flex-shrink: 0;
+  padding: 0.75rem 0.9rem 0.95rem;
+  border-top: 1px solid #eef2f7;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.evomi-chat-panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.evomi-chat-panel__chip {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.evomi-chat-panel__chip:hover {
+  background: #fff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.evomi-chat-panel__composer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.evomi-chat-panel__input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 0 1rem;
+  font-size: 13px;
+  color: #0f172a;
+  background: #f8fafc;
+  outline: none;
+}
+
+.evomi-chat-panel__input:focus {
+  border-color: #1172ba;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(17, 114, 186, 0.12);
+}
+
+.evomi-chat-panel__send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.evomi-chat-panel__send:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.evomi-share-panel {
+  position: relative;
+  width: min(92vw, 420px);
+  overflow: hidden;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+.evomi-share-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.1rem 1.15rem 1rem;
+  color: #fff;
+}
+
+.evomi-share-panel__body {
+  padding: 1rem 1.15rem 1.25rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 28%);
+}
+
+.evomi-share-panel__preview {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 16px;
+  border: 1px solid #eef2f7;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  margin-bottom: 1rem;
+}
+
+.evomi-share-panel__thumb {
+  width: 68px;
+  height: 68px;
+  border-radius: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+
+.evomi-share-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.evomi-share-panel__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.7rem 0.35rem;
+  border-radius: 16px;
+  border: 1px solid #eef2f7;
+  background: #fff;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+.evomi-share-panel__item:hover {
+  transform: translateY(-2px);
+  border-color: #e2e8f0;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  color: #334155;
+}
+
+.evomi-share-panel__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.evomi-share-panel__item.is-wa .evomi-share-panel__icon {
+  background: #ecfdf5;
+  color: #16a34a;
+}
+.evomi-share-panel__item.is-wa:hover .evomi-share-panel__icon {
+  background: #16a34a;
+  color: #fff;
+}
+
+.evomi-share-panel__item.is-fb .evomi-share-panel__icon {
+  background: #eff6ff;
+  color: #2563eb;
+}
+.evomi-share-panel__item.is-fb:hover .evomi-share-panel__icon {
+  background: #2563eb;
+  color: #fff;
+}
+
+.evomi-share-panel__item.is-x .evomi-share-panel__icon {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.evomi-share-panel__item.is-x:hover .evomi-share-panel__icon {
+  background: #0f172a;
+  color: #fff;
+}
+
+.evomi-share-panel__item.is-ig .evomi-share-panel__icon {
+  background: #fdf2f8;
+  color: #db2777;
+}
+.evomi-share-panel__item.is-ig:hover .evomi-share-panel__icon {
+  background: #db2777;
+  color: #fff;
+}
+
+.evomi-share-panel__hint {
+  margin: 0 0 0.75rem;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #94a3b8;
+}
+
+.evomi-share-panel__copy {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.evomi-share-panel__url {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  padding: 0 0.65rem;
+  font-size: 12px;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evomi-share-panel__copy-btn {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 0.95rem;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.evomi-share-panel__copy-btn.is-copied {
+  border-color: transparent;
+  color: #fff;
+}
+
+.evomi-share-panel__copy-btn:hover {
+  filter: brightness(0.98);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evomi-share-panel__item,
+  .evomi-chat-panel__send,
+  .evomi-overlay-close {
     transition: none !important;
   }
 }

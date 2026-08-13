@@ -1319,6 +1319,203 @@ function spawnCatchSparkles(targetEl, accent = '#1172BA', count = 12) {
 }
 
 /**
+ * Twitter/X-style heart burst for wishlist add / remove.
+ * @param {Element|null} sourceEl
+ * @param {{ mode?: 'add'|'remove', color?: string }} [options]
+ */
+function spawnWishlistHeartBurst(sourceEl, options = {}) {
+    if (!sourceEl || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const mode = options.mode === 'remove' ? 'remove' : 'add';
+    const baseColor = String(options.color || '#FF4D6D').trim() || '#FF4D6D';
+    const colors = [
+        baseColor,
+        shadeHexColor(baseColor, 22),
+        shadeHexColor(baseColor, -14),
+        shadeHexColor(baseColor, 36),
+        shadeHexColor(baseColor, -24),
+        shadeHexColor(baseColor, 10),
+        shadeHexColor(baseColor, -8),
+    ];
+
+    const btn = sourceEl.closest?.('button') || sourceEl;
+    const icon = btn.querySelector?.('svg') || btn;
+    const rect = icon.getBoundingClientRect();
+    if (rect.width < 2) return;
+
+    const popClass = mode === 'remove' ? 'is-wishlist-unpop' : 'is-wishlist-pop';
+    btn.classList.remove('is-wishlist-pop', 'is-wishlist-unpop');
+    void btn.offsetWidth;
+    btn.classList.add(popClass);
+    window.setTimeout(() => btn.classList.remove(popClass), 700);
+
+    const layer = document.createElement('div');
+    layer.className = `evomi-heart-burst${mode === 'remove' ? ' is-remove' : ''}`;
+    layer.setAttribute('aria-hidden', 'true');
+    layer.style.setProperty('--burst-color', baseColor);
+    layer.style.setProperty('--burst-color-soft', shadeHexColor(baseColor, 28));
+    document.body.appendChild(layer);
+
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    const ring = document.createElement('span');
+    ring.className = 'evomi-heart-burst__ring';
+    ring.style.left = `${cx}px`;
+    ring.style.top = `${cy}px`;
+    ring.style.borderColor = baseColor;
+    layer.appendChild(ring);
+
+    const ring2 = document.createElement('span');
+    ring2.className = 'evomi-heart-burst__ring evomi-heart-burst__ring--soft';
+    ring2.style.left = `${cx}px`;
+    ring2.style.top = `${cy}px`;
+    ring2.style.borderColor = shadeHexColor(baseColor, 35);
+    layer.appendChild(ring2);
+
+    const count = mode === 'remove' ? 9 : 10;
+    const jobs = [];
+
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement('span');
+        const isDot = i % 3 === 0;
+        p.className = isDot
+            ? `evomi-heart-burst__dot evomi-heart-burst__dot--${i % 3}`
+            : `evomi-heart-burst__heart evomi-heart-burst__heart--${i % 4}`;
+        p.style.color = colors[i % colors.length];
+        if (!isDot) p.innerHTML = REACTION_HEART_SVG;
+        layer.appendChild(p);
+
+        const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.4 - 0.2) - Math.PI / 2;
+        const dist = mode === 'remove' ? 28 + Math.random() * 40 : 36 + Math.random() * 48;
+        const lift = mode === 'remove' ? -(16 + Math.random() * 34) : 18 + Math.random() * 28;
+        const midX = cx + Math.cos(angle) * (dist * 0.45);
+        const midY = cy + Math.sin(angle) * (dist * 0.35) - lift * 0.55;
+        const endX = cx + Math.cos(angle) * dist;
+        const endY = cy + Math.sin(angle) * dist - lift;
+        const cruiseY = mode === 'remove' ? endY + 8 : endY - 6;
+        const size = isDot ? 0.55 + Math.random() * 0.55 : 0.55 + Math.random() * 0.75;
+        const rot = (Math.random() * 50 - 25) + angle * 28;
+
+        p.style.left = '0px';
+        p.style.top = '0px';
+
+        jobs.push(
+            p.animate(
+                mode === 'remove'
+                    ? [
+                          {
+                              offset: 0,
+                              opacity: 1,
+                              transform: `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${1.05 * size}) rotate(0deg)`,
+                          },
+                          {
+                              offset: 0.22,
+                              opacity: 0.95,
+                              transform: `translate(${midX}px, ${midY}px) translate(-50%, -50%) scale(${1.15 * size}) rotate(${rot * 0.5}deg)`,
+                          },
+                          {
+                              offset: 0.62,
+                              opacity: 0.55,
+                              transform: `translate(${endX}px, ${cruiseY}px) translate(-50%, -50%) scale(${0.7 * size}) rotate(${rot}deg)`,
+                          },
+                          {
+                              offset: 1,
+                              opacity: 0,
+                              transform: `translate(${endX}px, ${endY + 22}px) translate(-50%, -50%) scale(${0.2 * size}) rotate(${rot * 1.35}deg)`,
+                          },
+                      ]
+                    : [
+                          {
+                              offset: 0,
+                              opacity: 0,
+                              transform: `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${0.15 * size}) rotate(0deg)`,
+                          },
+                          {
+                              offset: 0.14,
+                              opacity: 1,
+                              transform: `translate(${midX}px, ${midY}px) translate(-50%, -50%) scale(${1.2 * size}) rotate(${rot * 0.4}deg)`,
+                          },
+                          {
+                              offset: 0.55,
+                              opacity: 0.95,
+                              transform: `translate(${endX}px, ${cruiseY}px) translate(-50%, -50%) scale(${0.95 * size}) rotate(${rot}deg)`,
+                          },
+                          {
+                              offset: 1,
+                              opacity: 0,
+                              transform: `translate(${endX}px, ${endY - 14}px) translate(-50%, -50%) scale(${0.35 * size}) rotate(${rot * 1.2}deg)`,
+                          },
+                      ],
+                {
+                    duration: (mode === 'remove' ? 700 : 780) + Math.random() * 280,
+                    delay: i * 14,
+                    easing: mode === 'remove' ? 'cubic-bezier(0.4, 0.05, 0.35, 1)' : 'cubic-bezier(0.22, 0.9, 0.28, 1)',
+                    fill: 'forwards',
+                },
+            ).finished,
+        );
+    }
+
+    const hero = document.createElement('span');
+    hero.className = 'evomi-heart-burst__hero';
+    hero.style.color = baseColor;
+    hero.innerHTML = REACTION_HEART_SVG;
+    layer.appendChild(hero);
+    jobs.push(
+        hero.animate(
+            mode === 'remove'
+                ? [
+                      {
+                          offset: 0,
+                          opacity: 1,
+                          transform: `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(1.2)`,
+                      },
+                      {
+                          offset: 0.28,
+                          opacity: 0.85,
+                          transform: `translate(${cx}px, ${cy + 6}px) translate(-50%, -50%) scale(0.95)`,
+                      },
+                      {
+                          offset: 1,
+                          opacity: 0,
+                          transform: `translate(${cx}px, ${cy + 36}px) translate(-50%, -50%) scale(0.35)`,
+                      },
+                  ]
+                : [
+                      {
+                          offset: 0,
+                          opacity: 0,
+                          transform: `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(0.2)`,
+                      },
+                      {
+                          offset: 0.18,
+                          opacity: 1,
+                          transform: `translate(${cx}px, ${cy - 8}px) translate(-50%, -50%) scale(1.35)`,
+                      },
+                      {
+                          offset: 0.55,
+                          opacity: 0.9,
+                          transform: `translate(${cx}px, ${cy - 28}px) translate(-50%, -50%) scale(1.05)`,
+                      },
+                      {
+                          offset: 1,
+                          opacity: 0,
+                          transform: `translate(${cx}px, ${cy - 52}px) translate(-50%, -50%) scale(0.7)`,
+                      },
+                  ],
+            {
+                duration: mode === 'remove' ? 720 : 900,
+                easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                fill: 'forwards',
+            },
+        ).finished,
+    );
+
+    Promise.allSettled(jobs).then(() => layer.remove());
+}
+
+/**
  * Fly stars from a UI control into the cart / drawer tab, then open drawer.
  */
 async function flyOpenDrawer(tab = 'cart', sourceEl = null, accent = '#1172BA') {
@@ -1397,6 +1594,32 @@ function productAccent(product) {
         sweet_shy: '#DD74A5',
     };
     return map[personality] || DEFAULT_THEME_BLUE;
+}
+
+/** Shade a hex color by percent (-100..100). Negative darkens, positive lightens. */
+function shadeHexColor(hex, percent = 0) {
+    const raw = String(hex || '#1172BA').replace('#', '').trim();
+    const full =
+        raw.length === 3
+            ? raw
+                  .split('')
+                  .map((c) => c + c)
+                  .join('')
+            : raw.padEnd(6, '0').slice(0, 6);
+    const num = Number.parseInt(full, 16);
+    if (Number.isNaN(num)) return '#1172BA';
+    let r = (num >> 16) & 0xff;
+    let g = (num >> 8) & 0xff;
+    let b = num & 0xff;
+    const amt = Math.max(-100, Math.min(100, Number(percent) || 0)) / 100;
+    const mix = (channel) => {
+        if (amt < 0) return Math.round(channel * (1 + amt));
+        return Math.round(channel + (255 - channel) * amt);
+    };
+    r = Math.max(0, Math.min(255, mix(r)));
+    g = Math.max(0, Math.min(255, mix(g)));
+    b = Math.max(0, Math.min(255, mix(b)));
+    return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
 }
 
 function productImageFallback(product) {
@@ -1747,10 +1970,13 @@ document.addEventListener('alpine:init', () => {
         actionBusy: false,
 
         get accent() {
+            if (this.loading || !this.product) return '#64748B';
             return productAccent(this.product);
         },
 
         get softAccent() {
+            // Neutral while loading / empty — avoid #9CD6FF flash before product loads
+            if (this.loading || !this.product) return '#F4F6F8';
             return productSoftAccent(this.product);
         },
 
@@ -1977,12 +2203,218 @@ document.addEventListener('alpine:init', () => {
         },
     });
 
+    Alpine.store('evomiTrackModal', {
+        open: false,
+    });
+
+    Alpine.store('evomiSettingsModal', {
+        open: false,
+    });
+
+    Alpine.store('evomiWishlistModal', {
+        open: false,
+    });
+
+    Alpine.store('evomiHistoryModal', {
+        open: false,
+    });
+
+    Alpine.store('evomiHistoryDetailModal', {
+        open: false,
+        orderId: null,
+    });
+
+    Alpine.store('evomiChatModal', {
+        open: false,
+    });
+
+    Alpine.store('evomiFaqModal', {
+        open: false,
+        loading: false,
+        query: '',
+        groups: [],
+
+        get visibleGroups() {
+            const q = String(this.query || '')
+                .trim()
+                .toLowerCase();
+            if (!q) return this.groups;
+            return this.groups
+                .map((group) => ({
+                    ...group,
+                    items: (group.items || []).filter(
+                        (item) =>
+                            String(item.q || '')
+                                .toLowerCase()
+                                .includes(q) ||
+                            String(item.a || '')
+                                .toLowerCase()
+                                .includes(q),
+                    ),
+                }))
+                .filter((group) => group.items.length > 0);
+        },
+
+        async load() {
+            this.loading = true;
+            try {
+                const locale = currentLocale();
+                const res = await fetch(`/api/cms/faqs?locale=${encodeURIComponent(locale)}`, {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
+                const data = await readApiJson(res);
+                const rows = Array.isArray(data?.data) ? data.data : [];
+                const map = {};
+                for (const row of rows) {
+                    const cat = row.category || 'Umum';
+                    if (!map[cat]) map[cat] = [];
+                    map[cat].push({
+                        q: row.question || '',
+                        a: row.answer || '',
+                    });
+                }
+                this.groups = Object.entries(map).map(([category, items]) => ({
+                    category,
+                    items,
+                }));
+            } catch {
+                this.groups = [];
+            } finally {
+                this.loading = false;
+            }
+        },
+    });
+
+    Alpine.store('evomiKontakModal', {
+        open: false,
+        loading: false,
+        form: { name: '', email: '', subject: '', message: '' },
+        status: { type: null, message: '' },
+        cms: {
+            title: 'Hubungi Kami',
+            subtitle: 'Punya pertanyaan atau ingin berkolaborasi? Tim Evomi siap mendengarkan Anda.',
+            email_label: 'Email',
+            email_value: 'hello@evomi.id',
+            phone_label: 'WhatsApp',
+            phone_value: '+62 812-3456-7890',
+            address_label: 'Kantor Pusat',
+            address_value: 'Jakarta, Indonesia',
+        },
+
+        async loadCms() {
+            try {
+                const locale = currentLocale();
+                const res = await fetch(`/api/cms/kontak?locale=${encodeURIComponent(locale)}`, {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
+                const data = await readApiJson(res);
+                const g = data?.data || {};
+                this.cms = {
+                    title: g.header?.title || this.cms.title,
+                    subtitle: g.header?.subtitle || this.cms.subtitle,
+                    email_label: g.info?.email_label || this.cms.email_label,
+                    email_value: g.info?.email_value || this.cms.email_value,
+                    phone_label: g.info?.phone_label || this.cms.phone_label,
+                    phone_value: g.info?.phone_value || this.cms.phone_value,
+                    address_label: g.info?.address_label || this.cms.address_label,
+                    address_value: g.info?.address_value || this.cms.address_value,
+                };
+            } catch {
+                /* keep defaults */
+            }
+        },
+
+        async submit() {
+            this.loading = true;
+            this.status = { type: null, message: '' };
+            try {
+                const res = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(this.form),
+                });
+                const data = await readApiJson(res);
+                if (!res.ok) {
+                    throw new Error(
+                        apiErrorMessage(data, storefrontL('Gagal mengirim pesan.', 'Failed to send message.')),
+                    );
+                }
+                this.status = {
+                    type: 'success',
+                    message: storefrontL(
+                        'Pesan terkirim. Tim Evomi akan membalas segera.',
+                        'Message sent. Evomi support will reply soon.',
+                    ),
+                };
+                this.form = { name: '', email: '', subject: '', message: '' };
+            } catch (err) {
+                this.status = {
+                    type: 'error',
+                    message:
+                        err instanceof Error
+                            ? err.message
+                            : storefrontL('Gagal mengirim pesan.', 'Failed to send message.'),
+                };
+            } finally {
+                this.loading = false;
+            }
+        },
+    });
+
     window.evomiOpenProduct = (id) => {
         try {
             Alpine.store('evomiProductModal').openProduct(id);
         } catch {
             /* alpine not ready */
         }
+    };
+
+    window.evomiOpenTrack = (resi = '') => {
+        const q = String(resi || '').trim();
+        const nav = window.__evomiNav;
+        if (nav && typeof nav.openTrackModal === 'function') {
+            nav.openTrackModal({ resi: q });
+            return;
+        }
+        window.dispatchEvent(new CustomEvent('evomi-open-track', { detail: { resi: q } }));
+    };
+
+    window.evomiOpenFaq = () => {
+        const nav = window.__evomiNav;
+        if (nav && typeof nav.openFaqModal === 'function') {
+            nav.openFaqModal();
+            return;
+        }
+        window.dispatchEvent(new CustomEvent('evomi-open-faq'));
+    };
+
+    window.evomiOpenKontak = () => {
+        const nav = window.__evomiNav;
+        if (nav && typeof nav.openKontakModal === 'function') {
+            nav.openKontakModal();
+            return;
+        }
+        window.dispatchEvent(new CustomEvent('evomi-open-kontak'));
+    };
+
+    window.evomiOpenSettings = () => softNavigate('/profile');
+
+    window.evomiOpenWishlist = () => softNavigate('/profile/wishlist');
+
+    window.evomiOpenHistory = () => softNavigate('/profile/history');
+
+    window.evomiOpenHistoryDetail = (orderId = '') => {
+        const id = String(orderId || '').trim();
+        if (!id) {
+            softNavigate('/profile/history');
+            return;
+        }
+        softNavigate(`/profile/history/${encodeURIComponent(id)}`);
     };
 
     Alpine.data('evomiNavbar', (activeIndex = 0) => ({
@@ -2200,6 +2632,30 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('history_updated', this._onBadgeRefresh);
             window.addEventListener('messages_read', this._onBadgeRefresh);
             window.addEventListener('evomi-admin-locale', this._onLocaleChange);
+            this._onOpenTrack = (e) => {
+                this.openTrackModal({ resi: e?.detail?.resi ?? '' });
+            };
+            window.addEventListener('evomi-open-track', this._onOpenTrack);
+            this._onOpenFaq = () => this.openFaqModal();
+            window.addEventListener('evomi-open-faq', this._onOpenFaq);
+            this._onOpenKontak = () => this.openKontakModal();
+            window.addEventListener('evomi-open-kontak', this._onOpenKontak);
+            this._onOpenSettings = () => this.openSettingsModal();
+            window.addEventListener('evomi-open-settings', this._onOpenSettings);
+            this._onOpenWishlist = () => this.openWishlistModal();
+            window.addEventListener('evomi-open-wishlist', this._onOpenWishlist);
+            this._onOpenHistory = () => this.openHistoryModal();
+            window.addEventListener('evomi-open-history', this._onOpenHistory);
+            this._onOpenChat = () => this.openChatModal();
+            window.addEventListener('evomi-open-chat', this._onOpenChat);
+            this._onOpenHistoryDetail = (e) => {
+                this.openHistoryDetailModal(e?.detail?.orderId || '');
+            };
+            window.addEventListener('evomi-open-history-detail', this._onOpenHistoryDetail);
+            this._onOpenCart = () => {
+                this.openAccountDrawer('cart');
+            };
+            window.addEventListener('evomi-open-cart', this._onOpenCart);
             this._onDrawerCartRefresh = () => {
                 if (this.accountDrawerOpen) this.loadDrawerCart();
             };
@@ -2256,6 +2712,40 @@ document.addEventListener('alpine:init', () => {
             this.$watch('drawerTab', (tab) => {
                 if (tab === 'track' && this.accountDrawerOpen) {
                     this.loadDrawerTrackings();
+                }
+            });
+
+            // Deep link /pengiriman/{resi} → track modal
+            this.$nextTick(() => {
+                const path = window.location.pathname.replace(/\/$/, '') || '/';
+                const trackMatch = path.match(/^\/pengiriman\/([^/]+)$/i);
+                if (trackMatch) {
+                    const resi = decodeURIComponent(trackMatch[1] || '').trim();
+                    if (resi) {
+                        this.openTrackModal({ resi });
+                        try {
+                            history.replaceState({ soft: true }, document.title, '/pengiriman');
+                        } catch {
+                            /* ignore */
+                        }
+                    }
+                    return;
+                }
+                if (path === '/faq') {
+                    this.openFaqModal();
+                    return;
+                }
+                if (path === '/kontak') {
+                    this.openKontakModal();
+                    return;
+                }
+
+            });
+
+            // Safety: clear stray scroll lock if no overlay is open
+            this.$nextTick(() => {
+                if (!this.bodyScrollLocked()) {
+                    document.documentElement.classList.remove('overflow-hidden');
                 }
             });
         },
@@ -2591,11 +3081,14 @@ document.addEventListener('alpine:init', () => {
 
             this.open = false;
             this.accountMenuOpen = false;
+            this.closeTrackModal();
+            this.closeHelpModals();
+            this.closeAccountModals();
             this.guestEmailInput = readGuestEmail() || this.guestEmailInput;
             this.guestTrackEmail = readGuestEmail() || this.guestTrackEmail;
             this.drawerTab = nextTab;
             this.accountDrawerOpen = true;
-            document.documentElement.classList.add('overflow-hidden');
+            this.syncBodyScrollLock();
 
             const tasks = [];
             if (this.drawerTab === 'cart') {
@@ -2615,18 +3108,260 @@ document.addEventListener('alpine:init', () => {
 
         closeAccountDrawer() {
             this.accountDrawerOpen = false;
-            if (!this.ordersModalOpen) {
+            this.syncBodyScrollLock();
+        },
+
+        bodyScrollLocked() {
+            return (
+                this.accountDrawerOpen ||
+                this.ordersModalOpen ||
+                Alpine.store('evomiTrackModal').open ||
+                Alpine.store('evomiFaqModal').open ||
+                Alpine.store('evomiKontakModal').open ||
+                Alpine.store('evomiSettingsModal').open ||
+                Alpine.store('evomiWishlistModal').open ||
+                Alpine.store('evomiHistoryModal').open ||
+                Alpine.store('evomiHistoryDetailModal').open ||
+                Alpine.store('evomiChatModal').open ||
+                this.guestWarnOpen
+            );
+        },
+
+        syncBodyScrollLock() {
+            if (this.bodyScrollLocked()) {
+                document.documentElement.classList.add('overflow-hidden');
+            } else {
                 document.documentElement.classList.remove('overflow-hidden');
             }
         },
 
+        closeHelpModals() {
+            Alpine.store('evomiFaqModal').open = false;
+            Alpine.store('evomiKontakModal').open = false;
+        },
+
+        closeAccountModals() {
+            Alpine.store('evomiSettingsModal').open = false;
+            Alpine.store('evomiWishlistModal').open = false;
+            Alpine.store('evomiHistoryModal').open = false;
+            Alpine.store('evomiHistoryDetailModal').open = false;
+            Alpine.store('evomiHistoryDetailModal').orderId = null;
+            Alpine.store('evomiChatModal').open = false;
+        },
+
+        closeSettingsModal() {
+            Alpine.store('evomiSettingsModal').open = false;
+            this.syncBodyScrollLock();
+        },
+
+        closeWishlistModal() {
+            Alpine.store('evomiWishlistModal').open = false;
+            this.syncBodyScrollLock();
+        },
+
+        closeHistoryModal() {
+            Alpine.store('evomiHistoryModal').open = false;
+            this.syncBodyScrollLock();
+        },
+
+        closeChatModal() {
+            Alpine.store('evomiChatModal').open = false;
+            this.syncBodyScrollLock();
+        },
+
+        closeHistoryDetailModal({ backToList = false } = {}) {
+            Alpine.store('evomiHistoryDetailModal').open = false;
+            Alpine.store('evomiHistoryDetailModal').orderId = null;
+            if (backToList) {
+                this.openHistoryModal();
+                return;
+            }
+            this.syncBodyScrollLock();
+        },
+
+        prepareAccountModal() {
+            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+            this.open = false;
+            this.accountMenuOpen = false;
+            this.closeAccountDrawer();
+            this.closeOrdersModal();
+            this.closeTrackModal();
+            this.closeHelpModals();
+            this.closeAccountModals();
+        },
+
+        async openSettingsModal() {
+            if (!this.isLoggedIn || !getAuthToken()) {
+                softNavigate('/login');
+                return;
+            }
+
+            this.prepareAccountModal();
+            Alpine.store('evomiSettingsModal').open = true;
+            this.syncBodyScrollLock();
+            window.dispatchEvent(new CustomEvent('evomi-settings-reload'));
+        },
+
+        async openWishlistModal() {
+            if (!this.isLoggedIn || !getAuthToken()) {
+                softNavigate('/login');
+                return;
+            }
+
+            this.prepareAccountModal();
+            Alpine.store('evomiWishlistModal').open = true;
+            this.syncBodyScrollLock();
+            window.dispatchEvent(new CustomEvent('evomi-wishlist-reload'));
+        },
+
+        async openHistoryModal() {
+            if (!this.isLoggedIn || !getAuthToken()) {
+                softNavigate('/login');
+                return;
+            }
+
+            this.prepareAccountModal();
+            Alpine.store('evomiHistoryModal').open = true;
+            this.syncBodyScrollLock();
+            window.dispatchEvent(new CustomEvent('evomi-history-reload'));
+        },
+
+        async openChatModal() {
+            if (!this.isLoggedIn || !getAuthToken()) {
+                softNavigate('/login');
+                return;
+            }
+
+            this.prepareAccountModal();
+            Alpine.store('evomiChatModal').open = true;
+            this.syncBodyScrollLock();
+            window.dispatchEvent(new CustomEvent('evomi-chat-reload'));
+        },
+
+        async openHistoryDetailModal(orderId = '') {
+            if (!this.isLoggedIn || !getAuthToken()) {
+                softNavigate('/login');
+                return;
+            }
+
+            const id = String(orderId || '').trim();
+            if (!id) {
+                this.openHistoryModal();
+                return;
+            }
+
+            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+            this.open = false;
+            this.accountMenuOpen = false;
+            this.closeAccountDrawer();
+            this.closeOrdersModal();
+            this.closeTrackModal();
+            this.closeHelpModals();
+            Alpine.store('evomiSettingsModal').open = false;
+            Alpine.store('evomiWishlistModal').open = false;
+            Alpine.store('evomiHistoryModal').open = false;
+
+            Alpine.store('evomiHistoryDetailModal').orderId = id;
+            Alpine.store('evomiHistoryDetailModal').open = true;
+            this.syncBodyScrollLock();
+            window.dispatchEvent(new CustomEvent('evomi-history-detail-reload', { detail: { orderId: id } }));
+        },
+
+        async openTrackModal({ resi = '' } = {}) {
+            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+
+            this.open = false;
+            this.accountMenuOpen = false;
+            this.closeAccountDrawer();
+            this.closeOrdersModal();
+            this.closeHelpModals();
+            this.closeAccountModals();
+
+            const query = String(resi || '').trim();
+            this.drawerGuestResi = query;
+            this.drawerGuestResiError = '';
+            if (!query) {
+                this.drawerTrackItems = [];
+                this.drawerTrackSelectedId = null;
+            }
+
+            Alpine.store('evomiTrackModal').open = true;
+            this.syncBodyScrollLock();
+
+            if (this.isLoggedIn && !query) {
+                await this.loadDrawerTrackings();
+            }
+
+            if (query) {
+                await this.submitDrawerGuestResi();
+            }
+
+            this.$nextTick(() => {
+                document.querySelector('.evomi-track-modal__input')?.focus?.();
+            });
+        },
+
+        closeTrackModal() {
+            Alpine.store('evomiTrackModal').open = false;
+            this.syncBodyScrollLock();
+        },
+
+        async openFaqModal() {
+            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+
+            this.open = false;
+            this.accountMenuOpen = false;
+            this.closeAccountDrawer();
+            this.closeOrdersModal();
+            this.closeTrackModal();
+            this.closeAccountModals();
+            Alpine.store('evomiKontakModal').open = false;
+
+            const store = Alpine.store('evomiFaqModal');
+            store.query = '';
+            store.open = true;
+            this.syncBodyScrollLock();
+            await store.load();
+        },
+
+        closeFaqModal() {
+            Alpine.store('evomiFaqModal').open = false;
+            this.syncBodyScrollLock();
+        },
+
+        async openKontakModal() {
+            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+
+            this.open = false;
+            this.accountMenuOpen = false;
+            this.closeAccountDrawer();
+            this.closeOrdersModal();
+            this.closeTrackModal();
+            this.closeAccountModals();
+            Alpine.store('evomiFaqModal').open = false;
+
+            const store = Alpine.store('evomiKontakModal');
+            store.status = { type: null, message: '' };
+            store.open = true;
+            this.syncBodyScrollLock();
+            await store.loadCms();
+        },
+
+        closeKontakModal() {
+            Alpine.store('evomiKontakModal').open = false;
+            this.syncBodyScrollLock();
+        },
+
         async openOrdersModal() {
             this.closeAccountDrawer();
+            this.closeTrackModal();
+            this.closeHelpModals();
+            this.closeAccountModals();
             this.ordersModalOpen = true;
             this.ordersFilter = 'all';
             this.ordersExpandedId = null;
             this.guestOrdersEmail = readGuestEmail() || this.guestOrdersEmail;
-            document.documentElement.classList.add('overflow-hidden');
+            this.syncBodyScrollLock();
             if (this.isLoggedIn) {
                 await this.loadOrders();
             } else if (this.guestOrdersEmail) {
@@ -2641,9 +3376,7 @@ document.addEventListener('alpine:init', () => {
         closeOrdersModal() {
             this.ordersModalOpen = false;
             this.ordersExpandedId = null;
-            if (!this.accountDrawerOpen && !this.guestWarnOpen) {
-                document.documentElement.classList.remove('overflow-hidden');
-            }
+            this.syncBodyScrollLock();
         },
 
         showGuestCartWarning() {
@@ -2652,15 +3385,13 @@ document.addEventListener('alpine:init', () => {
             this.guestWarnStatus = '';
             this.guestWarnBusy = false;
             this.guestWarnOpen = true;
-            document.documentElement.classList.add('overflow-hidden');
+            this.syncBodyScrollLock();
         },
 
         closeGuestCartWarning() {
             this.guestWarnOpen = false;
             this.guestWarnBusy = false;
-            if (!this.accountDrawerOpen && !this.ordersModalOpen) {
-                document.documentElement.classList.remove('overflow-hidden');
-            }
+            this.syncBodyScrollLock();
         },
 
         async continueAsGuestFromWarning({ sendEmail = false } = {}) {
@@ -2950,12 +3681,11 @@ document.addEventListener('alpine:init', () => {
         goOrderDetailPage(group) {
             if (!group?.groupId) return;
             this.closeOrdersModal();
-            const id = encodeURIComponent(group.groupId);
             if (!this.isLoggedIn) {
-                softNavigate(`/pengiriman/${id}`);
+                this.openTrackModal({ resi: group.groupId });
                 return;
             }
-            softNavigate(`/profile/history/${id}`);
+            softNavigate(`/profile/history/${encodeURIComponent(group.groupId)}`);
         },
 
         showOrdersToast(message, ms = 2200) {
@@ -3384,6 +4114,14 @@ document.addEventListener('alpine:init', () => {
             return lines.join('\n');
         },
 
+        get sharePreviewDesc() {
+            const desc = String(this.description || '')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            return desc.length > 110 ? `${desc.slice(0, 107)}…` : desc;
+        },
+
         get shareLinks() {
             const title = (this.title || 'Evomi').trim();
             const desc = String(this.description || '')
@@ -3641,7 +4379,7 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async toggleWishlist() {
+        async toggleWishlist(event) {
             if (!getAuthToken()) {
                 this.requireLogin(storefrontL('Silakan login terlebih dahulu untuk menambah wishlist.', 'Please log in first to add to wishlist.'));
                 return;
@@ -3649,6 +4387,7 @@ document.addEventListener('alpine:init', () => {
             if (this.actionBusy || this.wishlistBusy) return;
             this.wishlistBusy = true;
             this.wishlistMessage = '';
+            const sourceEl = event?.currentTarget || null;
             try {
                 if (this.isWishlisted && this.wishlistId) {
                     const res = await fetch(`/api/wishlists/${this.wishlistId}`, {
@@ -3669,6 +4408,7 @@ document.addEventListener('alpine:init', () => {
                     this.wishlistId = null;
                     this.wishlistMessage = storefrontL('Dihapus dari wishlist.', 'Removed from wishlist.');
                     emitEvomiEvent('wishlist_updated');
+                    spawnWishlistHeartBurst(sourceEl, { mode: 'remove', color: this.accent || DEFAULT_THEME_BLUE });
                 } else {
                     const res = await fetch('/api/wishlists', {
                         method: 'POST',
@@ -3687,6 +4427,7 @@ document.addEventListener('alpine:init', () => {
                         if (/sudah ada|already/i.test(message)) {
                             await this.syncWishlistState();
                             this.wishlistMessage = storefrontL('Sudah ada di wishlist.', 'Already in wishlist.');
+                            spawnWishlistHeartBurst(sourceEl, { mode: 'add', color: this.accent || DEFAULT_THEME_BLUE });
                             return;
                         }
                         throw new Error(message);
@@ -3696,6 +4437,7 @@ document.addEventListener('alpine:init', () => {
                     if (!this.wishlistId) await this.syncWishlistState();
                     this.wishlistMessage = storefrontL('Ditambahkan ke wishlist!', 'Added to wishlist!');
                     emitEvomiEvent('wishlist_updated');
+                    spawnWishlistHeartBurst(sourceEl, { mode: 'add', color: this.accent || DEFAULT_THEME_BLUE });
                 }
                 window.setTimeout(() => {
                     this.wishlistMessage = '';
@@ -4669,7 +5411,32 @@ document.addEventListener('alpine:init', () => {
         },
 
         async init() {
+            this._onReload = () => {
+                if (getAuthToken()) this.load();
+            };
+            window.addEventListener('evomi-settings-reload', this._onReload);
+
+            const inModal = !!this.$el?.closest?.('.evomi-settings-modal');
+            if (inModal) {
+                this.loading = false;
+                if (Alpine.store('evomiSettingsModal')?.open && getAuthToken()) {
+                    await this.load();
+                }
+                return;
+            }
+
+            if (!getAuthToken()) {
+                this.loading = false;
+                return;
+            }
             await this.load();
+        },
+
+        destroy() {
+            if (this._onReload) {
+                window.removeEventListener('evomi-settings-reload', this._onReload);
+            }
+            if (this._toastTimer) window.clearTimeout(this._toastTimer);
         },
 
         showToast(message, ms = 2400) {
@@ -5048,7 +5815,32 @@ document.addEventListener('alpine:init', () => {
         modal: { open: false, type: 'confirm', message: '', targetId: null },
 
         async init() {
+            this._onReload = () => {
+                if (getAuthToken()) this.load();
+            };
+            window.addEventListener('evomi-wishlist-reload', this._onReload);
+
+            const inModal = !!this.$el?.closest?.('.evomi-wishlist-modal');
+            if (inModal) {
+                this.loading = false;
+                if (Alpine.store('evomiWishlistModal')?.open && getAuthToken()) {
+                    await this.load();
+                }
+                return;
+            }
+
+            if (!getAuthToken()) {
+                this.loading = false;
+                return;
+            }
             await this.load();
+        },
+
+        destroy() {
+            if (this._onReload) {
+                window.removeEventListener('evomi-wishlist-reload', this._onReload);
+            }
+            if (this._toastTimer) window.clearTimeout(this._toastTimer);
         },
 
         showToast(message, ms = 2200) {
@@ -5077,13 +5869,23 @@ document.addEventListener('alpine:init', () => {
         },
 
         mapItem(row) {
+            const product = row.product || {};
+            const sizeRaw = product.bottle_size || product.size || product.volume || '30';
+            const sizeNum = Number(String(sizeRaw).replace(/[^\d.]/g, ''));
+            const sizeLabel = sizeNum
+                ? `${sizeNum}ml`
+                : String(sizeRaw).toLowerCase().includes('ml')
+                  ? String(sizeRaw)
+                  : `${sizeRaw}ml`;
             return {
                 id: row.id,
-                product_id: row.product_id || row.product?.id,
-                title: productTitle(row.product),
-                imageUrl: productImage(row.product, 'wishlist'),
-                accent: productAccent(row.product),
-                priceLabel: formatRupiah(productPrice(row.product)),
+                product_id: row.product_id || product.id,
+                title: productTitle(product),
+                sizeLabel,
+                genderLabel: productGenderLabel(product),
+                imageUrl: productImage(product, 'wishlist'),
+                accent: productAccent(product),
+                priceLabel: formatRupiah(productPrice(product)),
             };
         },
 
@@ -5211,7 +6013,33 @@ document.addEventListener('alpine:init', () => {
         },
 
         async init() {
+            this._onReload = () => {
+                if (getAuthToken()) this.load();
+            };
+            window.addEventListener('evomi-history-reload', this._onReload);
+
+            const inModal = !!this.$el?.closest?.('.evomi-history-modal');
+            if (inModal) {
+                this.loading = false;
+                this.perPage = 4;
+                if (Alpine.store('evomiHistoryModal')?.open && getAuthToken()) {
+                    await this.load();
+                }
+                return;
+            }
+
+            if (!getAuthToken()) {
+                this.loading = false;
+                return;
+            }
             await this.load();
+        },
+
+        destroy() {
+            if (this._onReload) {
+                window.removeEventListener('evomi-history-reload', this._onReload);
+            }
+            if (this._toastTimer) window.clearTimeout(this._toastTimer);
         },
 
         showToast(message, ms = 2200) {
@@ -5351,8 +6179,8 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
-    Alpine.data('evomiProfileHistoryShow', (orderId) => ({
-        orderId,
+    Alpine.data('evomiProfileHistoryShow', (orderId = null) => ({
+        orderId: orderId != null ? String(orderId) : '',
         loading: false,
         error: '',
         group: null,
@@ -5371,6 +6199,15 @@ document.addEventListener('alpine:init', () => {
             return this.group?.accent || '#1172BA';
         },
 
+        get headerStyle() {
+            const accent = this.themeColor;
+            const dark = shadeHexColor(accent, -18);
+            const light = shadeHexColor(accent, 12);
+            return {
+                background: `linear-gradient(135deg, ${dark} 0%, ${accent} 52%, ${light} 100%)`,
+            };
+        },
+
         get statusIcon() {
             const s = String(this.group?.status || '').toLowerCase();
             if (s === 'menunggu_konfirmasi') return 'clock';
@@ -5380,6 +6217,34 @@ document.addEventListener('alpine:init', () => {
         },
 
         async init() {
+            const inModal = !!this.$el?.closest?.('.evomi-history-detail-modal');
+            if (inModal) {
+                const storeId = Alpine.store('evomiHistoryDetailModal')?.orderId;
+                if (Alpine.store('evomiHistoryDetailModal')?.open && storeId) {
+                    this.orderId = String(storeId);
+                    await this.hydrate();
+                }
+                return;
+            }
+
+            if (!this.orderId) return;
+            await this.hydrate();
+        },
+
+        destroy() {
+            if (this._toastTimer) window.clearTimeout(this._toastTimer);
+        },
+
+        async onModalReload(e) {
+            const id = String(e?.detail?.orderId || Alpine.store('evomiHistoryDetailModal')?.orderId || '').trim();
+            if (!id) return;
+            this.orderId = id;
+            this.group = null;
+            this.error = '';
+            await this.hydrate();
+        },
+
+        async hydrate() {
             const cached = findCachedHistoryGroup(this.orderId);
             if (cached) {
                 this.group = cached;
@@ -5533,7 +6398,11 @@ document.addEventListener('alpine:init', () => {
                     if (remaining.length === 0) {
                         this.showToast('Seluruh item pesanan ini telah terhapus.');
                         window.setTimeout(() => {
-                            softNavigate('/profile/history');
+                            if (Alpine.store('evomiHistoryDetailModal')?.open) {
+                                window.__evomiNav?.closeHistoryDetailModal?.({ backToList: true });
+                            } else {
+                                softNavigate('/profile/history');
+                            }
                         }, 600);
                         return;
                     }
@@ -5553,19 +6422,55 @@ document.addEventListener('alpine:init', () => {
         messages: [],
         showJumpLatest: false,
         hints: [
-            'Cek status pesanan saya',
-            'Rekomendasi aroma untuk saya',
-            'Info pengiriman & ongkir',
+            storefrontL('Cek status pesanan saya', 'Check my order status'),
+            storefrontL('Rekomendasi aroma untuk saya', 'Scent recommendations for me'),
+            storefrontL('Info pengiriman & ongkir', 'Shipping & delivery info'),
         ],
         _poll: null,
 
         async init() {
+            this._onReload = () => {
+                if (getAuthToken()) this.load();
+            };
+            window.addEventListener('evomi-chat-reload', this._onReload);
+
+            const inModal = !!this.$el?.closest?.('.evomi-chat-modal');
+            if (inModal) {
+                this.loading = false;
+                this._unwatchModal = this.$watch?.(() => Alpine.store('evomiChatModal')?.open, (open) => {
+                    if (open) {
+                        this.load();
+                        if (!this._poll) {
+                            this._poll = window.setInterval(() => {
+                                if (Alpine.store('evomiChatModal')?.open) this.load(true);
+                            }, 30000);
+                        }
+                    } else if (this._poll) {
+                        window.clearInterval(this._poll);
+                        this._poll = null;
+                    }
+                });
+                if (Alpine.store('evomiChatModal')?.open && getAuthToken()) {
+                    await this.load();
+                    this._poll = window.setInterval(() => {
+                        if (Alpine.store('evomiChatModal')?.open) this.load(true);
+                    }, 30000);
+                }
+                return;
+            }
+
+            if (!getAuthToken()) {
+                this.loading = false;
+                return;
+            }
             await this.load();
             this._poll = window.setInterval(() => this.load(true), 30000);
         },
 
         destroy() {
             if (this._poll) window.clearInterval(this._poll);
+            if (this._onReload) window.removeEventListener('evomi-chat-reload', this._onReload);
+            if (typeof this._unwatchModal === 'function') this._unwatchModal();
         },
 
         dayKey(iso) {
@@ -5580,9 +6485,14 @@ document.addEventListener('alpine:init', () => {
             const today = new Date();
             const yday = new Date();
             yday.setDate(today.getDate() - 1);
-            if (this.dayKey(iso) === this.dayKey(today.toISOString())) return 'Hari ini';
-            if (this.dayKey(iso) === this.dayKey(yday.toISOString())) return 'Kemarin';
-            return d.toLocaleDateString('id-ID', {
+            if (this.dayKey(iso) === this.dayKey(today.toISOString())) {
+                return storefrontL('Hari ini', 'Today');
+            }
+            if (this.dayKey(iso) === this.dayKey(yday.toISOString())) {
+                return storefrontL('Kemarin', 'Yesterday');
+            }
+            const locale = document.documentElement.lang === 'en' ? 'en-US' : 'id-ID';
+            return d.toLocaleDateString(locale, {
                 weekday: 'short',
                 day: 'numeric',
                 month: 'short',
@@ -5626,7 +6536,7 @@ document.addEventListener('alpine:init', () => {
         async load(silent = false) {
             const user = getAuthUser();
             if (!user?.email) {
-                window.location.replace('/login');
+                softNavigate('/login');
                 return;
             }
             if (!silent) this.loading = true;
@@ -5648,10 +6558,10 @@ document.addEventListener('alpine:init', () => {
                             subject: row.subject || '',
                             isReadByAdmin: Boolean(row.isReadByAdmin ?? row.is_read_by_admin),
                             isNew: Boolean(row.isNew),
-                            timeLabel: new Date(row.created_at).toLocaleString('id-ID', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                            }),
+                            timeLabel: new Date(row.created_at).toLocaleString(
+                                document.documentElement.lang === 'en' ? 'en-US' : 'id-ID',
+                                { hour: '2-digit', minute: '2-digit' },
+                            ),
                         });
                         continue;
                     }
@@ -5669,10 +6579,10 @@ document.addEventListener('alpine:init', () => {
                             subject: row.subject || '',
                             isReadByAdmin: Boolean(readByAdmin),
                             isNew: false,
-                            timeLabel: new Date(row.created_at).toLocaleString('id-ID', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                            }),
+                            timeLabel: new Date(row.created_at).toLocaleString(
+                                document.documentElement.lang === 'en' ? 'en-US' : 'id-ID',
+                                { hour: '2-digit', minute: '2-digit' },
+                            ),
                         });
                     }
                     const replies = row.replies || row.contact_replies || [];
@@ -5691,10 +6601,10 @@ document.addEventListener('alpine:init', () => {
                             subject: '',
                             isReadByAdmin: true,
                             isNew: unread,
-                            timeLabel: new Date(rep.created_at).toLocaleString('id-ID', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                            }),
+                            timeLabel: new Date(rep.created_at).toLocaleString(
+                                document.documentElement.lang === 'en' ? 'en-US' : 'id-ID',
+                                { hour: '2-digit', minute: '2-digit' },
+                            ),
                         });
                     }
                 }
@@ -5736,14 +6646,14 @@ document.addEventListener('alpine:init', () => {
                 type: 'user',
                 text,
                 createdAt: new Date().toISOString(),
-                subject: 'Pesan Dukungan Pelanggan',
+                subject: storefrontL('Pesan Dukungan Pelanggan', 'Customer Support Message'),
                 isReadByAdmin: false,
                 isNew: false,
                 pending: true,
-                timeLabel: new Date().toLocaleString('id-ID', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                }),
+                timeLabel: new Date().toLocaleString(
+                    document.documentElement.lang === 'en' ? 'en-US' : 'id-ID',
+                    { hour: '2-digit', minute: '2-digit' },
+                ),
             });
             this.draft = '';
             this.$nextTick(() => this.jumpLatest());
@@ -5756,7 +6666,7 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({
                         name: user.name || user.nama_lengkap || user.email,
                         email: user.email,
-                        subject: 'Pesan Dukungan Pelanggan',
+                        subject: storefrontL('Pesan Dukungan Pelanggan', 'Customer Support Message'),
                         message: text,
                     }),
                 });
@@ -7543,6 +8453,26 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
         return;
     }
 
+    // Lacak pesanan → centered modal (sidebar track tab stays in the drawer)
+    const trackMatch = url.pathname.match(/^\/pengiriman\/([^/]+)\/?$/i);
+    if (trackMatch) {
+        if (nav) nav.open = false;
+        const resi = decodeURIComponent(trackMatch[1] || '').trim();
+        window.dispatchEvent(new CustomEvent('evomi-open-track', { detail: { resi } }));
+        return;
+    }
+
+    const helpPath = url.pathname.replace(/\/$/, '') || '/';
+    if (helpPath === '/faq') {
+        if (nav) nav.open = false;
+        window.dispatchEvent(new CustomEvent('evomi-open-faq'));
+        return;
+    }
+    if (helpPath === '/kontak') {
+        if (nav) nav.open = false;
+        window.dispatchEvent(new CustomEvent('evomi-open-kontak'));
+        return;
+    }
     // Dashboard uses a separate Blade layout — always hard navigate
     if (isDashboardPath(url.pathname) || isDashboardPath(window.location.pathname)) {
         window.location.href = url.pathname + url.search + url.hash;
@@ -7608,13 +8538,24 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
                 isHistoryDetailPath(url.pathname) ||
                 isHistoryDetailPath(window.location.pathname);
 
+            if (content) {
+                content.classList.add('profile-content-panel');
+                // Lock frame size during swap so tab height/width never jump
+                const lockH = Math.max(content.offsetHeight || 0, content.getBoundingClientRect().height || 0);
+                if (lockH > 0) {
+                    content.style.height = `${lockH}px`;
+                    content.style.minHeight = `${lockH}px`;
+                    content.style.maxHeight = `${lockH}px`;
+                }
+            }
+
             if (content && !skipProfileAnim) {
-                content.classList.add('profile-content-panel', 'is-leaving');
+                content.classList.add('is-leaving');
             }
 
             const [res] = await Promise.all([
                 fetchPromise,
-                wait(skipProfileAnim ? 0 : 280),
+                wait(skipProfileAnim ? 0 : 300),
             ]);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -7658,12 +8599,20 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
             content.classList.remove('is-leaving');
             if (!skipProfileAnim) {
                 content.classList.add('is-entering');
+                // Force reflow so enter transition always runs
+                void content.offsetWidth;
                 await waitFrames(2);
                 requestAnimationFrame(() => {
                     content.classList.remove('is-entering');
                 });
-                await wait(320);
+                await wait(360);
             }
+
+            // Release lock — CSS fixed frame takes over again
+            content.style.height = '';
+            content.style.minHeight = '';
+            content.style.maxHeight = '';
+
             softNavBusy = false;
             return;
         } catch (err) {
@@ -7673,6 +8622,11 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
             }
             const content = profileShell.querySelector('[data-profile-content]');
             content?.classList.remove('is-leaving', 'is-entering');
+            if (content) {
+                content.style.height = '';
+                content.style.minHeight = '';
+                content.style.maxHeight = '';
+            }
         }
     }
 
@@ -7864,6 +8818,22 @@ function bindSoftLinks(root = document) {
             e.preventDefault();
             const nav = window.__evomiNav;
             if (nav) nav.open = false;
+
+            if (el.hasAttribute('data-open-track')) {
+                const resi = el.getAttribute('data-track-resi') || '';
+                window.dispatchEvent(new CustomEvent('evomi-open-track', { detail: { resi } }));
+                return;
+            }
+
+            if (el.hasAttribute('data-open-faq')) {
+                window.dispatchEvent(new CustomEvent('evomi-open-faq'));
+                return;
+            }
+
+            if (el.hasAttribute('data-open-kontak')) {
+                window.dispatchEvent(new CustomEvent('evomi-open-kontak'));
+                return;
+            }
 
             const index = el.dataset.navIndex !== undefined ? Number(el.dataset.navIndex) : null;
             softNavigate(href, { navIndex: index });

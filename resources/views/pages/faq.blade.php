@@ -53,7 +53,7 @@
             <h3 class="text-lg md:text-xl font-bold text-gray-900 mb-2">Masih butuh bantuan?</h3>
             <p class="text-gray-600 text-sm md:text-base">Tim support Evomi siap membantu Anda melalui email.</p>
         </div>
-        <a href="{{ route('kontak') }}" data-soft-nav class="inline-flex items-center gap-2 bg-[#1172BA] text-white px-7 md:px-8 py-3.5 md:py-4 rounded-full font-bold hover:bg-[#0e609d] transition-colors">
+        <a href="{{ route('kontak') }}" data-soft-nav data-open-kontak class="inline-flex items-center gap-2 bg-[#1172BA] text-white px-7 md:px-8 py-3.5 md:py-4 rounded-full font-bold hover:bg-[#0e609d] transition-colors">
             Hubungi Kami
         </a>
     </div>

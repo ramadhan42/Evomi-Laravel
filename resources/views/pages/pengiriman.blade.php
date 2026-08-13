@@ -44,23 +44,32 @@
             </ul>
         </div>
 
-        <div class="p-6 md:p-8 bg-[#1172BA] text-white rounded-[28px] md:rounded-[32px]">
-            <h3 class="text-lg font-bold mb-3">Lacak Pesanan Anda</h3>
-            <p class="text-sm text-white/90 mb-5">Masukkan nomor resi atau nomor pesanan Anda untuk melihat status pengiriman.</p>
-            <div class="flex flex-col sm:flex-row gap-3">
-                <input type="text" x-model="resi" placeholder="No. resi / no. pesanan..." class="w-full h-[48px] rounded-full px-4 text-gray-900 bg-white text-sm outline-none">
+        <div class="p-6 md:p-8 bg-[#1172BA] text-white rounded-[28px] md:rounded-[32px] relative overflow-hidden">
+            <div class="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/10" aria-hidden="true"></div>
+            <div class="pointer-events-none absolute -left-6 -bottom-10 h-28 w-28 rounded-full bg-white/5" aria-hidden="true"></div>
+            <h3 class="relative text-lg font-bold mb-3">{{ evomi_l('Lacak Pesanan Anda', 'Track Your Order') }}</h3>
+            <p class="relative text-sm text-white/90 mb-5">{{ evomi_l('Masukkan nomor resi atau nomor pesanan, lalu lacak status pengiriman dalam popup.', 'Enter a tracking or order number, then track shipping status in a popup.') }}</p>
+            <div class="relative flex flex-col sm:flex-row gap-3">
+                <input
+                    type="text"
+                    x-model="resi"
+                    :placeholder="$L('No. resi / no. pesanan...', 'Tracking / order no...')"
+                    class="w-full h-[48px] rounded-full px-4 text-gray-900 bg-white text-sm outline-none"
+                    @keydown.enter.prevent="window.evomiOpenTrack(resi.trim())"
+                >
                 <button
                     type="button"
-                    class="h-[48px] px-6 rounded-full bg-white text-[#1172BA] font-bold hover:bg-gray-100 shrink-0"
-                    @click="
-                        if (!resi.trim()) { error = 'Masukkan nomor resi / nomor pesanan terlebih dahulu.'; return; }
-                        error = '';
-                        if (window.softNavigate) softNavigate('/pengiriman/' + encodeURIComponent(resi.trim()));
-                        else window.location.href = '/pengiriman/' + encodeURIComponent(resi.trim());
-                    "
-                >Lacak</button>
+                    class="h-[48px] px-6 rounded-full bg-white text-[#1172BA] font-bold hover:bg-gray-100 shrink-0 transition-transform active:scale-[0.98]"
+                    @click="window.evomiOpenTrack(resi.trim())"
+                >{{ evomi_l('Lacak', 'Track') }}</button>
             </div>
-            <p class="mt-3 text-sm text-amber-100 bg-white/10 rounded-xl px-3 py-2" x-show="error" x-text="error" x-cloak></p>
+            <p class="relative mt-4 text-sm text-white/80">{{ evomi_l('Atau buka langsung popup pelacakan tanpa mengisi nomor.', 'Or open the tracking popup without entering a number.') }}</p>
+            <button
+                type="button"
+                class="relative mt-3 inline-flex items-center gap-2 text-sm font-semibold text-white/95 underline underline-offset-4 decoration-white/40 hover:decoration-white"
+                @click="window.evomiOpenTrack()"
+            >{{ evomi_l('Buka Lacak Pesanan', 'Open Track Order') }}</button>
+            <p class="relative mt-3 text-sm text-amber-100 bg-white/10 rounded-xl px-3 py-2" x-show="error" x-text="error" x-cloak></p>
         </div>
     </div>
 </div>

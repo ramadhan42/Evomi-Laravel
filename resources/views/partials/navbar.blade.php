@@ -59,29 +59,31 @@
 @endphp
 <header
     id="evomi-header"
-    class="fixed inset-x-0 top-0 z-[100] w-full px-2 py-2 md:px-4 md:pt-7 md:pb-4"
+    class="fixed inset-x-0 top-0 z-[100] w-full"
     style="background-color: {{ $navAccent }}; --nav-color: {{ $navAccent }}"
     x-data="evomiNavbar({{ $activeIndex }})"
     :class="{ 'is-nav-hidden': isNavHidden }"
+    @keydown.escape.window="$store.evomiTrackModal.open && closeTrackModal()"
 >
-    <nav class="nav-chrome text-white rounded-[18px] md:rounded-[25px] px-3 py-2 md:px-8 md:py-3 relative w-full max-w-[1280px] mx-auto">
-        <div class="flex items-center justify-between gap-3">
+    {{-- Figma Navbar 1532:2319 — h 72px, px 24 / py 16, menu centered --}}
+    <nav class="nav-chrome text-white relative w-full max-w-[1280px] mx-auto px-4 py-3 md:px-6 md:py-4">
+        <div class="flex items-center justify-between gap-3 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-4">
             <a
                 href="{{ route('beranda') }}"
-                class="shrink-0 flex items-center nav-soft"
+                class="shrink-0 flex items-center nav-soft justify-self-start"
                 data-soft-nav
                 data-nav-index="0"
             >
                 <img
                     src="{{ asset('src/images/navbar/evomi-logo.png') }}"
                     alt="Evomi"
-                    class="object-contain brightness-0 invert w-auto h-5 md:h-10 -translate-y-1 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                    class="nav-logo object-contain brightness-0 invert w-auto h-6 md:h-8 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
                 >
             </a>
 
-            {{-- Desktop: Beranda · Tentang · Belanja · Temukan Aromamu (compact like Figma) --}}
+            {{-- Desktop menu — sejajar vertikal dengan logo (optical center) --}}
             <div
-                class="hidden md:flex items-center justify-center gap-1 relative shrink-0"
+                class="nav-desktop-menu hidden md:flex items-center justify-center gap-1 relative shrink-0 h-10 self-center"
                 x-ref="track"
             >
                 <span
@@ -96,20 +98,20 @@
                     @endphp
                     <a
                         href="{{ $link['href'] }}"
-                        class="nav-pill relative z-[1] inline-flex justify-center items-center px-4 py-2 text-[14px] font-normal rounded-full text-center whitespace-nowrap nav-soft {{ $active ? 'is-active text-[var(--nav-color)]' : 'text-white' }}"
+                        class="nav-pill relative z-[1] inline-flex justify-center items-center h-10 px-4 text-[14px] font-normal leading-none rounded-full text-center whitespace-nowrap nav-soft {{ $active ? 'is-active text-[var(--nav-color)]' : 'text-white' }}"
                         data-soft-nav
                         data-nav-index="{{ $i }}"
                         data-nav-match="{{ $link['match'] }}"
                     >
-                        <span class="relative z-[1]">{{ $link['label'] }}</span>
+                        <span class="relative z-[1] flex items-center leading-none">{{ $link['label'] }}</span>
                     </a>
                 @endforeach
             </div>
 
-            <div class="hidden md:flex items-center space-x-2 md:mr-2 shrink-0">
+            <div class="nav-desktop-actions hidden md:flex items-center justify-end gap-2 shrink-0 justify-self-end self-center h-10">
                 {{-- Logged in --}}
                 <template x-if="isLoggedIn">
-                    <div class="flex items-center gap-1.5 md:gap-2">
+                    <div class="flex items-center gap-2 h-10">
                         <div
                             class="nav-avatar-wrap relative z-[70]"
                             :class="{ 'is-open': accountMenuOpen }"
@@ -117,7 +119,7 @@
                         >
                             <button
                                 type="button"
-                                class="nav-avatar relative flex items-center justify-center w-[44px] h-[44px] rounded-full bg-white text-[var(--nav-color)] font-bold text-[17px] border-2 border-white/90 shadow-sm overflow-hidden"
+                                class="nav-avatar relative flex items-center justify-center w-10 h-10 rounded-full bg-white text-[var(--nav-color)] font-bold text-[15px] border-2 border-white/90 shadow-sm overflow-hidden"
                                 aria-label="{{ evomi_l('Menu akun', 'Account menu') }}"
                                 :aria-expanded="accountMenuOpen.toString()"
                                 aria-haspopup="menu"
@@ -279,11 +281,11 @@
 
                         <button
                             type="button"
-                            class="nav-cart-btn relative z-[1] inline-flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-full text-white"
+                            class="nav-cart-btn relative z-[1] inline-flex items-center justify-center size-10 rounded-full text-white"
                             :aria-label="$L('Keranjang', 'Cart')"
                             @click="closeAccountMenu(); openAccountDrawer()"
                         >
-                            @include('partials.icons.cart', ['class' => 'w-[18px] h-[18px] md:w-[19px] md:h-[19px]'])
+                            @include('partials.icons.cart', ['class' => 'w-[18px] h-[18px]'])
                             <span
                                 class="nav-cart-badge"
                                 x-show="badges.cart > 0"
@@ -296,21 +298,21 @@
 
                 {{-- Guest --}}
                 <template x-if="!isLoggedIn">
-                    <div class="flex items-center space-x-2">
+                    <div class="flex items-center gap-2 h-10">
                         <a
                             href="{{ route('login') }}"
-                            class="nav-pill nav-login-link relative z-[1] inline-flex justify-center items-center px-3 md:px-4 text-[14px] md:text-[17px] py-2 font-medium rounded-full text-white nav-soft"
+                            class="nav-pill nav-login-link relative z-[1] inline-flex justify-center items-center h-10 px-4 text-[14px] font-normal leading-none rounded-full text-white nav-soft"
                             data-soft-nav
                         >
-                            <span class="relative z-[1]">{{ $navLogin }}</span>
+                            <span class="relative z-[1] flex items-center leading-none">{{ $navLogin }}</span>
                         </a>
                         <button
                             type="button"
-                            class="nav-cart-btn relative z-[1] inline-flex items-center justify-center w-10 h-10 rounded-full text-white"
+                            class="nav-cart-btn relative z-[1] inline-flex items-center justify-center size-10 rounded-full text-white"
                             :aria-label="$L('Keranjang', 'Cart')"
                             @click="openAccountDrawer()"
                         >
-                            @include('partials.icons.cart')
+                            @include('partials.icons.cart', ['class' => 'w-[18px] h-[18px]'])
                             <span
                                 class="nav-cart-badge"
                                 x-show="badges.cart > 0"
@@ -575,6 +577,14 @@
     </template>
 
     @include('partials.account-drawer')
+    @include('partials.track-modal')
+    @include('partials.faq-modal')
+    @include('partials.kontak-modal')
+    @include('partials.settings-modal')
+    @include('partials.chat-modal')
+    @include('partials.wishlist-modal')
+    @include('partials.history-modal')
+    @include('partials.history-detail-modal')
 </header>
 {{-- Spacer so fixed header doesn't cover content --}}
 <div id="evomi-header-spacer" class="w-full" style="background-color: {{ $navAccent }}" aria-hidden="true"></div>

@@ -37,13 +37,13 @@
         <div
             class="relative h-[220px] w-full shrink-0 sm:h-[260px] md:h-full md:w-[46%]"
             :style="{ backgroundColor: $store.evomiProductModal.softAccent }"
+            :class="$store.evomiProductModal.loading ? 'evomi-product-modal__media--loading' : ''"
         >
             <template x-if="$store.evomiProductModal.loading">
-                <div class="absolute inset-0 flex items-center justify-center">
-                    <div
-                        class="h-10 w-10 rounded-full border-[3px] border-white/50 border-t-transparent animate-spin"
-                        :style="{ borderTopColor: $store.evomiProductModal.accent }"
-                    ></div>
+                <div class="evomi-product-modal__skeleton-media absolute inset-0 flex flex-col items-center justify-center gap-4 p-8">
+                    <div class="evomi-product-modal__skeleton-bottle" aria-hidden="true"></div>
+                    <div class="evomi-product-modal__skeleton-pulse" aria-hidden="true"></div>
+                    <p class="text-[11px] font-semibold tracking-[0.14em] uppercase text-slate-400">{{ evomi_l('Memuat...', 'Loading...') }}</p>
                 </div>
             </template>
 
@@ -61,7 +61,7 @@
             <span
                 class="absolute left-4 top-4 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold text-white shadow-sm"
                 :style="{ backgroundColor: $store.evomiProductModal.accent }"
-                x-show="$store.evomiProductModal.product"
+                x-show="$store.evomiProductModal.product && !$store.evomiProductModal.loading"
                 x-cloak
                 x-text="$store.evomiProductModal.badge"
             ></span>
@@ -89,6 +89,30 @@
                         :style="{ backgroundColor: $store.evomiProductModal.accent }"
                         @click="$store.evomiProductModal.close()"
                     >{{ evomi_l('Tutup', 'Close') }}</button>
+                </div>
+            </template>
+
+            <template x-if="!$store.evomiProductModal.error && $store.evomiProductModal.loading">
+                <div class="evomi-product-modal__skeleton-copy flex flex-1 flex-col min-h-0 pr-6" aria-hidden="true">
+                    <div class="evomi-skel evomi-skel--lg w-[78%] mb-3"></div>
+                    <div class="evomi-skel evomi-skel--sm w-[42%] mb-5"></div>
+                    <div class="evomi-skel evomi-skel--line w-full mb-2"></div>
+                    <div class="evomi-skel evomi-skel--line w-[92%] mb-2"></div>
+                    <div class="evomi-skel evomi-skel--line w-[68%] mb-6"></div>
+                    <div class="grid grid-cols-2 gap-2.5 sm:gap-3 mb-6">
+                        <div class="evomi-skel evomi-skel--block"></div>
+                        <div class="evomi-skel evomi-skel--block"></div>
+                        <div class="evomi-skel evomi-skel--block"></div>
+                        <div class="evomi-skel evomi-skel--block"></div>
+                    </div>
+                    <div class="mt-auto flex items-end justify-between gap-4 mb-4">
+                        <div class="space-y-2">
+                            <div class="evomi-skel evomi-skel--xs w-14"></div>
+                            <div class="evomi-skel evomi-skel--md w-28"></div>
+                        </div>
+                        <div class="evomi-skel evomi-skel--pill w-28"></div>
+                    </div>
+                    <div class="evomi-skel evomi-skel--cta w-full"></div>
                 </div>
             </template>
 
@@ -181,12 +205,6 @@
                         }"
                         x-text="$store.evomiProductModal.statusMessage"
                     ></p>
-                </div>
-            </template>
-
-            <template x-if="!$store.evomiProductModal.error && !$store.evomiProductModal.product && $store.evomiProductModal.loading">
-                <div class="flex flex-1 items-center justify-center py-16">
-                    <div class="h-8 w-8 rounded-full border-[3px] border-slate-200 border-t-[#1172BA] animate-spin"></div>
                 </div>
             </template>
         </div>

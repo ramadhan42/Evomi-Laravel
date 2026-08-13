@@ -4,9 +4,10 @@
 
 @section('content')
 <x-profile-shell>
-    <div x-data="evomiProfileHistoryShow(@js($orderId))" class="min-h-[60vh] bg-gray-50 -mx-0 sm:rounded-3xl relative pb-8">
-        <div class="max-w-4xl mx-auto px-1 sm:px-4 pt-2 pb-2">
-            <a href="{{ route('profile.history') }}" data-soft-nav class="inline-flex items-center gap-2 text-gray-600 hover:text-black font-medium mb-6 transition-colors text-sm">
+    <div x-data="evomiProfileHistoryShow(@js($orderId))" class="profile-page-card bg-slate-50">
+        <div class="profile-page-card__scroll">
+        <div class="px-4 sm:px-5 pt-4 pb-2">
+            <a href="{{ route('profile.history') }}" data-soft-nav class="inline-flex items-center gap-2 text-gray-600 hover:text-black font-medium mb-4 transition-colors text-sm">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
                 {{ evomi_l('Kembali ke Riwayat', 'Back to History') }}
             </a>
@@ -137,6 +138,7 @@
                 </div>
             </div>
         </main>
+        </div>
 
         <div
             x-show="toast"

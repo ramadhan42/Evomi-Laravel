@@ -21,6 +21,7 @@
             } catch (e) {}
         })();
     </script>
+    @include('partials.evomi-cursor-styles')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="font-nohemi antialiased evomi-admin-mode overflow-x-hidden bg-[#F8F9FA] text-gray-900">

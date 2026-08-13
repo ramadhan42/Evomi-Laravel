@@ -6,7 +6,7 @@
 <x-profile-shell>
     <div
         x-data="evomiProfileChat"
-        class="relative h-[min(80vh,760px)] min-h-[560px] max-w-4xl rounded-[28px] overflow-hidden border border-gray-100 bg-white flex flex-col"
+        class="profile-page-card"
         style="--chat-brand: #1172BA"
     >
         <div class="relative px-5 sm:px-7 py-5 text-white shrink-0" style="background: linear-gradient(135deg, #1172BA 0%, #1a7fc4 55%, #0e6aad 100%)">

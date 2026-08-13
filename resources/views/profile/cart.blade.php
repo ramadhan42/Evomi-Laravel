@@ -4,18 +4,18 @@
 
 @section('content')
 <x-profile-shell>
-    <div x-data="evomiProfileCart">
+    <div x-data="evomiProfileCart" class="profile-page-card">
         <div
             x-show="loading"
             x-cloak
-            class="rounded-[28px] overflow-hidden border border-gray-100 min-h-[400px] flex flex-col items-center justify-center bg-white"
+            class="profile-page-card__loader absolute inset-0 z-10"
         >
-            <div class="w-8 h-8 border-4 border-gray-200 border-t-[#1172BA] rounded-full animate-spin mb-4"></div>
+            <div class="w-8 h-8 border-4 border-gray-200 border-t-[#1172BA] rounded-full animate-spin"></div>
             <p class="text-gray-500 font-medium text-sm">{{ evomi_l('Memuat keranjang...', 'Loading cart...') }}</p>
         </div>
 
-        <div x-show="!loading" x-cloak class="relative rounded-[28px] overflow-hidden border border-gray-100 bg-white">
-        <div class="relative px-5 sm:px-7 py-5 text-white" style="background: linear-gradient(135deg, #1172BA 0%, #1a7fc4 55%, #0e6aad 100%)">
+        <div x-show="!loading" x-cloak class="profile-page-card__body">
+        <div class="relative shrink-0 px-5 sm:px-7 py-5 text-white" style="background: linear-gradient(135deg, #1172BA 0%, #1a7fc4 55%, #0e6aad 100%)">
             <div class="pointer-events-none absolute inset-0 opacity-30" style="background-image: radial-gradient(circle at 12% 20%, rgba(255,255,255,0.35), transparent 40%), radial-gradient(circle at 90% 0%, rgba(255,255,255,0.18), transparent 35%)"></div>
             <div class="relative flex items-start justify-between gap-3">
                 <div class="min-w-0 flex items-start gap-3">
@@ -39,7 +39,7 @@
             </div>
         </div>
 
-        <div class="p-5 sm:p-7 bg-white">
+        <div class="profile-page-card__scroll p-5 sm:p-7 bg-white">
             <div x-show="error" x-cloak class="mb-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700 font-medium" x-text="error"></div>
 
             <div x-show="!error && items.length === 0" x-cloak class="rounded-2xl border border-dashed border-gray-200 py-14 text-center px-6">

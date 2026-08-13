@@ -4,22 +4,22 @@
 
 @section('content')
 <x-profile-shell>
-    <div x-data="evomiProfileHistory">
+    <div x-data="evomiProfileHistory" class="profile-page-card">
         <div
             x-show="loading"
             x-cloak
-            class="rounded-[28px] overflow-hidden border border-gray-100 min-h-[400px] flex flex-col items-center justify-center bg-white"
+            class="profile-page-card__loader absolute inset-0 z-10"
         >
-            <div class="w-8 h-8 border-4 border-gray-200 border-t-[#1172BA] rounded-full animate-spin mb-4"></div>
+            <div class="w-8 h-8 border-4 border-gray-200 border-t-[#1172BA] rounded-full animate-spin"></div>
             <p class="text-gray-500 font-medium text-sm">{{ evomi_l('Memuat riwayat belanja...', 'Loading order history...') }}</p>
         </div>
 
         <div
             x-show="!loading"
             x-cloak
-            class="relative rounded-[28px] overflow-hidden border border-gray-100 bg-white"
+            class="profile-page-card__body"
         >
-            <div class="relative px-5 sm:px-7 py-5 text-white" style="background: linear-gradient(135deg, #1172BA 0%, #1a7fc4 55%, #0e6aad 100%)">
+            <div class="relative shrink-0 px-5 sm:px-7 py-5 text-white" style="background: linear-gradient(135deg, #1172BA 0%, #1a7fc4 55%, #0e6aad 100%)">
                 <div class="pointer-events-none absolute inset-0 opacity-30" style="background-image: radial-gradient(circle at 12% 20%, rgba(255,255,255,0.35), transparent 40%), radial-gradient(circle at 90% 0%, rgba(255,255,255,0.18), transparent 35%)"></div>
                 <div class="relative flex items-start justify-between gap-3">
                     <div class="min-w-0 flex items-start gap-3">
@@ -41,7 +41,7 @@
                 </div>
             </div>
 
-            <div class="p-5 sm:p-7 bg-white">
+            <div class="profile-page-card__scroll p-5 sm:p-7 bg-white">
                 <div x-show="error" x-cloak class="rounded-2xl border border-rose-100 bg-rose-50/50 p-10 text-center mb-4">
                     <p class="text-rose-600 mb-4 font-medium text-sm" x-text="error"></p>
                     <button type="button" @click="load()" class="px-6 py-2.5 text-white rounded-xl font-semibold text-sm bg-[#1172BA] hover:bg-[#0d5a94]">{{ evomi_l('Coba Lagi', 'Try Again') }}</button>

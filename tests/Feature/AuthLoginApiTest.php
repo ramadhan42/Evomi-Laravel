@@ -67,5 +67,7 @@ class AuthLoginApiTest extends TestCase
         $this->get('/profile/wishlist')->assertOk();
         $this->get('/profile/history')->assertOk();
         $this->get('/profile/chat')->assertOk();
+        $this->get('/profile/payments')->assertOk();
+        $this->get('/profile/history/INV-1')->assertOk();
     }
 }

@@ -259,8 +259,27 @@
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>
                                 {{ $lbl('chat', 'Chat', 'Chat') }}
                             </button>
-                            <button type="button" @click="toggleWishlist()" :disabled="wishlistBusy" class="flex flex-col items-center gap-1.5 transition disabled:opacity-60" :class="isWishlisted ? 'text-pink-500' : 'hover:text-[var(--hover-color)]'">
-                                <svg class="w-5 h-5" :class="isWishlisted ? 'fill-pink-500 text-pink-500' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/></svg>
+                            <button
+                                type="button"
+                                data-wishlist-btn
+                                @click="toggleWishlist($event)"
+                                :disabled="wishlistBusy"
+                                class="evomi-wishlist-btn flex flex-col items-center gap-1.5 transition disabled:opacity-60"
+                                :class="isWishlisted ? 'is-wishlisted' : 'hover:text-[var(--hover-color)]'"
+                                :style="isWishlisted
+                                    ? { color: accent, '--wishlist-color': accent }
+                                    : { '--hover-color': accent, '--wishlist-color': accent }"
+                            >
+                                <span class="evomi-wishlist-btn__icon relative inline-flex items-center justify-center">
+                                    <svg
+                                        class="w-5 h-5 relative z-[1] transition-colors duration-200"
+                                        :class="isWishlisted ? 'evomi-wishlist-btn__heart-filled' : ''"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                    ><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/></svg>
+                                </span>
                                 {{ $lbl('wishlist', 'Wishlist', 'Wishlist') }}
                             </button>
                             <button type="button" @click="showShareModal = true" class="flex flex-col items-center gap-1.5 hover:text-[var(--hover-color)] transition">
@@ -309,49 +328,104 @@
         </div>
     </div>
 
-    {{-- Chat modal — teleport ke body agar fixed di tengah viewport --}}
+    {{-- Chat modal --}}
     <template x-teleport="body">
         <div
+            class="evomi-product-modal"
             x-show="isChatOpen"
             x-cloak
-            class="fixed inset-0 z-[120] flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/40 backdrop-blur-sm"
-            @keydown.escape.window="isChatOpen = false"
+            :class="isChatOpen ? 'pointer-events-auto' : 'pointer-events-none'"
+            @keydown.escape.window="isChatOpen && (isChatOpen = false)"
         >
-            <div class="absolute inset-0" @click="isChatOpen = false"></div>
-            <div class="relative w-full sm:max-w-[380px] h-[70vh] sm:h-[520px] bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl flex flex-col overflow-hidden">
-                <div class="px-4 py-3 text-white flex items-center justify-between" :style="accentSurfaceStyle">
-                    <div>
-                        <p class="font-nohemi font-semibold text-[15px]">{{ $detailCms->get('chat', 'admin_name', evomi_l('Chat Admin Evomi', 'Chat Evomi Admin')) }}</p>
-                        <p class="text-[12px] opacity-90 font-parkinsans">{{ $detailCms->get('chat', 'reply_hint', evomi_l('Biasanya membalas dalam beberapa menit', 'Usually replies within a few minutes')) }}</p>
-                    </div>
-                    <button type="button" @click="isChatOpen = false" class="p-1 rounded-full hover:bg-white/15">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
-                    </button>
-                </div>
-                <div class="flex-1 overflow-y-auto p-4 bg-[#F8FAFC] space-y-3">
-                    <div class="bg-white border border-gray-100 rounded-[16px] p-3 text-[13px] font-parkinsans text-[#364153]">
-                        {{ evomi_l('Halo! Ada yang bisa kami bantu terkait', 'Hi! How can we help with') }} <span class="font-semibold" x-text="title"></span>?
-                    </div>
-                    <template x-for="bubble in chatBubbles" :key="bubble.id">
-                        <div class="flex" :class="bubble.type === 'user' ? 'justify-end' : 'justify-start'">
-                            <div
-                                class="max-w-[80%] rounded-[16px] px-3 py-2 text-[13px] font-parkinsans"
-                                :class="bubble.type === 'user' ? 'text-white' : 'bg-white border border-gray-100 text-[#364153]'"
-                                :style="bubble.type === 'user' ? accentSurfaceStyle : {}"
-                                x-text="bubble.text"
-                            ></div>
+            <div
+                class="evomi-product-modal__backdrop"
+                x-show="isChatOpen"
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                @click="isChatOpen = false"
+            ></div>
+
+            <div class="evomi-product-modal__frame evomi-product-modal__frame--chat" x-show="isChatOpen" @click.self="isChatOpen = false">
+                <div
+                    class="evomi-chat-panel"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="{{ $detailCms->get('chat', 'admin_name', evomi_l('Chat Admin Evomi', 'Chat Evomi Admin')) }}"
+                    x-show="isChatOpen"
+                    x-transition:enter="ease-[cubic-bezier(0.22,1,0.36,1)] duration-420"
+                    x-transition:enter-start="opacity-0 scale-[0.96] translate-y-6 sm:translate-y-4 sm:translate-x-4"
+                    x-transition:enter-end="opacity-100 scale-100 translate-y-0 sm:translate-x-0"
+                    x-transition:leave="ease-in duration-220"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-[0.98] translate-y-3"
+                    @click.stop
+                >
+                    <div class="evomi-chat-panel__header" :style="{ background: `linear-gradient(145deg, color-mix(in srgb, ${accent} 88%, #0b3d66) 0%, ${accent} 52%, color-mix(in srgb, ${accent} 72%, #fff) 100%)` }">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="evomi-chat-panel__avatar" aria-hidden="true">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>
+                                <span class="evomi-chat-panel__online"></span>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="evomi-chat-panel__kicker">Evomi Support</p>
+                                <p class="evomi-chat-panel__title truncate">{{ $detailCms->get('chat', 'admin_name', evomi_l('Chat Admin Evomi', 'Chat Evomi Admin')) }}</p>
+                                <p class="evomi-chat-panel__subtitle truncate">{{ $detailCms->get('chat', 'reply_hint', evomi_l('Biasanya membalas dalam beberapa menit', 'Usually replies within a few minutes')) }}</p>
+                            </div>
                         </div>
-                    </template>
-                </div>
-                <div class="p-3 border-t border-gray-100 space-y-2">
-                    <div class="flex flex-wrap gap-2">
-                        <template x-for="tpl in chatTemplates" :key="tpl">
-                            <button type="button" @click="draft = tpl" class="text-[11px] px-2.5 py-1 rounded-full border border-gray-200 text-[#6A7282] hover:bg-gray-50 font-parkinsans" x-text="tpl"></button>
+                        <button type="button" class="evomi-overlay-close" @click="isChatOpen = false" :aria-label="$L('Tutup', 'Close')">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4 4 12M4 4l8 8"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="evomi-chat-panel__body">
+                        <div class="evomi-chat-panel__welcome">
+                            <p class="text-[12px] font-semibold text-slate-500 mb-1">{{ evomi_l('Tentang produk', 'About this product') }}</p>
+                            <p class="text-[13px] text-slate-800 leading-snug">
+                                {{ evomi_l('Halo! Ada yang bisa kami bantu terkait', 'Hi! How can we help with') }}
+                                <span class="font-semibold" :style="accentTextStyle" x-text="title"></span>?
+                            </p>
+                        </div>
+
+                        <template x-for="bubble in chatBubbles" :key="bubble.id">
+                            <div class="evomi-chat-panel__row" :class="bubble.type === 'user' ? 'is-user' : 'is-admin'">
+                                <div
+                                    class="evomi-chat-panel__bubble"
+                                    :class="bubble.type === 'user' ? 'is-user' : 'is-admin'"
+                                    :style="bubble.type === 'user' ? accentSurfaceStyle : {}"
+                                    x-text="bubble.text"
+                                ></div>
+                            </div>
                         </template>
                     </div>
-                    <div class="flex gap-2">
-                        <input type="text" x-model="draft" @keydown.enter.prevent="sendChat()" placeholder="{{ evomi_l('Ketik pesan Anda ke admin di sini...', 'Type your message to admin here...') }}" class="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-[13px] font-parkinsans text-[#364153] outline-none focus:border-gray-300">
-                        <button type="button" @click="sendChat()" class="px-4 rounded-full text-white font-semibold text-[13px]" :style="accentSurfaceStyle">{{ evomi_l('Kirim', 'Send') }}</button>
+
+                    <div class="evomi-chat-panel__footer">
+                        <div class="evomi-chat-panel__chips">
+                            <template x-for="tpl in chatTemplates" :key="tpl">
+                                <button type="button" class="evomi-chat-panel__chip" @click="draft = tpl" x-text="tpl"></button>
+                            </template>
+                        </div>
+                        <div class="evomi-chat-panel__composer">
+                            <input
+                                type="text"
+                                x-model="draft"
+                                @keydown.enter.prevent="sendChat()"
+                                placeholder="{{ evomi_l('Ketik pesan Anda ke admin...', 'Type your message to admin...') }}"
+                                class="evomi-chat-panel__input"
+                            >
+                            <button
+                                type="button"
+                                class="evomi-chat-panel__send"
+                                :style="accentSurfaceStyle"
+                                @click="sendChat()"
+                                :aria-label="$L('Kirim', 'Send')"
+                            >
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -400,48 +474,105 @@
         </div>
     </template>
 
-    {{-- Share modal — teleport ke body agar fixed di tengah viewport --}}
+    {{-- Share modal --}}
     <template x-teleport="body">
-        <div x-show="showShareModal" x-cloak class="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" @keydown.escape.window="showShareModal = false">
-            <div class="absolute inset-0" @click="showShareModal = false"></div>
-            <div class="relative bg-white w-full max-w-[400px] rounded-[24px] shadow-2xl overflow-hidden">
-                <div class="flex justify-between items-center p-5 border-b border-gray-100">
-                    <h3 class="font-nohemi text-[18px] font-bold text-[#1E2939]">{{ evomi_l('Bagikan Produk', 'Share Product') }}</h3>
-                    <button type="button" @click="showShareModal = false" class="text-gray-400 hover:text-gray-700 p-1.5 rounded-full hover:bg-gray-100">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
-                    </button>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-4 gap-4 mb-6">
-                        <a :href="shareLinks.whatsapp" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center gap-2 group">
-                            <div class="w-12 h-12 bg-green-50 text-green-500 rounded-full flex items-center justify-center group-hover:bg-green-500 group-hover:text-white transition-colors">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>
-                            </div>
-                            <span class="text-[12px] font-parkinsans text-[#6A7282]">WhatsApp</span>
-                        </a>
-                        <a :href="shareLinks.facebook" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center gap-2 group">
-                            <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-                            </div>
-                            <span class="text-[12px] font-parkinsans text-[#6A7282]">Facebook</span>
-                        </a>
-                        <a :href="shareLinks.twitter" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center gap-2 group">
-                            <div class="w-12 h-12 bg-gray-100 text-gray-800 rounded-full flex items-center justify-center group-hover:bg-gray-800 group-hover:text-white transition-colors">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
-                            </div>
-                            <span class="text-[12px] font-parkinsans text-[#6A7282]">Twitter</span>
-                        </a>
-                        <button type="button" @click="shareInstagram()" class="flex flex-col items-center gap-2 group">
-                            <div class="w-12 h-12 bg-pink-50 text-pink-500 rounded-full flex items-center justify-center group-hover:bg-pink-500 group-hover:text-white transition-colors">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-                            </div>
-                            <span class="text-[12px] font-parkinsans text-[#6A7282]">Instagram</span>
+        <div
+            class="evomi-product-modal"
+            x-show="showShareModal"
+            x-cloak
+            :class="showShareModal ? 'pointer-events-auto' : 'pointer-events-none'"
+            @keydown.escape.window="showShareModal && (showShareModal = false)"
+        >
+            <div
+                class="evomi-product-modal__backdrop"
+                x-show="showShareModal"
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                @click="showShareModal = false"
+            ></div>
+
+            <div class="evomi-product-modal__frame" x-show="showShareModal" @click.self="showShareModal = false">
+                <div
+                    class="evomi-share-panel"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="{{ evomi_l('Bagikan Produk', 'Share Product') }}"
+                    x-show="showShareModal"
+                    x-transition:enter="ease-[cubic-bezier(0.22,1,0.36,1)] duration-420"
+                    x-transition:enter-start="opacity-0 scale-[0.96] translate-y-4"
+                    x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                    x-transition:leave="ease-in duration-220"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-[0.98]"
+                    @click.stop
+                >
+                    <div class="evomi-share-panel__header" :style="{ background: `linear-gradient(145deg, color-mix(in srgb, ${accent} 88%, #0b3d66) 0%, ${accent} 52%, color-mix(in srgb, ${accent} 72%, #fff) 100%)` }">
+                        <div class="min-w-0">
+                            <p class="evomi-chat-panel__kicker">Evomi</p>
+                            <h3 class="evomi-chat-panel__title">{{ evomi_l('Bagikan Produk', 'Share Product') }}</h3>
+                            <p class="evomi-chat-panel__subtitle">{{ evomi_l('Sebarkan aroma favoritmu ke teman.', 'Share your favorite scent with friends.') }}</p>
+                        </div>
+                        <button type="button" class="evomi-overlay-close" @click="showShareModal = false" :aria-label="$L('Tutup', 'Close')">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4 4 12M4 4l8 8"/></svg>
                         </button>
                     </div>
-                    <p class="text-[12px] text-center text-[#99A1AF] font-parkinsans mb-4 leading-relaxed" x-show="shareHint" x-text="shareHint" x-cloak></p>
-                    <div class="flex items-center gap-2 bg-[#F8F9FA] p-1.5 rounded-[12px] border border-[#E5E7EB]">
-                        <input type="text" :value="productUrl" readonly class="bg-transparent outline-none flex-1 text-[13px] text-[#6A7282] font-parkinsans px-3 overflow-hidden text-ellipsis whitespace-nowrap">
-                        <button type="button" @click="copyLink()" class="px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-[8px] text-[13px] font-semibold shrink-0" :style="isCopied ? accentTextStyle : {}" x-text="isCopied ? $L('Disalin', 'Copied') : $L('Salin', 'Copy')"></button>
+
+                    <div class="evomi-share-panel__body">
+                        <div class="evomi-share-panel__preview">
+                            <div class="evomi-share-panel__thumb" :style="{ backgroundColor: accent }">
+                                <img :src="shareImageUrl || gallery[0] || ''" alt="" class="w-full h-full object-contain" x-show="shareImageUrl || gallery[0]">
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-[14px] font-semibold text-slate-900 leading-snug truncate" x-text="title"></p>
+                                <p class="text-[12px] text-slate-500 mt-1 line-clamp-2" x-text="sharePreviewDesc"></p>
+                                <p class="text-[13px] font-bold mt-2" :style="accentTextStyle" x-text="formatPrice(price)"></p>
+                            </div>
+                        </div>
+
+                        <div class="evomi-share-panel__grid">
+                            <a :href="shareLinks.whatsapp" target="_blank" rel="noopener noreferrer" class="evomi-share-panel__item is-wa">
+                                <span class="evomi-share-panel__icon">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                </span>
+                                <span>WhatsApp</span>
+                            </a>
+                            <a :href="shareLinks.facebook" target="_blank" rel="noopener noreferrer" class="evomi-share-panel__item is-fb">
+                                <span class="evomi-share-panel__icon">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M24 12.073C24 5.446 18.627.073 12 .073S0 5.446 0 12.073C0 18.063 4.388 23.027 10.125 23.927v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                </span>
+                                <span>Facebook</span>
+                            </a>
+                            <a :href="shareLinks.twitter" target="_blank" rel="noopener noreferrer" class="evomi-share-panel__item is-x">
+                                <span class="evomi-share-panel__icon">
+                                    <svg class="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.726-8.835L1.254 2.25H8.08l4.251 5.647L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
+                                </span>
+                                <span>X / Twitter</span>
+                            </a>
+                            <button type="button" @click="shareInstagram()" class="evomi-share-panel__item is-ig">
+                                <span class="evomi-share-panel__icon">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M16.5 11.37A4.5 4.5 0 1 1 12.13 7a4.5 4.5 0 0 1 4.37 4.37z"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+                                </span>
+                                <span>Instagram</span>
+                            </button>
+                        </div>
+
+                        <p class="evomi-share-panel__hint" x-show="shareHint" x-text="shareHint" x-cloak x-transition.opacity.duration.200ms></p>
+
+                        <div class="evomi-share-panel__copy">
+                            <input type="text" :value="productUrl" readonly class="evomi-share-panel__url" :aria-label="$L('Link produk', 'Product link')">
+                            <button
+                                type="button"
+                                class="evomi-share-panel__copy-btn"
+                                :class="isCopied ? 'is-copied' : ''"
+                                :style="isCopied ? accentSurfaceStyle : {}"
+                                @click="copyLink()"
+                                x-text="isCopied ? $L('Disalin', 'Copied') : $L('Salin', 'Copy')"
+                            ></button>
+                        </div>
                     </div>
                 </div>
             </div>

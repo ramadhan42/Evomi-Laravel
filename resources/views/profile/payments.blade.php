@@ -4,19 +4,19 @@
 
 @section('content')
 <x-profile-shell>
-    <div x-data="evomiProfilePayments">
+    <div x-data="evomiProfilePayments" class="profile-page-card">
         <div
             x-show="loading"
             x-cloak
-            class="rounded-[28px] overflow-hidden border border-gray-100 min-h-[400px] flex flex-col items-center justify-center bg-white"
+            class="profile-page-card__loader absolute inset-0 z-10"
         >
-            <div class="w-8 h-8 border-4 border-gray-200 border-t-[#F59E0B] rounded-full animate-spin mb-4"></div>
+            <div class="w-8 h-8 border-4 border-gray-200 border-t-[#F59E0B] rounded-full animate-spin"></div>
             <p class="text-gray-500 font-medium text-sm">{{ evomi_l('Memuat pembayaran tertunda...', 'Loading pending payments...') }}</p>
         </div>
 
-        <div x-show="!loading" x-cloak class="relative rounded-[28px] overflow-hidden border border-gray-100 bg-white">
-            <div class="relative px-5 sm:px-7 py-5 text-white" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 55%, #B45309 100%)">
-                <div class="pointer flex items-start justify-between gap-3">
+        <div x-show="!loading" x-cloak class="profile-page-card__body">
+            <div class="relative shrink-0 px-5 sm:px-7 py-5 text-white" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 55%, #B45309 100%)">
+                <div class="relative flex items-start justify-between gap-3">
                     <div class="min-w-0 flex items-start gap-3">
                         <span class="w-10 h-10 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center shrink-0">
                             <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/></svg>
@@ -32,7 +32,7 @@
                 </div>
             </div>
 
-            <div class="p-5 sm:p-7 bg-white">
+            <div class="profile-page-card__scroll p-5 sm:p-7 bg-white">
                 <div x-show="error" x-cloak class="rounded-2xl border border-rose-100 bg-rose-50/50 p-10 text-center mb-4">
                     <p class="text-rose-600 mb-4 font-medium text-sm" x-text="error"></p>
                     <button type="button" @click="load()" class="px-6 py-2.5 text-white rounded-xl font-semibold text-sm bg-[#F59E0B]">{{ evomi_l('Coba Lagi', 'Try Again') }}</button>

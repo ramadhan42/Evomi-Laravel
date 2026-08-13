@@ -19,12 +19,12 @@
     ];
 @endphp
 
-<div
-    class="evomi-profile-shell max-w-7xl mx-auto px-4 py-8 sm:py-12 sm:px-6 lg:px-8 bg-white min-h-[70vh]"
-    x-data="evomiProfileShell(@js($activeMenu))"
-    data-profile-page="1"
-    data-active-menu="{{ $activeMenu }}"
->
+    <div
+        class="evomi-profile-shell max-w-7xl mx-auto px-4 py-8 sm:py-12 sm:px-6 lg:px-8 bg-white min-h-[70vh]"
+        x-data="evomiProfileShell(@js($activeMenu))"
+        data-profile-page="1"
+        data-active-menu="{{ $activeMenu }}"
+    >
     <div
         x-show="!ready"
         x-cloak
@@ -33,9 +33,9 @@
         <div class="w-8 h-8 border-4 border-gray-200 border-t-[#1172BA] rounded-full animate-spin"></div>
     </div>
 
-    <div x-show="ready" x-cloak class="flex flex-col lg:flex-row gap-6 lg:gap-8">
+    <div x-show="ready" x-cloak class="flex flex-col lg:flex-row lg:items-stretch gap-6 lg:gap-8">
         <aside class="w-full lg:w-72 shrink-0">
-            <div class="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-4 sm:p-5 sticky top-6">
+            <div class="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-4 sm:p-5 sticky top-6 lg:min-h-[min(80vh,760px)]">
                 <div class="px-3 sm:px-4 py-2 sm:py-3 mb-3 sm:mb-4">
                     <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ evomi_l('Menu Akun', 'Account Menu') }}</h2>
                     <p class="text-sm text-gray-500 mt-0.5">{{ evomi_l('Kelola aktivitas & akun Anda', 'Manage your activity & account') }}</p>
