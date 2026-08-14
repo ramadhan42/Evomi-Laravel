@@ -451,6 +451,14 @@ const DICT = {
             'Belum masuk total pendapatan',
             'Not counted in revenue yet',
         ],
+        payment_pending_cod_desc: [
+            'COD belum dibayar sampai barang tiba, atau sampai dikonfirmasi admin',
+            'COD stays unpaid until delivery, or until admin confirms',
+        ],
+        payment_cod_hint: [
+            'Cash on Delivery: biarkan pending sampai barang tiba dan dibayar. Pilih “Pembayaran berhasil” hanya setelah konfirmasi.',
+            'Cash on Delivery: keep pending until the goods arrive and are paid. Mark “Payment successful” only after confirmation.',
+        ],
         payment_cancelled: ['Pembayaran dibatalkan', 'Payment cancelled'],
         payment_cancelled_desc: [
             'Tidak masuk total pendapatan',

@@ -9,7 +9,7 @@ class ExpireUnpaidOrders extends Command
 {
     protected $signature = 'orders:expire-unpaid';
 
-    protected $description = 'Batalkan pesanan online yang melewati batas waktu pembayaran 24 jam';
+    protected $description = 'Batalkan pesanan QRIS/VA yang melewati 24 jam, dan COD yang belum dikirim dalam 24 jam';
 
     public function handle(OrderPaymentService $payments): int
     {

@@ -248,7 +248,7 @@ class GuestController extends Controller
             $invoiceNumber = OrderNumber::display($invoiceRoot);
             $product = $order->product;
             $localized = $product ? ProductLocalizer::localize($product, $locale) : null;
-            $awaiting = $order->isAwaitingOnlinePayment();
+            $awaiting = $order->isAwaitingAnyPayment();
 
             $summaries[] = [
                 'id' => (string) $order->id,

@@ -67,6 +67,7 @@ export function registerAdminCrud(Alpine, deps) {
         resolveAvatarUrl,
         fulfillmentStatusConfig,
         normalizePaymentStatus,
+        isCodPayment,
         paymentStatusLabel,
         paymentStatusBadgeClass,
         orderGrandTotal,
@@ -589,6 +590,7 @@ export function registerAdminCrud(Alpine, deps) {
             id: null,
             status: '',
             payment_status: '',
+            isCod: false,
             imageUrl: '',
             productTitle: '',
             customerName: '',
@@ -738,12 +740,19 @@ export function registerAdminCrud(Alpine, deps) {
                 {
                     id: 'pending',
                     label: this.t('orders', 'payment_pending', 'Pembayaran pending', 'Payment pending'),
-                    desc: this.t(
-                        'orders',
-                        'payment_pending_desc',
-                        'Belum masuk total pendapatan',
-                        'Not counted in revenue yet',
-                    ),
+                    desc: this.edit.isCod
+                        ? this.t(
+                              'orders',
+                              'payment_pending_cod_desc',
+                              'COD belum dibayar sampai barang tiba, atau sampai dikonfirmasi admin',
+                              'COD stays unpaid until delivery, or until admin confirms',
+                          )
+                        : this.t(
+                              'orders',
+                              'payment_pending_desc',
+                              'Belum masuk total pendapatan',
+                              'Not counted in revenue yet',
+                          ),
                     badge: 'pending',
                 },
                 {
@@ -883,6 +892,9 @@ export function registerAdminCrud(Alpine, deps) {
                 this.edit.payment_status = 'cancelled';
                 return;
             }
+            if (this.edit.isCod) {
+                return;
+            }
             if (
                 this.edit.payment_status === 'pending' &&
                 ['pengemasan', 'dalam_perjalanan', 'diterima', 'selesai'].includes(statusId)
@@ -898,6 +910,7 @@ export function registerAdminCrud(Alpine, deps) {
                 id: o.id,
                 status,
                 payment_status: payment,
+                isCod: typeof isCodPayment === 'function' ? isCodPayment(o) : false,
                 imageUrl: this.orderProductImage(o) || this.productThumb(o.product) || '',
                 productTitle:
                     o.product?.title || this.t('orders', 'no_name', 'Tanpa Nama', 'No Name'),

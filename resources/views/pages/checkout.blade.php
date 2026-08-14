@@ -245,7 +245,7 @@
                     <div class="space-y-2">
                         <button
                             type="button"
-                            @click="paymentMethod = 'cod'"
+                            @click="selectPayment('cod')"
                             class="w-full flex items-center gap-3 p-3 rounded-xl border transition text-left"
                             :class="paymentMethod === 'cod' ? 'border-transparent' : 'border-gray-100 hover:border-gray-200'"
                             :style="paymentMethod === 'cod' ? { borderColor: brand, backgroundColor: brand + '0A' } : {}"
@@ -270,7 +270,7 @@
                             type="button"
                             x-show="qrisAvailable"
                             x-cloak
-                            @click="paymentMethod = 'qris'"
+                            @click="selectPayment('qris')"
                             class="w-full flex items-center gap-3 p-3 rounded-xl border transition text-left"
                             :class="paymentMethod === 'qris' ? 'border-transparent' : 'border-gray-100 hover:border-gray-200'"
                             :style="paymentMethod === 'qris' ? { borderColor: brand, backgroundColor: brand + '0A' } : {}"
@@ -295,7 +295,7 @@
                             type="button"
                             x-show="bankTransferAvailable"
                             x-cloak
-                            @click="paymentMethod = 'bank_transfer'"
+                            @click="selectPayment('bank_transfer')"
                             class="w-full flex items-center gap-3 p-3 rounded-xl border transition text-left"
                             :class="paymentMethod === 'bank_transfer' ? 'border-transparent' : 'border-gray-100 hover:border-gray-200'"
                             :style="paymentMethod === 'bank_transfer' ? { borderColor: brand, backgroundColor: brand + '0A' } : {}"
@@ -380,6 +380,81 @@
             </div>
         </div>
     </div>
+
+    <template x-teleport="body">
+        <div
+            x-show="codNotice.open"
+            x-cloak
+            class="evomi-cod-modal fixed inset-0 z-[210] flex items-end sm:items-center justify-center p-0 sm:p-4"
+            :style="{ '--cod-brand': brand }"
+            x-transition:enter="ease-out duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @keydown.escape.window="codNotice.open && closeCodNotice()"
+        >
+            <div
+                class="absolute inset-0 evomi-cod-modal__backdrop"
+                @click="closeCodNotice()"
+            ></div>
+            <div
+                class="evomi-cod-modal__panel relative w-full"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="evomi-cod-title"
+                @click.stop
+            >
+                <div class="evomi-cod-modal__hero">
+                    <div class="evomi-cod-modal__hero-glow" aria-hidden="true"></div>
+                    <div class="relative z-[1] flex items-start justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="evomi-cod-modal__icon" aria-hidden="true">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="evomi-cod-modal__kicker">{{ evomi_l('Metode pembayaran', 'Payment method') }}</p>
+                                <h2 id="evomi-cod-title" class="evomi-cod-modal__title">Cash on Delivery</h2>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            class="evomi-cod-modal__close"
+                            @click="closeCodNotice()"
+                            :aria-label="$L('Tutup', 'Close')"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4 4 12M4 4l8 8"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="evomi-cod-modal__body">
+                    <div class="evomi-cod-modal__step">
+                        <span class="evomi-cod-modal__step-num" aria-hidden="true">1</span>
+                        <div class="min-w-0">
+                            <p class="evomi-cod-modal__step-title">{{ evomi_l('Bayar saat barang tiba', 'Pay on delivery') }}</p>
+                            <p class="evomi-cod-modal__step-text">{{ evomi_l('Lakukan pembayaran saat barang tiba di tujuan.', 'Please pay when the goods arrive at the destination.') }}</p>
+                        </div>
+                    </div>
+                    <div class="evomi-cod-modal__step">
+                        <span class="evomi-cod-modal__step-num evomi-cod-modal__step-num--alt" aria-hidden="true">2</span>
+                        <div class="min-w-0">
+                            <p class="evomi-cod-modal__step-title">{{ evomi_l('Bisa dibatalkan sebelum kirim', 'Cancel before we ship') }}</p>
+                            <p class="evomi-cod-modal__step-text">{{ evomi_l('Pesanan dapat dibatalkan sebelum barang dikirim dari sisi kami.', 'You can cancel the order before we ship it.') }}</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        class="evomi-cod-modal__cta"
+                        @click="closeCodNotice()"
+                    >{{ evomi_l('Mengerti', 'Got it') }}</button>
+                </div>
+            </div>
+        </div>
+    </template>
 
     <template x-teleport="body">
         <div

@@ -115,6 +115,7 @@ Route::middleware(['auth:sanctum', 'last.seen'])->group(function () {
     Route::get('/shopping-history', [UserController::class, 'shoppingHistory']);
     Route::get('/badges', [UserController::class, 'badges']);
     Route::get('/payments/pending', [OrderPaymentController::class, 'pending']);
+    Route::post('/payments/orders/{invoiceId}/cancel', [OrderPaymentController::class, 'cancel']);
     Route::get('/my-trackings', [OrderTrackingController::class, 'mine']);
 
     Route::post('/checkout', [OrderController::class, 'checkout']);

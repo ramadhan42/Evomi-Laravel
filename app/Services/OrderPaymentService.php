@@ -130,12 +130,18 @@ class OrderPaymentService
                 if ($order->payment_status !== Order::PAYMENT_PENDING) {
                     continue;
                 }
-                if (! in_array($order->payment_channel, ['qris', 'va'], true)) {
-                    continue;
-                }
 
                 $locked = Order::where('id', $order->id)->lockForUpdate()->first();
                 if (! $locked || $locked->payment_status !== Order::PAYMENT_PENDING) {
+                    continue;
+                }
+
+                $isCod = $locked->isCodPayment();
+                $isOnline = in_array($locked->payment_channel, ['qris', 'va'], true);
+                if (! $isCod && ! $isOnline) {
+                    continue;
+                }
+                if ($isCod && $locked->hasShipped()) {
                     continue;
                 }
 
@@ -161,7 +167,7 @@ class OrderPaymentService
                 if ($tracking) {
                     $timeline = is_array($tracking->timeline) ? $tracking->timeline : [];
                     $timeline[] = [
-                        'status' => 'Pesanan dibatalkan — batas waktu pembayaran habis',
+                        'status' => $this->cancelTimelineLabel($reason),
                         'date' => now()->toIso8601String(),
                     ];
                     $tracking->forceFill([
@@ -177,22 +183,66 @@ class OrderPaymentService
 
     public function expireDueOrders(): int
     {
-        $invoiceIds = Order::query()
+        $now = now();
+        $codCutoff = $now->copy()->subHours(Order::CANCEL_WINDOW_HOURS);
+
+        $onlineIds = Order::query()
             ->where('payment_status', Order::PAYMENT_PENDING)
             ->whereIn('payment_channel', ['qris', 'va'])
             ->whereNotNull('payment_expires_at')
-            ->where('payment_expires_at', '<', now())
-            ->pluck('id')
+            ->where('payment_expires_at', '<', $now)
+            ->pluck('id');
+
+        $codIds = Order::query()
+            ->where('payment_status', Order::PAYMENT_PENDING)
+            ->whereNotIn('status', [...Order::SHIPPED_STATUSES, 'dibatalkan'])
+            ->where(function ($q) {
+                $q->where('payment_channel', 'cod')
+                    ->orWhereRaw('LOWER(COALESCE(metode_pembayaran, "")) LIKE ?', ['%cash on delivery%'])
+                    ->orWhereRaw('LOWER(COALESCE(metode_pembayaran, "")) = ?', ['cod']);
+            })
+            ->where(function ($q) use ($now, $codCutoff) {
+                $q->where(function ($exp) use ($now) {
+                    $exp->whereNotNull('payment_expires_at')
+                        ->where('payment_expires_at', '<', $now);
+                })->orWhere(function ($exp) use ($codCutoff) {
+                    $exp->whereNull('payment_expires_at')
+                        ->where('created_at', '<', $codCutoff);
+                });
+            })
+            ->pluck('id');
+
+        $invoiceIds = $onlineIds
+            ->concat($codIds)
             ->map(fn ($id) => $this->invoiceRoot((string) $id))
             ->unique()
             ->values();
 
         $total = 0;
         foreach ($invoiceIds as $invoiceId) {
-            $total += $this->expireInvoice($invoiceId);
+            $reason = $this->invoiceLooksCod($invoiceId)
+                ? 'cod_window_expired'
+                : 'payment_window_expired';
+            $total += $this->expireInvoice($invoiceId, $reason);
         }
 
         return $total;
+    }
+
+    private function invoiceLooksCod(string $invoiceId): bool
+    {
+        $order = $this->primaryOrder($invoiceId);
+
+        return $order?->isCodPayment() === true;
+    }
+
+    private function cancelTimelineLabel(string $reason): string
+    {
+        return match ($reason) {
+            'user_cancelled' => 'Pesanan dibatalkan oleh pelanggan',
+            'cod_window_expired' => 'Pesanan COD dibatalkan — belum dikirim dalam 24 jam',
+            default => 'Pesanan dibatalkan — batas waktu pembayaran habis',
+        };
     }
 
     /**

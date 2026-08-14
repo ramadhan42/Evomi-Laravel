@@ -3,7 +3,7 @@
     <div
         class="evomi-account-drawer fixed inset-0 z-[210]"
         :class="accountDrawerOpen ? 'pointer-events-auto is-open' : 'pointer-events-none'"
-        @keydown.escape.window="accountDrawerOpen && closeAccountDrawer()"
+        @keydown.escape.window="handleDrawerEscape($event)"
     >
         <div
             class="evomi-account-drawer__backdrop absolute inset-0"
@@ -15,7 +15,7 @@
             x-transition:leave="ease-[cubic-bezier(0.4,0,1,1)] duration-280"
             x-transition:leave-start="opacity-100"
             x-transition:leave-end="opacity-0"
-            @click="closeAccountDrawer()"
+            @click="drawerCartModal.open ? closeDrawerCartModal() : closeAccountDrawer()"
         ></div>
 
         <aside
@@ -174,7 +174,7 @@
                                                 type="button"
                                                 class="evomi-account-drawer__trash shrink-0"
                                                 :disabled="drawerUpdatingId === item.id"
-                                                @click="drawerRemoveItem(item)"
+                                                @click="requestDrawerRemove(item)"
                                                 :aria-label="$L('Hapus', 'Remove')"
                                             >
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -272,7 +272,7 @@
                                                 :style="{ '--track-item-accent': item.accent || '#1172BA' }"
                                                 @click="selectDrawerTrack(item.id)"
                                             >
-                                                <div class="evomi-track-chip__img" :style="{ backgroundColor: (item.accent || '#1172BA') + '22' }">
+                                                <div class="evomi-track-chip__img" :style="{ backgroundColor: item.accent || '#1172BA' }">
                                                     <img :src="item.imageUrl" :alt="item.title" x-on:error="$el.style.display='none'">
                                                 </div>
                                                 <div class="evomi-track-chip__body">
@@ -437,6 +437,46 @@
                 </div>
             </div>
         </aside>
+    </div>
+</template>
+
+<template x-teleport="body">
+    <div
+        class="evomi-drawer-cart-modal fixed inset-0 z-[240] flex items-center justify-center p-4"
+        x-show="drawerCartModal.open"
+        x-cloak
+        x-transition:enter="ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        @click.self="closeDrawerCartModal()"
+    >
+        <div
+            class="evomi-drawer-cart-modal__backdrop absolute inset-0"
+            @click="closeDrawerCartModal()"
+        ></div>
+        <div
+            class="evomi-drawer-cart-modal__panel relative bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 text-center space-y-4"
+            @click.stop
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="drawer-cart-remove-title"
+        >
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-sky-50">
+                <svg class="w-7 h-7 text-[#1172BA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+            </div>
+            <div class="space-y-2">
+                <h3 id="drawer-cart-remove-title" class="text-lg font-bold text-slate-900 tracking-tight">{{ evomi_l('Hapus item?', 'Remove item?') }}</h3>
+                <p class="text-sm text-slate-600 leading-relaxed">{{ evomi_l('Hapus produk ini dari keranjang?', 'Remove this product from cart?') }}</p>
+                <p class="text-sm font-semibold text-slate-800 break-words" x-text="drawerCartModal.title || drawerCartModal.item?.title || ''"></p>
+            </div>
+            <div class="flex gap-3 pt-1">
+                <button type="button" @click="closeDrawerCartModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-sm font-semibold text-slate-700 transition">{{ evomi_l('Batal', 'Cancel') }}</button>
+                <button type="button" @click="confirmDrawerRemove()" class="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-sm font-semibold transition">{{ evomi_l('Ya, Hapus', 'Yes, Remove') }}</button>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -609,8 +649,13 @@
                                 >
                                     <div class="evomi-orders-modal__expand-inner">
                                         <div class="flex flex-wrap items-center gap-2 text-[11px] text-[#5d5d5d]">
-                                            <span class="rounded-md bg-slate-100 px-2 py-1 font-medium" x-text="group.paymentLabel"></span>
-                                            <span class="text-slate-300">·</span>
+                                            <span
+                                                x-show="group.showPaymentBadge"
+                                                x-cloak
+                                                class="rounded-md bg-slate-100 px-2 py-1 font-medium"
+                                                x-text="group.paymentLabel"
+                                            ></span>
+                                            <span x-show="group.showPaymentBadge" x-cloak class="text-slate-300">·</span>
                                             <span x-text="group.dateTimeLabel"></span>
                                         </div>
                                         <div class="mt-3 space-y-2">

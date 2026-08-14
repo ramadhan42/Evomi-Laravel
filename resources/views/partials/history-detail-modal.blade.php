@@ -112,7 +112,13 @@
                                         <p class="text-[11px] text-gray-500 mb-0.5">{{ evomi_l('Status Pesanan', 'Order Status') }}</p>
                                         <div class="flex flex-wrap items-center gap-1.5">
                                             <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border" :class="group.statusClass" x-text="group.statusLabel"></span>
-                                            <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border" :class="group.paymentClass" x-text="group.paymentLabel"></span>
+                                            <span
+                                                x-show="group.showPaymentBadge"
+                                                x-cloak
+                                                class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border"
+                                                :class="group.paymentClass"
+                                                x-text="group.paymentLabel"
+                                            ></span>
                                         </div>
                                     </div>
                                 </div>
@@ -181,7 +187,11 @@
                                         <span>{{ evomi_l('Metode Pembayaran', 'Payment Method') }}</span>
                                         <span class="font-medium text-gray-900 bg-gray-100 px-2.5 py-1 rounded-md" x-text="group.paymentMethod || @js(evomi_l('Tidak diketahui', 'Unknown'))"></span>
                                     </div>
-                                    <div class="flex justify-between items-center text-gray-600">
+                                    <div
+                                        class="flex justify-between items-center text-gray-600"
+                                        x-show="group.showPaymentBadge"
+                                        x-cloak
+                                    >
                                         <span>{{ evomi_l('Status Pembayaran', 'Payment Status') }}</span>
                                         <span class="font-medium px-2.5 py-1 rounded-md border text-[10px]" :class="group.paymentClass" x-text="group.paymentLabel"></span>
                                     </div>

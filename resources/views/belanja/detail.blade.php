@@ -32,15 +32,21 @@
         <div class="lg:col-span-4 flex flex-col items-center w-full select-none">
             <div
                 data-belanja-hero-image
-                class="w-full aspect-square rounded-[24px] overflow-hidden flex justify-center items-center relative shadow-sm"
+                class="belanja-detail__hero w-full aspect-square rounded-[24px] overflow-hidden relative shadow-sm"
                 :style="accentSurfaceStyle"
             >
                 <template x-for="(imgSrc, index) in gallery" :key="index">
                     <div
-                        class="absolute inset-0 transition-opacity duration-700 ease-in-out flex justify-center items-center"
+                        class="absolute inset-0 transition-opacity duration-700 ease-in-out"
                         :class="currentIndex === index ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'"
                     >
-                        <img :src="imgSrc" :alt="title + ' gambar ' + (index + 1)" class="absolute inset-0 w-full h-full object-contain p-4">
+                        {{-- Full-bleed: image edge merges with rounded accent frame (no inset/padding ring) --}}
+                        <img
+                            :src="imgSrc"
+                            :alt="title + ' gambar ' + (index + 1)"
+                            class="belanja-detail__hero-img absolute inset-0 h-full w-full object-cover"
+                            draggable="false"
+                        >
                     </div>
                 </template>
 
@@ -67,11 +73,19 @@
                     <button
                         type="button"
                         @click="currentIndex = index"
-                        class="relative w-full aspect-square rounded-[16px] overflow-hidden border-2 transition-all duration-300 bg-white"
-                        :style="{ borderColor: currentIndex === index ? accent : 'transparent', opacity: currentIndex === index ? 1 : 0.6 }"
+                        class="belanja-detail__thumb relative w-full aspect-square rounded-[16px] overflow-hidden border-2 transition-all duration-300"
+                        :style="{
+                            backgroundColor: accent,
+                            borderColor: currentIndex === index ? accent : 'transparent',
+                            opacity: currentIndex === index ? 1 : 0.65,
+                        }"
                     >
-                        <div class="absolute inset-0" :style="accentSurfaceStyle"></div>
-                        <img :src="image" :alt="title + ' thumbnail ' + (index + 1)" class="relative z-10 w-full h-full object-contain p-2">
+                        <img
+                            :src="image"
+                            :alt="title + ' thumbnail ' + (index + 1)"
+                            class="absolute inset-0 w-full h-full object-cover"
+                            draggable="false"
+                        >
                     </button>
                 </template>
             </div>

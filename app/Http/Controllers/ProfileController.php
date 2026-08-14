@@ -34,7 +34,7 @@ class ProfileController extends Controller
     {
         return view('profile.payments', [
             'activeMenu' => 'payments',
-            'pageTitle' => 'Menunggu Pembayaran',
+            'pageTitle' => 'Pembayaran',
         ]);
     }
 

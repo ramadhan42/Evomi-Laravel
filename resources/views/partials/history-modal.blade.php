@@ -116,8 +116,8 @@
                                     class="flex flex-col rounded-2xl border border-gray-100 bg-white p-3.5 hover:border-slate-200 transition-all gap-3 cursor-pointer group/card"
                                     role="link"
                                     tabindex="0"
-                                    @click="typeof openHistoryDetailModal === 'function' ? openHistoryDetailModal(group.groupId) : window.evomiOpenHistoryDetail?.(group.groupId)"
-                                    @keydown.enter.prevent="typeof openHistoryDetailModal === 'function' ? openHistoryDetailModal(group.groupId) : window.evomiOpenHistoryDetail?.(group.groupId)"
+                                    @click="closeHistoryModal(); goDetail(group)"
+                                    @keydown.enter.prevent="closeHistoryModal(); goDetail(group)"
                                 >
                                     <div class="flex items-start gap-3.5 min-w-0">
                                         <div
@@ -158,8 +158,8 @@
                                         <div class="flex flex-wrap items-center gap-1.5 min-w-0">
                                             <span x-show="group.paymentKey === 'success'" class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap bg-emerald-50 text-emerald-700 border-emerald-200">{{ evomi_l('Sudah dibayar', 'Paid') }}</span>
                                             <span x-show="group.paymentKey === 'awaiting'" class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap bg-amber-50 text-amber-700 border-amber-200">{{ evomi_l('Menunggu pembayaran', 'Awaiting payment') }}</span>
-                                            <span x-show="group.paymentKey === 'cancelled'" class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap bg-rose-50 text-rose-700 border-rose-200">{{ evomi_l('Dibatalkan', 'Cancelled') }}</span>
-                                            <span x-show="!group.paymentKey || group.paymentKey === 'pending'" class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap bg-amber-50 text-amber-700 border-amber-200">{{ evomi_l('Belum dibayar', 'Unpaid') }}</span>
+                                            <span x-show="group.paymentKey === 'cancelled' && group.showPaymentBadge" x-cloak class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap bg-rose-50 text-rose-700 border-rose-200">{{ evomi_l('Dibatalkan', 'Cancelled') }}</span>
+                                            <span x-show="!group.paymentKey || group.paymentKey === 'pending'" class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap bg-amber-50 text-amber-700 border-amber-200" x-text="group.paymentLabel || $L('Belum dibayar', 'Unpaid')"></span>
                                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap" :class="group.statusClass">
                                                 <span class="w-1.5 h-1.5 rounded-full" :class="group.statusDot"></span>
                                                 <span x-text="group.statusLabel"></span>
@@ -175,6 +175,14 @@
                                                 @click="closeHistoryModal()"
                                                 class="flex items-center gap-1 px-2.5 py-1.5 bg-amber-500 text-white hover:bg-amber-600 rounded-xl text-[10px] font-bold transition-colors"
                                             >{{ evomi_l('Bayar', 'Pay') }}</a>
+                                            <a
+                                                x-show="group.isAwaitingCod && group.paymentUrl"
+                                                x-cloak
+                                                :href="group.paymentUrl"
+                                                data-soft-nav
+                                                @click="closeHistoryModal()"
+                                                class="flex items-center gap-1 px-2.5 py-1.5 bg-amber-500 text-white hover:bg-amber-600 rounded-xl text-[10px] font-bold transition-colors"
+                                            >{{ evomi_l('Tagihan', 'Bill') }}</a>
                                             <button
                                                 type="button"
                                                 x-show="group.canConfirm"
@@ -197,7 +205,7 @@
                                             <button
                                                 type="button"
                                                 class="inline-flex items-center gap-0.5 text-[11px] font-semibold text-slate-400 group-hover/card:text-slate-700 transition-colors"
-                                                @click="typeof openHistoryDetailModal === 'function' ? openHistoryDetailModal(group.groupId) : window.evomiOpenHistoryDetail?.(group.groupId)"
+                                                @click="closeHistoryModal(); goDetail(group)"
                                             >
                                                 {{ evomi_l('Detail', 'Details') }}
                                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>

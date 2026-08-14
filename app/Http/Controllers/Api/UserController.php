@@ -252,9 +252,9 @@ class UserController extends Controller
                 'wishlist' => $user->wishlists()->count(),
                 'history' => $user->orders()->count(),
                 'payments' => $user->orders()
-                    ->awaitingOnlinePayment()
+                    ->awaitingAnyPayment()
                     ->get()
-                    ->map(fn (Order $o) => preg_match('/^(INV-\d+-\d+)-\d+$/', (string) $o->id, $m) ? $m[1] : (string) $o->id)
+                    ->map(fn (Order $o) => Order::invoiceRoot((string) $o->id))
                     ->unique()
                     ->count(),
                 'unread' => $unread,

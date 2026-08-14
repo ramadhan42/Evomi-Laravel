@@ -16,6 +16,7 @@ window.Alpine = Alpine;
 registerStorefrontI18n(Alpine);
 
 let softNavBusy = false;
+let softNavToken = 0;
 let localeRevealTimer = 0;
 
 function beginLocaleSwitchFx() {
@@ -239,11 +240,6 @@ function isProfilePath(pathname) {
     return p === '/profile' || p.startsWith('/profile/');
 }
 
-function isHistoryDetailPath(pathname) {
-    const p = (pathname || '').replace(/\/$/, '') || '/';
-    return /^\/profile\/history\/[^/]+$/.test(p);
-}
-
 function isArtikelDetailPath(pathname) {
     const p = (pathname || '').replace(/\/$/, '') || '/';
     return /^\/artikel\/[^/]+$/.test(p);
@@ -263,7 +259,6 @@ function isPaymentPath(pathname) {
 function shouldSkipPageLoadingFeel(pathname) {
     return (
         isArtikelDetailPath(pathname) ||
-        isHistoryDetailPath(pathname) ||
         isCheckoutPath(pathname) ||
         isPaymentPath(pathname)
     );
@@ -289,6 +284,7 @@ function findCachedHistoryGroup(orderId) {
         return (
             groups.find((g) => String(g.groupId) === id) ||
             groups.find((g) => (g.items || []).some((i) => String(i.id) === id)) ||
+            groups.find((g) => orderInvoiceRoot(String(g.groupId)) === orderInvoiceRoot(id)) ||
             null
         );
     } catch {
@@ -576,6 +572,20 @@ function normalizePaymentStatus(value) {
 
 function isSuccessfulPayment(value) {
     return normalizePaymentStatus(value) === 'success';
+}
+
+function isCodPayment(order) {
+    if (!order || typeof order !== 'object') return false;
+    if (order.is_cod_payment === true || order.is_cod === true) return true;
+    const channel = String(order.payment_channel || '').toLowerCase().trim();
+    if (channel === 'cod') return true;
+    const method = String(
+        order.metode_pembayaran || order.payment_method || '',
+    )
+        .toLowerCase()
+        .trim();
+    if (!method) return false;
+    return method.includes('cash on delivery') || /(^|\b)cod(\b|$)/.test(method);
 }
 
 function formatRupiah(value) {
@@ -1713,7 +1723,14 @@ function groupOrdersByCreatedAt(orders) {
             const invoiceRoot = orderInvoiceRoot(idStr);
             const orderNumber = orderDisplayNumberFromOrder(first);
             const invoice = orderNumber;
-            const awaitingPay = Boolean(first.is_awaiting_payment);
+            const awaitingOnline = Boolean(first.is_awaiting_payment);
+            const awaitingCod = isCodPayment(first) && pay === 'pending';
+            const awaitingPay = awaitingOnline || awaitingCod;
+            const paymentLabel = awaitingCod
+                ? storefrontL('COD · Belum dibayar', 'COD · Unpaid')
+                : awaitingOnline
+                ? storefrontL('Menunggu pembayaran', 'Awaiting payment')
+                : paymentStatusLabel(pay);
 
             return {
                 groupId: first.id,
@@ -1764,15 +1781,16 @@ function groupOrdersByCreatedAt(orders) {
                 statusLabel: fulfill.label,
                 statusClass: fulfill.class,
                 statusDot: fulfill.dot,
-                paymentKey: awaitingPay ? 'awaiting' : pay,
-                paymentLabel: awaitingPay
-                    ? storefrontL('Menunggu pembayaran', 'Awaiting payment')
-                    : paymentStatusLabel(pay),
+                paymentKey: awaitingOnline ? 'awaiting' : pay,
+                paymentLabel,
                 paymentClass: awaitingPay
                     ? 'bg-amber-50 text-amber-700 border-amber-200'
                     : paymentStatusBadgeClass(pay),
+                showPaymentBadge: paymentLabel !== fulfill.label,
                 paymentMethod: first.metode_pembayaran || '',
-                isAwaitingPayment: awaitingPay,
+                isAwaitingPayment: awaitingOnline,
+                isAwaitingCod: awaitingCod,
+                isCod: awaitingCod || isCodPayment(first),
                 paymentUrl: awaitingPay
                     ? `/pembayaran/${encodeURIComponent(invoiceRoot)}`
                     : null,
@@ -1952,6 +1970,7 @@ document.addEventListener('alpine:init', () => {
         resolveAvatarUrl,
         fulfillmentStatusConfig,
         normalizePaymentStatus,
+        isCodPayment,
         paymentStatusLabel,
         paymentStatusBadgeClass,
         orderGrandTotal,
@@ -2436,6 +2455,7 @@ document.addEventListener('alpine:init', () => {
         drawerCartLoading: false,
         drawerCartItems: [],
         drawerUpdatingId: null,
+        drawerCartModal: { open: false, type: 'confirm', message: '', title: '', item: null },
         drawerTrackLoading: false,
         drawerTrackItems: [],
         drawerTrackSelectedId: null,
@@ -3107,8 +3127,19 @@ document.addEventListener('alpine:init', () => {
         },
 
         closeAccountDrawer() {
+            this.drawerCartModal.open = false;
             this.accountDrawerOpen = false;
             this.syncBodyScrollLock();
+        },
+
+        handleDrawerEscape(event) {
+            if (this.drawerCartModal?.open) {
+                event?.preventDefault?.();
+                event?.stopImmediatePropagation?.();
+                this.closeDrawerCartModal();
+                return;
+            }
+            if (this.accountDrawerOpen) this.closeAccountDrawer();
         },
 
         bodyScrollLocked() {
@@ -3172,11 +3203,10 @@ document.addEventListener('alpine:init', () => {
         closeHistoryDetailModal({ backToList = false } = {}) {
             Alpine.store('evomiHistoryDetailModal').open = false;
             Alpine.store('evomiHistoryDetailModal').orderId = null;
-            if (backToList) {
-                this.openHistoryModal();
-                return;
-            }
             this.syncBodyScrollLock();
+            if (backToList) {
+                softNavigate('/profile/history');
+            }
         },
 
         prepareAccountModal() {
@@ -3246,11 +3276,11 @@ document.addEventListener('alpine:init', () => {
 
             const id = String(orderId || '').trim();
             if (!id) {
-                this.openHistoryModal();
+                softNavigate('/profile/history');
                 return;
             }
 
-            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+            // Prefer full profile page over legacy square modal
             this.open = false;
             this.accountMenuOpen = false;
             this.closeAccountDrawer();
@@ -3260,11 +3290,10 @@ document.addEventListener('alpine:init', () => {
             Alpine.store('evomiSettingsModal').open = false;
             Alpine.store('evomiWishlistModal').open = false;
             Alpine.store('evomiHistoryModal').open = false;
-
-            Alpine.store('evomiHistoryDetailModal').orderId = id;
-            Alpine.store('evomiHistoryDetailModal').open = true;
+            Alpine.store('evomiHistoryDetailModal').open = false;
+            Alpine.store('evomiHistoryDetailModal').orderId = null;
             this.syncBodyScrollLock();
-            window.dispatchEvent(new CustomEvent('evomi-history-detail-reload', { detail: { orderId: id } }));
+            softNavigate(`/profile/history/${encodeURIComponent(id)}`);
         },
 
         async openTrackModal({ resi = '' } = {}) {
@@ -3685,6 +3714,11 @@ document.addEventListener('alpine:init', () => {
                 this.openTrackModal({ resi: group.groupId });
                 return;
             }
+            if (group.isAwaitingCod) {
+                const href = group.paymentUrl || `/pembayaran/${encodeURIComponent(orderInvoiceRoot(String(group.groupId)))}`;
+                softNavigate(href);
+                return;
+            }
             softNavigate(`/profile/history/${encodeURIComponent(group.groupId)}`);
         },
 
@@ -3763,7 +3797,7 @@ document.addEventListener('alpine:init', () => {
         async drawerChangeQty(item, delta) {
             const next = (Number(item.quantity) || 1) + delta;
             if (next < 1) {
-                await this.drawerRemoveItem(item);
+                this.requestDrawerRemove(item);
                 return;
             }
             if (item.stock && next > item.stock) return;
@@ -3800,6 +3834,27 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.drawerUpdatingId = null;
             }
+        },
+
+        requestDrawerRemove(item) {
+            if (!item) return;
+            this.drawerCartModal = {
+                open: true,
+                type: 'confirm',
+                message: storefrontL('Hapus produk ini dari keranjang?', 'Remove this product from cart?'),
+                title: String(item.title || '').trim(),
+                item,
+            };
+        },
+
+        closeDrawerCartModal() {
+            this.drawerCartModal.open = false;
+        },
+
+        async confirmDrawerRemove() {
+            const item = this.drawerCartModal.item;
+            this.closeDrawerCartModal();
+            if (item) await this.drawerRemoveItem(item);
         },
 
         async drawerRemoveItem(item) {
@@ -5597,6 +5652,8 @@ document.addEventListener('alpine:init', () => {
         items: [],
         toast: '',
         updatingId: null,
+        removingId: null,
+        checkingOut: false,
         modal: { open: false, type: 'confirm', message: '', confirmAction: null },
 
         get subtotalLabel() {
@@ -5641,16 +5698,35 @@ document.addEventListener('alpine:init', () => {
             if (typeof action === 'function') await action();
         },
 
+        goProduct(item) {
+            if (!item?.product_id) return;
+            const href = `/belanja/${encodeURIComponent(String(item.product_id))}`;
+            if (typeof window.softNavigate === 'function') window.softNavigate(href);
+            else window.location.assign(href);
+        },
+
         mapItem(row) {
-            const unit = productPrice(row.product);
+            const product = row.product || {};
+            const unit = productPrice(product);
             const qty = Number(row.quantity) || 1;
+            const sizeRaw = product.bottle_size || product.size || product.volume || '';
+            const sizeNum = Number(String(sizeRaw).replace(/[^\d.]/g, ''));
+            const sizeLabel = sizeRaw
+                ? sizeNum
+                    ? `${sizeNum}ml`
+                    : String(sizeRaw).toLowerCase().includes('ml')
+                      ? String(sizeRaw)
+                      : `${sizeRaw}ml`
+                : '';
             return {
                 id: row.id,
-                product_id: row.product_id || row.product?.id,
-                title: productTitle(row.product),
-                imageUrl: productImage(row.product, 'cart'),
-                accent: productAccent(row.product),
-                stock: Number(row.product?.quantity ?? row.product?.stock ?? 0) || 0,
+                product_id: row.product_id || product.id,
+                title: productTitle(product),
+                sizeLabel,
+                genderLabel: productGenderLabel(product),
+                imageUrl: productImage(product, 'cart'),
+                accent: productAccent(product),
+                stock: Number(product.quantity ?? product.stock ?? 0) || 0,
                 quantity: qty,
                 unitPrice: unit,
                 priceLabel: formatRupiah(unit),
@@ -5767,9 +5843,12 @@ document.addEventListener('alpine:init', () => {
         },
 
         async remove(item) {
+            if (this.removingId === item.id) return;
+            this.removingId = item.id;
             try {
                 if (item.isGuest || !getAuthToken()) {
                     writeGuestCart(readGuestCart().filter((row) => Number(row.product_id) !== Number(item.product_id)));
+                    await wait(180);
                     this.items = this.items.filter((i) => i.id !== item.id);
                     this.showToast(storefrontL('Item dihapus dari keranjang.', 'Item removed from cart.'));
                     return;
@@ -5783,26 +5862,39 @@ document.addEventListener('alpine:init', () => {
                     const data = await readApiJson(res);
                     throw new Error(apiErrorMessage(data, storefrontL('Gagal menghapus item.', 'Failed to remove item.')));
                 }
+                await wait(180);
                 this.items = this.items.filter((i) => i.id !== item.id);
                 emitEvomiEvent('cart_updated');
                 this.showToast(storefrontL('Item dihapus dari keranjang.', 'Item removed from cart.'));
             } catch (err) {
                 this.openError(err instanceof Error ? err.message : storefrontL('Gagal menghapus.', 'Failed to remove.'));
+            } finally {
+                this.removingId = null;
             }
         },
 
-        goCheckout() {
+        async goCheckout() {
             if (!this.items.length) {
                 this.showToast(storefrontL('Keranjang masih kosong.', 'Cart is still empty.'));
                 return;
             }
+            if (this.checkingOut) return;
+            this.checkingOut = true;
             const qs = 'type=cart';
             try {
                 sessionStorage.setItem('evomi_checkout_qs', qs);
             } catch {
                 /* ignore */
             }
-            softNavigate(`/checkout?${qs}`);
+            await wait(220);
+            if (typeof window.softNavigate === 'function') {
+                window.softNavigate(`/checkout?${qs}`);
+            } else {
+                window.location.assign(`/checkout?${qs}`);
+            }
+            window.setTimeout(() => {
+                this.checkingOut = false;
+            }, 1200);
         },
     }));
 
@@ -5812,6 +5904,7 @@ document.addEventListener('alpine:init', () => {
         items: [],
         toast: '',
         addingId: null,
+        removingId: null,
         modal: { open: false, type: 'confirm', message: '', targetId: null },
 
         async init() {
@@ -5859,13 +5952,23 @@ document.addEventListener('alpine:init', () => {
             this.modal = {
                 open: true,
                 type: 'confirm',
-                message: storefrontL('Hapus produk ini dari wishlist?', 'Remove this product from wishlist?'),
+                message: storefrontL(
+                    `Hapus “${item.title || 'produk ini'}” dari wishlist?`,
+                    `Remove “${item.title || 'this product'}” from wishlist?`,
+                ),
                 targetId: item.id,
             };
         },
 
         openError(message) {
             this.modal = { open: true, type: 'error', message, targetId: null };
+        },
+
+        goProduct(item) {
+            if (!item?.product_id) return;
+            const href = `/belanja/${encodeURIComponent(String(item.product_id))}`;
+            if (typeof window.softNavigate === 'function') window.softNavigate(href);
+            else window.location.assign(href);
         },
 
         mapItem(row) {
@@ -5877,10 +5980,15 @@ document.addEventListener('alpine:init', () => {
                 : String(sizeRaw).toLowerCase().includes('ml')
                   ? String(sizeRaw)
                   : `${sizeRaw}ml`;
+            const desc = String(product.description || product.deskripsi || product.short_description || '')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
             return {
                 id: row.id,
                 product_id: row.product_id || product.id,
                 title: productTitle(product),
+                description: desc || storefrontL('Aroma favorit Evomi.', 'An Evomi favorite scent.'),
                 sizeLabel,
                 genderLabel: productGenderLabel(product),
                 imageUrl: productImage(product, 'wishlist'),
@@ -5927,6 +6035,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         async remove(item) {
+            if (this.removingId === item.id) return;
+            this.removingId = item.id;
             try {
                 const res = await fetch(`/api/wishlists/${item.id}`, {
                     method: 'DELETE',
@@ -5937,11 +6047,14 @@ document.addEventListener('alpine:init', () => {
                     const data = await readApiJson(res);
                     throw new Error(apiErrorMessage(data, storefrontL('Gagal menghapus wishlist.', 'Failed to remove from wishlist.')));
                 }
+                await wait(180);
                 this.items = this.items.filter((i) => i.id !== item.id);
                 emitEvomiEvent('wishlist_updated');
                 this.showToast(storefrontL('Produk dihapus dari wishlist.', 'Product removed from wishlist.'));
             } catch (err) {
                 this.openError(err instanceof Error ? err.message : storefrontL('Gagal menghapus.', 'Failed to remove.'));
+            } finally {
+                this.removingId = null;
             }
         },
 
@@ -5950,7 +6063,7 @@ document.addEventListener('alpine:init', () => {
                 this.openError('Silakan login terlebih dahulu untuk menambahkan produk.');
                 return;
             }
-            if (this.addingId === item.id) return;
+            if (this.addingId === item.id || this.removingId === item.id) return;
             this.addingId = item.id;
             try {
                 const res = await fetch('/api/carts', {
@@ -5968,16 +6081,19 @@ document.addEventListener('alpine:init', () => {
                     credentials: 'same-origin',
                 });
                 if (del.ok) {
+                    this.removingId = item.id;
+                    await wait(160);
                     this.items = this.items.filter((i) => i.id !== item.id);
+                    this.removingId = null;
                 }
                 emitEvomiEvent('cart_updated');
                 emitEvomiEvent('wishlist_updated');
                 await flyToCart({
-                    imageUrl: item.image || item.product?.image_1 || '',
-                    accent: item.accent || item.product?.color || '#1172BA',
+                    imageUrl: item.imageUrl || item.image || '',
+                    accent: item.accent || '#1172BA',
                     sourceEl: event?.currentTarget || null,
                 });
-                this.showToast('Ditambahkan ke keranjang.');
+                this.showToast(storefrontL('Ditambahkan ke keranjang.', 'Added to cart.'));
             } catch (err) {
                 this.openError(err instanceof Error ? err.message : storefrontL('Gagal memindahkan.', 'Failed to move item.'));
             } finally {
@@ -6010,6 +6126,19 @@ document.addEventListener('alpine:init', () => {
         get pagedGroups() {
             const start = (this.page - 1) * this.perPage;
             return this.groups.slice(start, start + this.perPage);
+        },
+
+        goDetail(group) {
+            const id = group?.groupId;
+            if (id == null || id === '') return;
+            const href = group?.isAwaitingCod
+                ? (group.paymentUrl || `/pembayaran/${encodeURIComponent(orderInvoiceRoot(String(id)))}`)
+                : `/profile/history/${encodeURIComponent(String(id))}`;
+            if (typeof window.softNavigate === 'function') {
+                window.softNavigate(href);
+                return;
+            }
+            window.location.assign(href);
         },
 
         async init() {
@@ -6179,9 +6308,9 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
-    Alpine.data('evomiProfileHistoryShow', (orderId = null) => ({
+        Alpine.data('evomiProfileHistoryShow', (orderId = null) => ({
         orderId: orderId != null ? String(orderId) : '',
-        loading: false,
+        loading: true,
         error: '',
         group: null,
         toast: '',
@@ -6223,11 +6352,16 @@ document.addEventListener('alpine:init', () => {
                 if (Alpine.store('evomiHistoryDetailModal')?.open && storeId) {
                     this.orderId = String(storeId);
                     await this.hydrate();
+                } else {
+                    this.loading = false;
                 }
                 return;
             }
 
-            if (!this.orderId) return;
+            if (!this.orderId) {
+                this.loading = false;
+                return;
+            }
             await this.hydrate();
         },
 
@@ -6249,8 +6383,23 @@ document.addEventListener('alpine:init', () => {
             if (cached) {
                 this.group = cached;
                 this.error = '';
+                if (this.redirectUnpaidCod(cached)) return;
             }
             await this.load({ silent: Boolean(cached) });
+        },
+
+        redirectUnpaidCod(group) {
+            if (!group?.isAwaitingCod) return false;
+            const href = group.paymentUrl || `/pembayaran/${encodeURIComponent(orderInvoiceRoot(String(group.groupId || this.orderId)))}`;
+            if (this.$el?.closest?.('.evomi-history-detail-modal')) {
+                window.__evomiNav?.closeHistoryDetailModal?.();
+            }
+            if (typeof window.softNavigate === 'function') {
+                window.softNavigate(href);
+            } else {
+                window.location.assign(href);
+            }
+            return true;
         },
 
         showToast(message, ms = 2200) {
@@ -6310,8 +6459,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         async load({ silent = false } = {}) {
-            // Never show a full loading screen on history detail
-            this.loading = false;
+            if (!silent && !this.group) this.loading = true;
             if (!silent) this.error = '';
             try {
                 const res = await fetch('/api/shopping-history?locale=id', {
@@ -6330,10 +6478,12 @@ document.addEventListener('alpine:init', () => {
                 const found =
                     groups.find((g) => String(g.groupId) === String(this.orderId)) ||
                     groups.find((g) => g.items.some((i) => String(i.id) === String(this.orderId))) ||
+                    groups.find((g) => orderInvoiceRoot(String(g.groupId)) === orderInvoiceRoot(String(this.orderId))) ||
                     null;
                 if (found) {
                     this.group = found;
                     this.error = '';
+                    if (this.redirectUnpaidCod(found)) return;
                 } else if (!this.group) {
                     this.error = storefrontL('Pesanan tidak ditemukan di dalam riwayat belanja Anda.', 'Order not found in your shopping history.');
                 }
@@ -6716,6 +6866,7 @@ document.addEventListener('alpine:init', () => {
         vaCopied: false,
         _vaPollTimer: null,
         _vaCopyTimer: null,
+        codNotice: { open: false },
         promoDiscount: 0,
         orderNote: '',
         editingAddress: false,
@@ -7222,6 +7373,15 @@ document.addEventListener('alpine:init', () => {
         closeVaModal() {
             this.vaModal.open = false;
             this.stopVaPolling();
+        },
+
+        selectPayment(method) {
+            this.paymentMethod = method;
+            this.codNotice.open = method === 'cod';
+        },
+
+        closeCodNotice() {
+            this.codNotice.open = false;
         },
 
         async copyVaNumber() {
@@ -8088,6 +8248,15 @@ document.addEventListener('alpine:init', () => {
                 }
 
                 emitEvomiEvent('history_updated');
+                if (paymentChannel === 'cod') {
+                    const payUrl = `/pembayaran/${encodeURIComponent(invoiceId)}`;
+                    if (typeof window.softNavigate === 'function') {
+                        window.softNavigate(payUrl);
+                    } else {
+                        window.location.href = payUrl;
+                    }
+                    return;
+                }
                 this.completedOrderId = invoiceId;
                 this.modal = {
                     open: true,
@@ -8131,6 +8300,7 @@ document.addEventListener('alpine:init', () => {
         brand: '#1172BA',
         brandDark: '#0B4F86',
         copied: false,
+        cancelModal: { open: false, busy: false },
         _pollTimer: null,
         _tickTimer: null,
         secondsLeft: 0,
@@ -8141,8 +8311,15 @@ document.addEventListener('alpine:init', () => {
             return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(raw)}`;
         },
 
+        get isCod() {
+            if (this.data?.is_cod === true || this.data?.is_awaiting_cod === true) return true;
+            const ch = String(this.data?.payment_channel || '').toLowerCase();
+            return ch === 'cod';
+        },
+
         get isAwaiting() {
-            return Boolean(this.data?.is_awaiting_payment) && this.data?.payment_status === 'pending';
+            if (this.data?.payment_status !== 'pending') return false;
+            return Boolean(this.data?.is_awaiting_payment) || Boolean(this.data?.is_awaiting_cod) || this.isCod;
         },
 
         get isPaid() {
@@ -8159,6 +8336,7 @@ document.addEventListener('alpine:init', () => {
         get statusTitle() {
             if (this.isPaid) return storefrontL('Pembayaran berhasil', 'Payment successful');
             if (this.isExpired) return storefrontL('Pembayaran kedaluwarsa', 'Payment expired');
+            if (this.isCod) return storefrontL('Bayar saat barang tiba', 'Pay on delivery');
             return storefrontL('Menunggu pembayaran', 'Awaiting payment');
         },
 
@@ -8173,6 +8351,12 @@ document.addEventListener('alpine:init', () => {
                 return storefrontL(
                     'Lewat 24 jam tanpa pembayaran — pesanan dibatalkan.',
                     'No payment within 24 hours — order cancelled.',
+                );
+            }
+            if (this.isCod) {
+                return storefrontL(
+                    'Cash on Delivery: bayar saat barang tiba. Bisa dibatalkan sebelum dikirim.',
+                    'Cash on Delivery: pay when the goods arrive. You can cancel before we ship.',
                 );
             }
             return storefrontL(
@@ -8223,10 +8407,12 @@ document.addEventListener('alpine:init', () => {
             const ch = String(this.data?.payment_channel || '').toLowerCase();
             if (ch === 'qris') return 'QRIS';
             if (ch === 'va') return storefrontL('Transfer Bank (VA)', 'Bank Transfer (VA)');
+            if (ch === 'cod' || this.isCod) return 'Cash on Delivery';
             return this.data?.payment_method || '';
         },
 
         get hasPaymentDetails() {
+            if (this.isCod) return true;
             const meta = this.data?.meta || {};
             if (this.data?.payment_channel === 'qris') return Boolean(meta.qr_string);
             if (this.data?.payment_channel === 'va') return Boolean(meta.va_number);
@@ -8268,7 +8454,10 @@ document.addEventListener('alpine:init', () => {
         startTicker() {
             if (this._tickTimer) window.clearInterval(this._tickTimer);
             this._tickTimer = window.setInterval(() => {
-                if (this.secondsLeft > 0) this.secondsLeft -= 1;
+                if (this.secondsLeft > 0) {
+                    this.secondsLeft -= 1;
+                    if (this.secondsLeft === 0) this.load();
+                }
             }, 1000);
         },
 
@@ -8278,7 +8467,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 const res = await fetch(
                     `/api/payments/orders/${encodeURIComponent(this.invoiceId)}`,
-                    { headers: { Accept: 'application/json' } },
+                    { headers: getAuthToken() ? authHeaders(true) : { Accept: 'application/json' } },
                 );
                 const json = await readApiJson(res);
                 if (!res.ok || json?.success === false) {
@@ -8335,7 +8524,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         async sync() {
-            if (!this.data || !this.isAwaiting) return;
+            if (!this.data || !this.isAwaiting || this.isCod) return;
             try {
                 const res = await fetch(
                     `/api/payments/orders/${encodeURIComponent(this.invoiceId)}/sync`,
@@ -8372,14 +8561,73 @@ document.addEventListener('alpine:init', () => {
                 /* ignore */
             }
         },
+
+        requestCancel() {
+            if (!this.data?.can_cancel || !this.isAwaiting) return;
+            this.cancelModal = { open: true, busy: false };
+        },
+
+        closeCancelModal() {
+            if (this.cancelModal.busy) return;
+            this.cancelModal = { open: false, busy: false };
+        },
+
+        async confirmCancel() {
+            if (!this.invoiceId || this.cancelModal.busy) return;
+            if (!getAuthToken()) {
+                window.location.replace('/login');
+                return;
+            }
+            this.cancelModal.busy = true;
+            try {
+                const res = await fetch(
+                    `/api/payments/orders/${encodeURIComponent(this.invoiceId)}/cancel`,
+                    {
+                        method: 'POST',
+                        headers: authHeaders(true),
+                        credentials: 'same-origin',
+                    },
+                );
+                const json = await readApiJson(res);
+                if (!res.ok || json?.success === false) {
+                    throw new Error(
+                        apiErrorMessage(
+                            json,
+                            storefrontL('Gagal membatalkan pesanan.', 'Failed to cancel the order.'),
+                        ),
+                    );
+                }
+                this.cancelModal = { open: false, busy: false };
+                emitEvomiEvent('history_updated');
+                await this.load();
+            } catch (err) {
+                this.cancelModal.busy = false;
+                this.error =
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL('Gagal membatalkan pesanan.', 'Failed to cancel the order.');
+                this.cancelModal.open = false;
+            }
+        },
     }));
 
     Alpine.data('evomiProfilePayments', () => ({
         loading: true,
         error: '',
         items: [],
+        cancelModal: { open: false, row: null, busy: false },
+        _tick: null,
+        _expiredReload: false,
 
         formatRupiah,
+
+        get hasCod() {
+            return this.items.some((row) => Boolean(row?.is_cod));
+        },
+
+        get hasOnline() {
+            return this.items.some((row) => !row?.is_cod);
+        },
 
         imageUrl(raw) {
             if (!raw) return '';
@@ -8395,14 +8643,75 @@ document.addEventListener('alpine:init', () => {
             return `${m} mnt`;
         },
 
+        requestCancel(row) {
+            if (!row?.can_cancel) return;
+            this.cancelModal = { open: true, row, busy: false };
+        },
+
+        closeCancelModal() {
+            if (this.cancelModal.busy) return;
+            this.cancelModal = { open: false, row: this.cancelModal.row, busy: false };
+        },
+
+        async confirmCancel() {
+            const invoiceId = this.cancelModal.row?.invoice_id;
+            if (!invoiceId || this.cancelModal.busy) return;
+            this.cancelModal.busy = true;
+            try {
+                const res = await fetch(
+                    `/api/payments/orders/${encodeURIComponent(invoiceId)}/cancel`,
+                    {
+                        method: 'POST',
+                        headers: authHeaders(true),
+                        credentials: 'same-origin',
+                    },
+                );
+                const json = await readApiJson(res);
+                if (!res.ok || json?.success === false) {
+                    throw new Error(
+                        apiErrorMessage(
+                            json,
+                            storefrontL('Gagal membatalkan pesanan.', 'Failed to cancel the order.'),
+                        ),
+                    );
+                }
+                this.cancelModal = { open: false, row: null, busy: false };
+                emitEvomiEvent('history_updated');
+            } catch (err) {
+                this.cancelModal.busy = false;
+                this.error =
+                    err instanceof Error
+                        ? err.message
+                        : storefrontL('Gagal membatalkan pesanan.', 'Failed to cancel the order.');
+                this.cancelModal.open = false;
+            }
+        },
+
         async init() {
             await this.load();
             this._onHist = () => this.load();
             window.addEventListener('history_updated', this._onHist);
+            this._tick = window.setInterval(() => {
+                let shouldReload = false;
+                this.items = this.items.map((row) => {
+                    const current = Number(row.seconds_remaining) || 0;
+                    if (current <= 0) return row;
+                    const next = current - 1;
+                    if (next === 0) shouldReload = true;
+                    return { ...row, seconds_remaining: next };
+                });
+                if (shouldReload && !this._expiredReload) {
+                    this._expiredReload = true;
+                    this.load().finally(() => {
+                        this._expiredReload = false;
+                    });
+                }
+            }, 1000);
         },
 
         destroy() {
             if (this._onHist) window.removeEventListener('history_updated', this._onHist);
+            if (this._tick) window.clearInterval(this._tick);
         },
 
         async load() {
@@ -8442,37 +8751,42 @@ document.addEventListener('alpine:init', () => {
 Alpine.start();
 
 async function softNavigate(href, { push = true, navIndex = null, force = false } = {}) {
-    if (softNavBusy) return;
-
     const url = new URL(href, window.location.origin);
-    const samePath = pathKey(url) === pathKey(window.location.href);
-    const nav = window.__evomiNav;
 
     if (url.origin !== window.location.origin) {
         window.location.href = href;
         return;
     }
 
-    // Lacak pesanan → centered modal (sidebar track tab stays in the drawer)
-    const trackMatch = url.pathname.match(/^\/pengiriman\/([^/]+)\/?$/i);
-    if (trackMatch) {
-        if (nav) nav.open = false;
-        const resi = decodeURIComponent(trackMatch[1] || '').trim();
-        window.dispatchEvent(new CustomEvent('evomi-open-track', { detail: { resi } }));
-        return;
+    // Browser back/forward already updated location; never treat that as a no-op.
+    if (softNavBusy && !force) return;
+
+    const samePath = pathKey(url) === pathKey(window.location.href);
+    const nav = window.__evomiNav;
+
+    // Lacak / FAQ / Kontak → modal on click. History restore must load the real page.
+    if (!force) {
+        const trackMatch = url.pathname.match(/^\/pengiriman\/([^/]+)\/?$/i);
+        if (trackMatch) {
+            if (nav) nav.open = false;
+            const resi = decodeURIComponent(trackMatch[1] || '').trim();
+            window.dispatchEvent(new CustomEvent('evomi-open-track', { detail: { resi } }));
+            return;
+        }
+
+        const helpPath = url.pathname.replace(/\/$/, '') || '/';
+        if (helpPath === '/faq') {
+            if (nav) nav.open = false;
+            window.dispatchEvent(new CustomEvent('evomi-open-faq'));
+            return;
+        }
+        if (helpPath === '/kontak') {
+            if (nav) nav.open = false;
+            window.dispatchEvent(new CustomEvent('evomi-open-kontak'));
+            return;
+        }
     }
 
-    const helpPath = url.pathname.replace(/\/$/, '') || '/';
-    if (helpPath === '/faq') {
-        if (nav) nav.open = false;
-        window.dispatchEvent(new CustomEvent('evomi-open-faq'));
-        return;
-    }
-    if (helpPath === '/kontak') {
-        if (nav) nav.open = false;
-        window.dispatchEvent(new CustomEvent('evomi-open-kontak'));
-        return;
-    }
     // Dashboard uses a separate Blade layout — always hard navigate
     if (isDashboardPath(url.pathname) || isDashboardPath(window.location.pathname)) {
         window.location.href = url.pathname + url.search + url.hash;
@@ -8491,7 +8805,7 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
         return;
     }
 
-    // Same full URL — no-op (unless force, e.g. locale switch)
+    // Same full URL — no-op (unless force, e.g. locale switch / popstate)
     if (
         !force &&
         samePath &&
@@ -8505,6 +8819,7 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
         return;
     }
 
+    const token = ++softNavToken;
     softNavBusy = true;
 
     if (nav && navIndex !== null && !Number.isNaN(navIndex)) {
@@ -8533,10 +8848,6 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
             });
 
             const content = profileShell.querySelector('[data-profile-content]');
-            // History detail: instant swap — no leave fade / loading-screen feel
-            const skipProfileAnim =
-                isHistoryDetailPath(url.pathname) ||
-                isHistoryDetailPath(window.location.pathname);
 
             if (content) {
                 content.classList.add('profile-content-panel');
@@ -8549,13 +8860,13 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
                 }
             }
 
-            if (content && !skipProfileAnim) {
+            if (content) {
                 content.classList.add('is-leaving');
             }
 
             const [res] = await Promise.all([
                 fetchPromise,
-                wait(skipProfileAnim ? 0 : 300),
+                wait(300),
             ]);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -8570,6 +8881,8 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
             if (!nextMain || !nextContent || !content) {
                 throw new Error('profile soft-nav fallback');
             }
+
+            if (token !== softNavToken) return;
 
             if (window.Alpine?.destroyTree) {
                 Alpine.destroyTree(content);
@@ -8597,23 +8910,21 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
             window.scrollTo({ top: 0, left: 0 });
 
             content.classList.remove('is-leaving');
-            if (!skipProfileAnim) {
-                content.classList.add('is-entering');
-                // Force reflow so enter transition always runs
-                void content.offsetWidth;
-                await waitFrames(2);
-                requestAnimationFrame(() => {
-                    content.classList.remove('is-entering');
-                });
-                await wait(360);
-            }
+            content.classList.add('is-entering');
+            // Force reflow so enter transition always runs
+            void content.offsetWidth;
+            await waitFrames(2);
+            requestAnimationFrame(() => {
+                content.classList.remove('is-entering');
+            });
+            await wait(360);
 
             // Release lock — CSS fixed frame takes over again
             content.style.height = '';
             content.style.minHeight = '';
             content.style.maxHeight = '';
 
-            softNavBusy = false;
+            if (token === softNavToken) softNavBusy = false;
             return;
         } catch (err) {
             // Fall through to full soft-nav if partial swap fails
@@ -8657,15 +8968,20 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const html = await res.text();
+        if (token !== softNavToken) return;
+
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const nextMain = doc.getElementById('evomi-main');
         const nextFooter = doc.getElementById('evomi-footer-wrap');
         const nextTitle = doc.querySelector('title')?.textContent;
 
         if (!nextMain) {
+            if (token !== softNavToken) return;
             window.location.href = href;
             return;
         }
+
+        if (token !== softNavToken) return;
 
         const apply = () => {
             if (window.Alpine?.destroyTree) {
@@ -8758,10 +9074,11 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
             });
         }
     } catch (err) {
+        if (token !== softNavToken) return;
         console.error(err);
         window.location.href = href;
     } finally {
-        softNavBusy = false;
+        if (token === softNavToken) softNavBusy = false;
     }
 }
 
@@ -8952,7 +9269,7 @@ function fetchAdminPage(href) {
     return request;
 }
 
-async function adminSoftNavigate(href, { push = true } = {}) {
+async function adminSoftNavigate(href, { push = true, force = false } = {}) {
     const url = new URL(href, window.location.origin);
     const page = document.getElementById('admin-page');
 
@@ -8963,7 +9280,11 @@ async function adminSoftNavigate(href, { push = true } = {}) {
 
     const targetKey = adminMenuKeyFromPath(url.pathname);
 
-    if (pathKey(url) === pathKey(window.location.href) && url.search === window.location.search) {
+    if (
+        !force &&
+        pathKey(url) === pathKey(window.location.href) &&
+        url.search === window.location.search
+    ) {
         setAdminActiveMenu(targetKey);
         window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
         return;
@@ -9065,14 +9386,26 @@ document.addEventListener('DOMContentLoaded', () => {
     bindSoftLinks(document);
     initBerandaMotion(document);
     bindAdminNav();
+    try {
+        const st = history.state;
+        if (!st || (typeof st === 'object' && !st.soft && !st.admin)) {
+            history.replaceState(
+                { ...(st && typeof st === 'object' ? st : {}), soft: true },
+                document.title,
+                window.location.href,
+            );
+        }
+    } catch {
+        /* ignore */
+    }
 });
 
 window.addEventListener('popstate', () => {
     if (isDashboardPath(window.location.pathname) && document.getElementById('admin-page')) {
-        adminSoftNavigate(window.location.href, { push: false });
+        adminSoftNavigate(window.location.href, { push: false, force: true });
         return;
     }
-    softNavigate(window.location.href, { push: false });
+    softNavigate(window.location.href, { push: false, force: true });
 });
 
 /* ——— Beranda: hero scroll parallax + section reveal/parallax ——— */

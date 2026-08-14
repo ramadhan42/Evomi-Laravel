@@ -122,9 +122,9 @@ class OrderController extends Controller
         $paymentExpiresAt = null;
         if (
             $paymentStatus === Order::PAYMENT_PENDING
-            && in_array($paymentChannel, ['qris', 'va'], true)
+            && in_array($paymentChannel, ['qris', 'va', 'cod'], true)
         ) {
-            $hours = max(1, min(48, (int) $request->input('payment_window_hours', 24)));
+            $hours = max(1, min(48, (int) $request->input('payment_window_hours', Order::CANCEL_WINDOW_HOURS)));
             $paymentExpiresAt = now()->addHours($hours);
         }
 
@@ -244,7 +244,7 @@ class OrderController extends Controller
                     'order_id' => $invoiceId,
                     'payment_status' => $paymentStatus,
                     'payment_expires_at' => optional($paymentExpiresAt)?->toIso8601String(),
-                    'payment_url' => in_array($paymentChannel, ['qris', 'va'], true)
+                    'payment_url' => in_array($paymentChannel, ['qris', 'va', 'cod'], true)
                         ? url('/pembayaran/'.$invoiceId)
                         : null,
                 ],
@@ -322,9 +322,9 @@ class OrderController extends Controller
         $paymentExpiresAt = null;
         if (
             $paymentStatus === Order::PAYMENT_PENDING
-            && in_array($paymentChannel, ['qris', 'va'], true)
+            && in_array($paymentChannel, ['qris', 'va', 'cod'], true)
         ) {
-            $hours = max(1, min(48, (int) $request->input('payment_window_hours', 24)));
+            $hours = max(1, min(48, (int) $request->input('payment_window_hours', Order::CANCEL_WINDOW_HOURS)));
             $paymentExpiresAt = now()->addHours($hours);
         }
         $shippingCost = max(0, (float) ($data['shipping_cost'] ?? 0));
@@ -429,7 +429,7 @@ class OrderController extends Controller
                     'order_id' => $invoiceId,
                     'payment_status' => $paymentStatus,
                     'payment_expires_at' => optional($paymentExpiresAt)?->toIso8601String(),
-                    'payment_url' => in_array($paymentChannel, ['qris', 'va'], true)
+                    'payment_url' => in_array($paymentChannel, ['qris', 'va', 'cod'], true)
                         ? url('/pembayaran/'.$invoiceId)
                         : null,
                     'tracking_url_hint' => $frontend.'/pengiriman/'.$invoiceId,
@@ -589,6 +589,7 @@ class OrderController extends Controller
             return response()->json(['message' => 'Anda tidak diizinkan memperbarui pesanan ini.'], 403);
         }
 
+        $previousPayment = $order->payment_status;
         $order->status = $request->status;
 
         if ($request->has('metode_pembayaran')) {
@@ -599,17 +600,20 @@ class OrderController extends Controller
             $order->payment_status = $request->string('payment_status')->toString();
         } elseif ($request->status === 'dibatalkan') {
             $order->payment_status = Order::PAYMENT_CANCELLED;
-        } elseif (
-            $order->payment_status === Order::PAYMENT_PENDING
-            && in_array($request->status, ['pengemasan', 'dalam_perjalanan', 'diterima', 'selesai'], true)
-        ) {
-            // COD / unpaid pending → treat as paid once fulfillment progresses.
-            $order->payment_status = Order::PAYMENT_SUCCESS;
         }
+        // COD stays pending until admin explicitly marks payment success.
+        // Do not auto-mark paid when packing / shipping.
 
         $order->save();
 
         $this->syncTrackingFromOrderStatus($order);
+
+        if (
+            $previousPayment === Order::PAYMENT_PENDING
+            && $order->payment_status === Order::PAYMENT_SUCCESS
+        ) {
+            $this->appendPaymentConfirmedTimeline($order);
+        }
 
         return response()->json([
             'success' => true,
@@ -641,6 +645,33 @@ class OrderController extends Controller
             $tracking->timeline = array_slice($timeline, 0, 20);
         }
 
+        $tracking->save();
+    }
+
+    private function appendPaymentConfirmedTimeline(Order $order): void
+    {
+        $invoiceRoot = Order::invoiceRoot((string) $order->id);
+        $tracking = OrderTracking::where('order_id', $invoiceRoot)->first();
+        if (! $tracking) {
+            return;
+        }
+
+        $label = $order->isCodPayment()
+            ? 'Pembayaran COD dikonfirmasi'
+            : 'Pembayaran berhasil';
+        $timeline = collect($tracking->timeline ?? [])->values()->all();
+        $last = $timeline[0]['status'] ?? null;
+        if ($last === $label) {
+            return;
+        }
+
+        array_unshift($timeline, [
+            'status' => $label,
+            'date' => now()->toIso8601String(),
+            'time' => now()->toIso8601String(),
+            'description' => 'Dikonfirmasi dari dashboard Evomi',
+        ]);
+        $tracking->timeline = array_slice($timeline, 0, 20);
         $tracking->save();
     }
 

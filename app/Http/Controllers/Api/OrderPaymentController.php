@@ -17,7 +17,7 @@ class OrderPaymentController extends Controller
      * GET /api/payments/orders/{invoiceId}
      * Public payment page payload (invoice IDs are unguessable enough for storefront use).
      */
-    public function show(string $invoiceId)
+    public function show(Request $request, string $invoiceId)
     {
         $this->payments->expireDueOrders();
 
@@ -57,6 +57,11 @@ class OrderPaymentController extends Controller
                 'payment_expires_at' => optional($primary->payment_expires_at)?->toIso8601String(),
                 'seconds_remaining' => max(0, (int) ($primary->payment_window_seconds ?? 0)),
                 'is_awaiting_payment' => $primary->is_awaiting_payment,
+                'is_cod' => $primary->isCodPayment(),
+                'is_awaiting_cod' => $primary->isAwaitingCodPayment(),
+                'can_cancel' => $primary->canUserCancelUnpaid()
+                    && $request->user('sanctum')
+                    && (int) $primary->user_id === (int) $request->user('sanctum')->id,
                 'sync_status' => $sync['status'],
                 'amount' => (float) $amount,
                 'brand_color' => $brand,
@@ -189,8 +194,80 @@ class OrderPaymentController extends Controller
     }
 
     /**
-     * GET /api/payments/pending — auth user awaiting payments.
+     * POST /api/payments/orders/{invoiceId}/cancel — user cancels unpaid order.
      */
+    public function cancel(Request $request, string $invoiceId)
+    {
+        $this->payments->expireDueOrders();
+
+        $primary = $this->payments->primaryOrder($invoiceId);
+        if (! $primary) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesanan tidak ditemukan.',
+            ], 404);
+        }
+
+        $invoiceId = $this->payments->invoiceRoot($primary->id);
+
+        $user = $request->user();
+        if (! $user || (int) $primary->user_id !== (int) $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak diizinkan.',
+            ], 403);
+        }
+
+        if (in_array($primary->payment_channel, ['qris', 'va'], true)) {
+            $this->payments->syncGatewayStatus($primary);
+            $primary = $this->payments->primaryOrder($invoiceId);
+            if (! $primary) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesanan tidak ditemukan.',
+                ], 404);
+            }
+        }
+
+        if ($primary->isPaymentSuccessful()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesanan sudah dibayar dan tidak bisa dibatalkan dari sini.',
+            ], 422);
+        }
+
+        $orders = $this->payments->ordersForInvoice($invoiceId);
+        if ($orders->contains(fn (Order $o) => $o->hasShipped())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesanan tidak bisa dibatalkan karena sudah dikirim / dalam perjalanan.',
+            ], 422);
+        }
+
+        if (! $primary->canUserCancelUnpaid()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesanan ini tidak bisa dibatalkan. Hanya tagihan yang belum dibayar.',
+            ], 422);
+        }
+
+        $updated = $this->payments->expireInvoice($invoiceId, 'user_cancelled');
+        if ($updated < 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesanan tidak bisa dibatalkan.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pesanan berhasil dibatalkan.',
+            'data' => [
+                'invoice_id' => $invoiceId,
+                'cancelled' => $updated,
+            ],
+        ]);
+    }
     public function pending(Request $request)
     {
         $this->payments->expireDueOrders();
@@ -198,7 +275,7 @@ class OrderPaymentController extends Controller
         $user = $request->user();
         $orders = Order::with('product')
             ->where('user_id', $user->id)
-            ->awaitingOnlinePayment()
+            ->awaitingAnyPayment()
             ->orderByDesc('created_at')
             ->get();
 
@@ -206,6 +283,7 @@ class OrderPaymentController extends Controller
         $groups = [];
         foreach ($orders as $order) {
             $root = $this->payments->invoiceRoot($order->id);
+            $isCod = $order->isCodPayment();
             if (! isset($groups[$root])) {
                 $groups[$root] = [
                     'invoice_id' => $root,
@@ -220,11 +298,17 @@ class OrderPaymentController extends Controller
                     'title' => $order->product?->title ?: 'Pesanan Evomi',
                     'image' => $order->product?->image_1 ?: $order->product?->image_produk_belanja,
                     'extra_count' => 0,
+                    'is_cod' => $isCod,
+                    'can_cancel' => $order->canUserCancelUnpaid(),
+                    'order_status' => $order->status,
                     'payment_url' => url('/pembayaran/'.$root),
                     'created_at' => optional($order->created_at)?->toIso8601String(),
                 ];
             } else {
                 $groups[$root]['extra_count']++;
+                if (! $order->canUserCancelUnpaid()) {
+                    $groups[$root]['can_cancel'] = false;
+                }
             }
             $groups[$root]['amount'] += (float) $order->grand_total;
         }

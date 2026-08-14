@@ -25,7 +25,7 @@
                         :style="{ '--track-item-accent': item.accent || '#1172BA' }"
                         @click="selectDrawerTrack(item.id)"
                     >
-                        <div class="evomi-track-chip__img" :style="{ backgroundColor: (item.accent || '#1172BA') + '22' }">
+                        <div class="evomi-track-chip__img" :style="{ backgroundColor: item.accent || '#1172BA' }">
                             <img :src="item.imageUrl" :alt="item.title" x-on:error="$el.style.display='none'">
                         </div>
                         <div class="evomi-track-chip__body">

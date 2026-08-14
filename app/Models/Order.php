@@ -14,6 +14,19 @@ class Order extends Model
 
     public const PAYMENT_CANCELLED = 'cancelled';
 
+    public const CANCEL_WINDOW_HOURS = 24;
+
+    /**
+     * Fulfillment statuses that mean the parcel has already left Evomi.
+     *
+     * @var list<string>
+     */
+    public const SHIPPED_STATUSES = [
+        'dalam_perjalanan',
+        'diterima',
+        'selesai',
+    ];
+
     /**
      * @var list<string>
      */
@@ -61,6 +74,8 @@ class Order extends Model
     protected $appends = [
         'grand_total',
         'is_awaiting_payment',
+        'is_cod_payment',
+        'is_awaiting_cod_payment',
         'payment_window_seconds',
         'order_number',
     ];
@@ -87,13 +102,49 @@ class Order extends Model
         return $this->isAwaitingOnlinePayment();
     }
 
+    public function getIsCodPaymentAttribute(): bool
+    {
+        return $this->isCodPayment();
+    }
+
+    public function getIsAwaitingCodPaymentAttribute(): bool
+    {
+        return $this->isAwaitingCodPayment();
+    }
+
     public function getPaymentWindowSecondsAttribute(): int
     {
-        if (! $this->payment_expires_at || ! $this->isAwaitingOnlinePayment()) {
+        $expires = $this->cancelWindowExpiresAt();
+        if (! $expires) {
             return 0;
         }
 
-        return max(0, (int) $this->payment_expires_at->getTimestamp() - now()->getTimestamp());
+        if ($this->isAwaitingOnlinePayment()) {
+            return max(0, (int) $expires->getTimestamp() - now()->getTimestamp());
+        }
+
+        if ($this->canUserCancelCod()) {
+            return max(0, (int) $expires->getTimestamp() - now()->getTimestamp());
+        }
+
+        if ($this->canUserCancelUnpaid()) {
+            return max(0, (int) $expires->getTimestamp() - now()->getTimestamp());
+        }
+
+        return 0;
+    }
+
+    public function cancelWindowExpiresAt(): ?\Illuminate\Support\Carbon
+    {
+        if ($this->payment_expires_at) {
+            return $this->payment_expires_at;
+        }
+
+        if ($this->isCodPayment() && $this->created_at) {
+            return $this->created_at->copy()->addHours(self::CANCEL_WINDOW_HOURS);
+        }
+
+        return null;
     }
 
     public function getOrderNumberAttribute(): string
@@ -104,6 +155,55 @@ class Order extends Model
     public function isPaymentSuccessful(): bool
     {
         return $this->payment_status === self::PAYMENT_SUCCESS;
+    }
+
+    public function isCodPayment(): bool
+    {
+        $channel = strtolower(trim((string) $this->payment_channel));
+        if ($channel === 'cod') {
+            return true;
+        }
+
+        $method = strtolower(trim((string) $this->metode_pembayaran));
+        if ($method === '') {
+            return false;
+        }
+
+        return str_contains($method, 'cash on delivery')
+            || preg_match('/\bcod\b/', $method) === 1;
+    }
+
+    public function isAwaitingCodPayment(): bool
+    {
+        return $this->payment_status === self::PAYMENT_PENDING && $this->isCodPayment();
+    }
+
+    public function hasShipped(): bool
+    {
+        return in_array(strtolower((string) $this->status), self::SHIPPED_STATUSES, true);
+    }
+
+    public function canUserCancelCod(): bool
+    {
+        return $this->isCodPayment() && $this->canUserCancelUnpaid();
+    }
+
+    public function canUserCancelUnpaid(): bool
+    {
+        if ($this->payment_status !== self::PAYMENT_PENDING) {
+            return false;
+        }
+
+        $status = strtolower((string) $this->status);
+        if ($status === 'dibatalkan' || $this->hasShipped()) {
+            return false;
+        }
+
+        if ($this->isCodPayment()) {
+            return true;
+        }
+
+        return $this->isAwaitingOnlinePayment();
     }
 
     public function isAwaitingOnlinePayment(): bool
@@ -121,6 +221,11 @@ class Order extends Model
         }
 
         return true;
+    }
+
+    public function isAwaitingAnyPayment(): bool
+    {
+        return $this->isAwaitingOnlinePayment() || $this->isAwaitingCodPayment();
     }
 
     /**
@@ -146,6 +251,28 @@ class Order extends Model
             ->where(function ($q) {
                 $q->whereNull('payment_expires_at')
                     ->orWhere('payment_expires_at', '>', now());
+            });
+    }
+
+    /**
+     * Online window (QRIS/VA) plus unpaid COD until admin confirms collection.
+     *
+     * @param  Builder<Order>  $query
+     * @return Builder<Order>
+     */
+    public function scopeAwaitingAnyPayment(Builder $query): Builder
+    {
+        return $query->where('payment_status', self::PAYMENT_PENDING)
+            ->where(function ($q) {
+                $q->where(function ($online) {
+                    $online->whereIn('payment_channel', ['qris', 'va'])
+                        ->where(function ($exp) {
+                            $exp->whereNull('payment_expires_at')
+                                ->orWhere('payment_expires_at', '>', now());
+                        });
+                })->orWhere('payment_channel', 'cod')
+                    ->orWhereRaw('LOWER(COALESCE(metode_pembayaran, "")) LIKE ?', ['%cash on delivery%'])
+                    ->orWhereRaw('LOWER(COALESCE(metode_pembayaran, "")) = ?', ['cod']);
             });
     }
 
