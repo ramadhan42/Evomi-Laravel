@@ -123,6 +123,7 @@
 
                                     <a
                                         :href="'/belanja/' + item.product_id"
+                                        :data-accent="item.accent"
                                         data-soft-nav
                                         class="evomi-wishlist-page__detail"
                                     >

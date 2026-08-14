@@ -34,7 +34,7 @@
     >
         {{-- Mascots: left/right columns; jarak dari CMS (gap vertikal & horizontal) --}}
         <div class="belanja-page__deco pointer-events-none absolute inset-0 z-[5] hidden lg:flex" aria-hidden="true">
-            <div class="belanja-page__deco-col belanja-page__deco-col--left">
+            <div class="belanja-page__deco-col belanja-page__deco-col--left" data-belanja-enter="fade">
                 <div class="belanja-deco belanja-deco--purpose auth-char-float">
                     <img src="{{ $charPurpose }}" alt="" width="160" height="228" decoding="async" fetchpriority="low">
                 </div>
@@ -42,7 +42,7 @@
                     <img src="{{ $charRebel }}" alt="" width="170" height="244" decoding="async" fetchpriority="low">
                 </div>
             </div>
-            <div class="belanja-page__deco-col belanja-page__deco-col--right">
+            <div class="belanja-page__deco-col belanja-page__deco-col--right" data-belanja-enter="fade">
                 <div class="belanja-deco belanja-deco--peaceful auth-char-float auth-char-float-delay-1">
                     <img src="{{ $charPeaceful }}" alt="" width="178" height="242" decoding="async" fetchpriority="low">
                 </div>

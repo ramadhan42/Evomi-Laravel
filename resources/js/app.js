@@ -18,6 +18,10 @@ registerStorefrontI18n(Alpine);
 let softNavBusy = false;
 let softNavToken = 0;
 let localeRevealTimer = 0;
+let lastSoftPath = (typeof window !== 'undefined'
+    ? window.location.pathname.replace(/\/$/, '') || '/'
+    : '/');
+const productChromeById = new Map();
 
 function beginLocaleSwitchFx() {
     const root = document.documentElement;
@@ -50,6 +54,16 @@ function isBelanjaListPath(pathname) {
     return p === '/belanja';
 }
 
+function isKuisPath(pathname) {
+    const p = (pathname || '').replace(/\/$/, '') || '/';
+    return p === '/kuis';
+}
+
+function isSettingsPath(pathname) {
+    const p = (pathname || '').replace(/\/$/, '') || '/';
+    return p === '/profile';
+}
+
 function isArtikelPath(pathname) {
     const p = (pathname || '').replace(/\/$/, '') || '/';
     return p === '/artikel' || p.startsWith('/artikel/');
@@ -62,6 +76,10 @@ function isAuthPath(pathname) {
 
 function isBelanjaDetailPath(pathname) {
     return /^\/belanja\/\d+/.test((pathname || '').replace(/\/$/, '') || '/');
+}
+
+function isBelanjaFlowPath(pathname) {
+    return isBelanjaListPath(pathname) || isBelanjaDetailPath(pathname);
 }
 
 function isBlueSurfacePath(pathname) {
@@ -84,7 +102,7 @@ function applyProductTheme(color) {
         header.style.backgroundColor = c;
         header.style.setProperty('--nav-color', c);
     }
-    if (chrome) chrome.style.background = c;
+    if (chrome) chrome.style.backgroundColor = c;
     if (spacer) spacer.style.backgroundColor = c;
     if (footerWrap) footerWrap.style.backgroundColor = c;
     if (footer) {
@@ -108,6 +126,7 @@ function setSurfaceForPath(pathname) {
     document.body.classList.toggle('evomi-auth-mode', auth);
     document.body.classList.toggle('evomi-detail-seamless', detail);
     document.body.classList.toggle('evomi-payment-mode', payment);
+    document.body.classList.toggle('evomi-belanja-page', isBelanjaListPath(pathname));
 
     const main = document.getElementById('evomi-main');
     const footerWrap = document.getElementById('evomi-footer-wrap');
@@ -253,6 +272,163 @@ function isCheckoutPath(pathname) {
 function isPaymentPath(pathname) {
     const p = (pathname || '').replace(/\/$/, '') || '/';
     return p === '/pembayaran' || p.startsWith('/pembayaran/');
+}
+
+/** Pages whose navbar/footer keep the product accent instead of Evomi blue. */
+function usesProductChrome(pathname) {
+    return (
+        isBelanjaDetailPath(pathname) ||
+        isCheckoutPath(pathname) ||
+        isPaymentPath(pathname)
+    );
+}
+
+function belanjaDetailId(pathname) {
+    const match = String(pathname || '').match(/^\/belanja\/(\d+)/);
+    return match ? match[1] : '';
+}
+
+function rememberProductChrome(pathnameOrId, color) {
+    const raw = String(pathnameOrId || '').trim();
+    const id = /^\d+$/.test(raw) ? raw : belanjaDetailId(raw);
+    const c = String(color || '').trim();
+    if (id && c) productChromeById.set(id, c);
+}
+
+function productChromeForPath(pathname) {
+    const id = belanjaDetailId(pathname);
+    return id ? productChromeById.get(id) || '' : '';
+}
+
+function accentFromNavSource(el) {
+    if (!el?.closest) return '';
+    const host = el.closest(
+        '.belanja-card, .evomi-wishlist-page__card, .evomi-profile-list__card, .evomi-wishlist-modal__item, [data-accent], [style*="--card-accent"], [style*="--detail-accent"], [style*="--wl-accent"]',
+    );
+    if (!host) return '';
+    const data = host.getAttribute?.('data-accent');
+    if (data) return data.trim();
+    try {
+        const cs = getComputedStyle(host);
+        return (
+            cs.getPropertyValue('--card-accent') ||
+            cs.getPropertyValue('--detail-accent') ||
+            cs.getPropertyValue('--wl-accent') ||
+            ''
+        ).trim();
+    } catch {
+        return '';
+    }
+}
+
+function seedProductChromeFromDom(root = document) {
+    root.querySelectorAll('a[href]').forEach((anchor) => {
+        const href = anchor.getAttribute('href') || '';
+        if (!href.includes('/belanja/')) return;
+        let path = href;
+        try {
+            path = new URL(href, window.location.origin).pathname;
+        } catch {
+            /* keep */
+        }
+        const color = accentFromNavSource(anchor);
+        if (color) rememberProductChrome(path, color);
+    });
+}
+
+function chromeThemeFromDoc(doc) {
+    if (!doc) return '';
+    return (
+        doc.body?.style.getPropertyValue('--evomi-theme')?.trim() ||
+        doc.getElementById('evomi-footer-wrap')?.style.backgroundColor ||
+        ''
+    );
+}
+
+/** Start chrome recolor during page fade so the morph is hidden. Uses lastSoftPath for back-button. */
+function previewChromeThemeForNav(fromPath, toPath, hintColor = '') {
+    if (usesProductChrome(fromPath) && !usesProductChrome(toPath)) {
+        restoreProductTheme();
+        return;
+    }
+    if (!isBelanjaDetailPath(toPath)) return;
+    const color = String(hintColor || '').trim() || productChromeForPath(toPath);
+    if (color) {
+        rememberProductChrome(toPath, color);
+        applyProductTheme(color);
+    }
+}
+
+function belanjaEnterScopes(root = document) {
+    const list = [];
+    if (!root) return list;
+    if (root.querySelectorAll) {
+        root.querySelectorAll('.belanja-page, .belanja-detail-enter, .evomi-soft-enter').forEach((el) => list.push(el));
+    }
+    if (
+        root.classList?.contains('belanja-page') ||
+        root.classList?.contains('belanja-detail-enter') ||
+        root.classList?.contains('evomi-soft-enter')
+    ) {
+        list.push(root);
+    }
+    return [...new Set(list)];
+}
+
+function playBelanjaEntrance(root = document, { skipAsync = false } = {}) {
+    let scopes = belanjaEnterScopes(root);
+    if (skipAsync) {
+        scopes = scopes.filter(
+            (el) =>
+                !el.classList.contains('evomi-payment-page') &&
+                !el.classList.contains('profile-page-card') &&
+                !el.closest?.('.evomi-settings-modal'),
+        );
+    }
+    if (!scopes.length) return;
+
+    scopes.forEach((scope) => {
+        if (typeof prefersReducedMotion === 'function' && prefersReducedMotion()) {
+            scope.classList.remove('is-belanja-resetting');
+            scope.classList.add('is-belanja-ready', 'is-belanja-settled');
+            return;
+        }
+        if (scope._belanjaEnterTimer) window.clearTimeout(scope._belanjaEnterTimer);
+        scope.classList.remove('is-belanja-ready', 'is-belanja-settled');
+        scope.classList.add('is-belanja-resetting');
+        void scope.offsetWidth;
+        requestAnimationFrame(() => {
+            scope.classList.remove('is-belanja-resetting');
+            void scope.offsetWidth;
+            requestAnimationFrame(() => {
+                scope.classList.add('is-belanja-ready');
+                scope._belanjaEnterTimer = window.setTimeout(() => {
+                    scope.classList.add('is-belanja-settled');
+                }, 900);
+            });
+        });
+    });
+}
+
+function scheduleBelanjaEntrance(root = document) {
+    if (!belanjaEnterScopes(root).length) return;
+    const play = () => playBelanjaEntrance(root, { skipAsync: true });
+    if (typeof prefersReducedMotion === 'function' && prefersReducedMotion()) {
+        play();
+        return;
+    }
+    const loader = document.getElementById('evomi-loader');
+    const loaderDone =
+        !loader ||
+        loader.classList.contains('is-hidden') ||
+        loader.classList.contains('is-fading') ||
+        !document.documentElement.classList.contains('evomi-loading');
+    if (loaderDone) {
+        window.setTimeout(play, 80);
+        return;
+    }
+    window.addEventListener('evomi:loader-done', play, { once: true });
+    window.setTimeout(play, (typeof LOADER_MAX_MS === 'number' ? LOADER_MAX_MS : 2400) + 400);
 }
 
 /** Soft-nav / hard-load routes that should feel instant (no leave fade / full loader). */
@@ -4879,6 +5055,7 @@ document.addEventListener('alpine:init', () => {
                 if (typeof bindSoftLinks === 'function') {
                     bindSoftLinks(this.$el);
                 }
+                playBelanjaEntrance(this.$el);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
         },
@@ -4902,6 +5079,7 @@ document.addEventListener('alpine:init', () => {
             };
             restoreProductTheme();
             this.$nextTick(() => {
+                playBelanjaEntrance(this.$el);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
         },
@@ -5571,6 +5749,10 @@ document.addEventListener('alpine:init', () => {
                 };
             } finally {
                 this.loading = false;
+                if (!this._enterPlayed && !this.$el?.closest?.('.evomi-settings-modal')) {
+                    this._enterPlayed = true;
+                    this.$nextTick(() => playBelanjaEntrance(this.$el));
+                }
             }
         },
 
@@ -5701,8 +5883,12 @@ document.addEventListener('alpine:init', () => {
         goProduct(item) {
             if (!item?.product_id) return;
             const href = `/belanja/${encodeURIComponent(String(item.product_id))}`;
-            if (typeof window.softNavigate === 'function') window.softNavigate(href);
-            else window.location.assign(href);
+            if (item.accent) rememberProductChrome(href, item.accent);
+            if (typeof window.softNavigate === 'function') {
+                window.softNavigate(href, { chromeHint: item.accent || '' });
+            } else {
+                window.location.assign(href);
+            }
         },
 
         mapItem(row) {
@@ -5967,8 +6153,12 @@ document.addEventListener('alpine:init', () => {
         goProduct(item) {
             if (!item?.product_id) return;
             const href = `/belanja/${encodeURIComponent(String(item.product_id))}`;
-            if (typeof window.softNavigate === 'function') window.softNavigate(href);
-            else window.location.assign(href);
+            if (item.accent) rememberProductChrome(href, item.accent);
+            if (typeof window.softNavigate === 'function') {
+                window.softNavigate(href, { chromeHint: item.accent || '' });
+            } else {
+                window.location.assign(href);
+            }
         },
 
         mapItem(row) {
@@ -8486,6 +8676,10 @@ document.addEventListener('alpine:init', () => {
                         : storefrontL('Gagal memuat pembayaran.', 'Failed to load payment.');
             } finally {
                 this.loading = false;
+                if (!this._enterPlayed) {
+                    this._enterPlayed = true;
+                    this.$nextTick(() => playBelanjaEntrance(this.$el));
+                }
             }
         },
 
@@ -8750,7 +8944,7 @@ document.addEventListener('alpine:init', () => {
 
 Alpine.start();
 
-async function softNavigate(href, { push = true, navIndex = null, force = false } = {}) {
+async function softNavigate(href, { push = true, navIndex = null, force = false, chromeHint = '' } = {}) {
     const url = new URL(href, window.location.origin);
 
     if (url.origin !== window.location.origin) {
@@ -8828,12 +9022,17 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
 
     const main = document.getElementById('evomi-main');
     const footerWrap = document.getElementById('evomi-footer-wrap');
+    const fromPath = lastSoftPath;
+    const toPath = url.pathname.replace(/\/$/, '') || '/';
+    const belanjaFlow = isBelanjaFlowPath(fromPath) && isBelanjaFlowPath(toPath);
+    document.body.classList.toggle('evomi-belanja-flow', belanjaFlow);
 
     // Set underlay BEFORE fade — beranda needs blue, not white body flash
     setSurfaceForPath(url.pathname);
+    previewChromeThemeForNav(fromPath, toPath, chromeHint);
 
-    const fromProfile = isProfilePath(window.location.pathname);
-    const toProfile = isProfilePath(url.pathname);
+    const fromProfile = isProfilePath(fromPath);
+    const toProfile = isProfilePath(toPath);
     const profileShell = document.querySelector('.evomi-profile-shell[data-profile-page]');
 
     // Profile → profile: keep sidebar mounted so the blue pill can slide like the navbar
@@ -8909,6 +9108,8 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
 
             window.scrollTo({ top: 0, left: 0 });
 
+            lastSoftPath = toPath;
+
             content.classList.remove('is-leaving');
             content.classList.add('is-entering');
             // Force reflow so enter transition always runs
@@ -8953,18 +9154,16 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
 
         // Artikel detail (and similar): instant swap — no leave fade / loading-screen feel
         const skipPageAnim =
-            shouldSkipPageLoadingFeel(url.pathname) ||
-            shouldSkipPageLoadingFeel(window.location.pathname);
+            shouldSkipPageLoadingFeel(toPath) ||
+            shouldSkipPageLoadingFeel(fromPath);
+        const leaveMs = skipPageAnim ? 0 : belanjaFlow ? 420 : 340;
+        const leaveStarted = performance.now();
 
         if (!skipPageAnim) {
             main.classList.add('is-leaving');
         }
 
-        const [res] = await Promise.all([
-            fetchPromise,
-            wait(skipPageAnim ? 0 : 340),
-        ]);
-
+        const res = await fetchPromise;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const html = await res.text();
@@ -8983,16 +9182,34 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
 
         if (token !== softNavToken) return;
 
+        const nextTheme =
+            chromeThemeFromDoc(doc) ||
+            productChromeForPath(toPath) ||
+            DEFAULT_THEME_BLUE;
+
+        // Recolor chrome as soon as the next page theme is known — during leave fade
+        if (usesProductChrome(toPath)) {
+            rememberProductChrome(toPath, nextTheme);
+            applyProductTheme(nextTheme);
+        } else {
+            restoreProductTheme();
+        }
+
+        const remain = Math.max(0, leaveMs - (performance.now() - leaveStarted));
+        if (remain > 0) await wait(remain);
+        if (token !== softNavToken) return;
+
         const apply = () => {
+            if (usesProductChrome(toPath)) {
+                applyProductTheme(nextTheme);
+            } else {
+                restoreProductTheme();
+            }
+
             if (window.Alpine?.destroyTree) {
                 Alpine.destroyTree(main);
                 if (footerWrap) Alpine.destroyTree(footerWrap);
             }
-
-            const nextTheme =
-                doc.body?.style.getPropertyValue('--evomi-theme')?.trim() ||
-                nextFooter?.style.backgroundColor ||
-                DEFAULT_THEME_BLUE;
 
             main.innerHTML = nextMain.innerHTML;
             if (footerWrap && nextFooter) {
@@ -9003,6 +9220,7 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
             if (nextTitle) document.title = nextTitle;
 
             document.body?.style.setProperty('--evomi-theme', nextTheme);
+            lastSoftPath = toPath;
 
             // URL must update BEFORE Alpine init — checkout boot() reads window.location.search
             if (push) {
@@ -9018,6 +9236,7 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
 
             bindSoftLinks(footerWrap || document);
             bindSoftLinks(main);
+            seedProductChromeFromDom(main);
 
             if (nav && (navIndex === null || Number.isNaN(navIndex))) {
                 syncNavFromPath(url.pathname, url.hash);
@@ -9032,19 +9251,13 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
                 nav.lastScrollY = 0;
             }
 
-            if (isBelanjaDetailPath(url.pathname)) {
-                applyProductTheme(nextTheme);
-            } else {
-                restoreProductTheme();
-            }
-
             main.classList.remove('is-leaving');
             if (!skipPageAnim) {
                 main.classList.add('is-entering');
             }
         };
 
-        if (!skipPageAnim && document.startViewTransition) {
+        if (!skipPageAnim && !belanjaFlow && document.startViewTransition) {
             await document.startViewTransition(apply).finished.catch(() => {});
         } else {
             apply();
@@ -9053,8 +9266,9 @@ async function softNavigate(href, { push = true, navIndex = null, force = false 
         await waitFrames(2);
         requestAnimationFrame(() => {
             main.classList.remove('is-entering');
+            if (isBelanjaFlowPath(toPath) || isKuisPath(toPath)) playBelanjaEntrance(main);
         });
-        await wait(skipPageAnim ? 0 : 420);
+        await wait(skipPageAnim ? 0 : belanjaFlow ? 560 : 420);
         // Re-measure pill after layout settles
         if (nav) {
             nav.moveIndicator(nav.activeIndex, true);
@@ -9153,7 +9367,17 @@ function bindSoftLinks(root = document) {
             }
 
             const index = el.dataset.navIndex !== undefined ? Number(el.dataset.navIndex) : null;
-            softNavigate(href, { navIndex: index });
+            let chromeHint = '';
+            try {
+                const dest = new URL(href, window.location.origin);
+                if (isBelanjaDetailPath(dest.pathname)) {
+                    chromeHint = accentFromNavSource(el);
+                    if (chromeHint) rememberProductChrome(dest.pathname, chromeHint);
+                }
+            } catch {
+                /* ignore */
+            }
+            softNavigate(href, { navIndex: index, chromeHint });
         });
     });
 }
@@ -9382,8 +9606,17 @@ function bindAdminNav() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    lastSoftPath = window.location.pathname.replace(/\/$/, '') || '/';
     setSurfaceForPath(window.location.pathname);
     bindSoftLinks(document);
+    seedProductChromeFromDom(document);
+    if (isBelanjaDetailPath(lastSoftPath)) {
+        rememberProductChrome(
+            lastSoftPath,
+            document.body?.style.getPropertyValue('--evomi-theme') || '',
+        );
+    }
+    scheduleBelanjaEntrance(document);
     initBerandaMotion(document);
     bindAdminNav();
     try {

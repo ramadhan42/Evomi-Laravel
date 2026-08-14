@@ -10,13 +10,14 @@
 @endphp
 
 <div
-    class="w-full bg-white flex flex-col items-center font-nohemi transition-colors duration-500"
+    class="kuis-enter evomi-soft-enter w-full bg-white flex flex-col items-center font-nohemi transition-colors duration-500"
     x-data="evomiKuis(@js($questions), @js($results))"
     :class="finished ? 'min-h-screen justify-start pt-0 pb-0 px-0' : 'min-h-[60vh] justify-center py-4 md:py-12 md:mb-7 px-4 md:px-6'"
 >
     <div
         x-show="!finished"
         x-cloak
+        data-soft-enter="up"
         class="w-full max-w-[900px] min-h-[420px] rounded-[24px] flex flex-col overflow-hidden bg-white border-2 border-[#1172BA]/55"
     >
         <template x-if="questions.length === 0">
@@ -64,7 +65,7 @@
     </div>
 
     <div x-show="finished && result" x-cloak class="w-full flex flex-col items-center">
-        <div class="mb-0 w-full max-w-7xl flex justify-center px-4 md:px-[5px] md:mt-[15px]">
+        <div class="mb-0 w-full max-w-7xl flex justify-center px-4 md:px-[5px] md:mt-[15px]" data-soft-enter="bottle">
             <div
                 class="relative w-full min-h-[280px] h-auto md:h-[320px] rounded-[20px] overflow-hidden flex flex-col md:flex-row shadow-lg transition-colors duration-500 py-6 md:py-0"
                 :style="{ backgroundColor: result?.color || '#1172BA' }"

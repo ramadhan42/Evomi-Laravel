@@ -4,7 +4,7 @@
 
 @section('content')
 <x-profile-shell>
-    <div x-data="evomiProfileSettings" class="profile-page-card">
+    <div x-data="evomiProfileSettings" class="profile-page-card evomi-soft-enter">
         <div
             x-show="loading"
             x-cloak
@@ -19,7 +19,7 @@
             x-cloak
             class="profile-page-card__body"
         >
-            <div class="relative shrink-0 px-5 sm:px-7 py-5 text-white" style="background: linear-gradient(135deg, #1172BA 0%, #1a7fc4 55%, #0e6aad 100%)">
+            <div class="relative shrink-0 px-5 sm:px-7 py-5 text-white" data-soft-enter="up" style="background: linear-gradient(135deg, #1172BA 0%, #1a7fc4 55%, #0e6aad 100%)">
                 <div class="pointer-events-none absolute inset-0 opacity-30" style="background-image: radial-gradient(circle at 12% 20%, rgba(255,255,255,0.35), transparent 40%), radial-gradient(circle at 90% 0%, rgba(255,255,255,0.18), transparent 35%)"></div>
                 <div class="relative flex items-start gap-3">
                     <span class="w-10 h-10 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center shrink-0">
@@ -32,7 +32,7 @@
                 </div>
             </div>
 
-            <div class="profile-page-card__scroll p-5 sm:p-7 bg-white">
+            <div class="profile-page-card__scroll p-5 sm:p-7 bg-white" data-soft-enter="up">
                 <div
                     x-show="status.message"
                     x-cloak

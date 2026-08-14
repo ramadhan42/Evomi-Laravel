@@ -23,13 +23,13 @@
 @endphp
 
 <section
-    class="bg-white w-full pt-6 sm:pt-8 pb-12 md:pb-16 px-4 md:px-8 relative overflow-x-hidden flex flex-col items-center"
+    class="belanja-detail-enter bg-white w-full pt-6 sm:pt-8 pb-12 md:pb-16 px-4 md:px-8 relative overflow-x-hidden flex flex-col items-center"
     x-data="evomiProductDetail(@js($detailPayload))"
     style="--detail-accent: {{ $product['accent'] }}"
 >
     <div class="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-10 items-start mt-2 md:mt-4 mb-10 z-10">
         {{-- KIRI: Gallery --}}
-        <div class="lg:col-span-4 flex flex-col items-center w-full select-none">
+        <div class="lg:col-span-4 flex flex-col items-center w-full select-none" data-belanja-enter="bottle">
             <div
                 data-belanja-hero-image
                 class="belanja-detail__hero w-full aspect-square rounded-[24px] overflow-hidden relative shadow-sm"
@@ -95,6 +95,7 @@
         <div
             id="detail-info-scroll"
             class="lg:col-span-5 flex flex-col text-left w-full relative lg:overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none]"
+            data-belanja-enter="up"
             :style="detailScrollStyle"
         >
             <h1
@@ -193,7 +194,7 @@
         </div>
 
         {{-- KANAN: Cart box --}}
-        <div class="lg:col-span-3 w-full relative">
+        <div class="lg:col-span-3 w-full relative" data-belanja-enter="fade">
             <div class="sticky top-24 flex flex-col gap-4">
                 <div
                     x-ref="diskusiBox"

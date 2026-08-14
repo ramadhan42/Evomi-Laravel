@@ -173,6 +173,7 @@
 
                                     <a
                                         :href="'/belanja/' + item.product_id"
+                                        :data-accent="item.accent"
                                         data-soft-nav
                                         @click="closeWishlistModal()"
                                         class="shrink-0 self-center inline-flex items-center gap-0.5 text-[11px] font-semibold text-slate-400 hover:text-slate-700 transition-colors whitespace-nowrap"

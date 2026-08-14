@@ -9,7 +9,7 @@
     $starUrl = $cms->image('hero', 'star_icon', asset('src/images/belanja/deco/title-star.svg'));
 @endphp
 
-<section class="belanja-hero w-full flex flex-col justify-center items-center text-center px-4 pt-0 pb-3 md:pb-4 relative bg-transparent">
+<section class="belanja-hero w-full flex flex-col justify-center items-center text-center px-4 pt-0 pb-3 md:pb-4 relative bg-transparent" data-belanja-enter="up">
     <div class="max-w-5xl mx-auto flex items-center justify-center gap-2 md:gap-3.5 relative z-10">
         <img
             src="{{ $starUrl }}"

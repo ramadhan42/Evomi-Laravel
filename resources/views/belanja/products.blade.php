@@ -35,6 +35,8 @@
                 <a
                     href="{{ route('belanja.show', $product['id']) }}"
                     class="belanja-card group font-nohemi relative {{ $tilt }}"
+                    data-belanja-enter="up"
+                    data-accent="{{ $accent }}"
                     style="--card-accent: {{ $accent }}; --card-soft: {{ $soft }}; border-color: {{ $accent }}; background-color: {{ $soft }}"
                     data-soft-nav
                 >

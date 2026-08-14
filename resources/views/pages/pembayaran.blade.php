@@ -4,7 +4,7 @@
 
 @section('content')
 <section
-    class="evomi-payment-page bg-[#F0F3F7] w-full flex flex-col"
+    class="evomi-payment-page evomi-soft-enter bg-[#F0F3F7] w-full flex flex-col"
     x-data="evomiPaymentPage(@js($invoiceId))"
     x-init="boot()"
 >
@@ -22,7 +22,7 @@
         x-cloak
         class="flex items-center justify-center px-4 py-16"
     >
-        <div class="rounded-2xl bg-white border border-rose-100 p-8 shadow-sm max-w-md w-full text-center">
+        <div class="rounded-2xl bg-white border border-rose-100 p-8 shadow-sm max-w-md w-full text-center" data-soft-enter="up">
             <p class="text-rose-600 font-medium mb-5" x-text="error"></p>
             <a href="{{ route('belanja') }}" data-soft-nav class="inline-flex px-5 py-2.5 rounded-xl text-white text-sm font-semibold" :style="{ backgroundColor: brand }">{{ evomi_l('Kembali belanja', 'Back to shop') }}</a>
         </div>
@@ -33,7 +33,7 @@
         x-cloak
         class="max-w-5xl w-full mx-auto px-3 sm:px-5 py-3 sm:py-4 flex flex-col gap-3"
     >
-        <div class="shrink-0 rounded-2xl overflow-hidden shadow-sm border border-white/70">
+        <div class="shrink-0 rounded-2xl overflow-hidden shadow-sm border border-white/70" data-soft-enter="up">
             <div
                 class="px-4 sm:px-5 py-3 sm:py-3.5 text-white flex flex-row items-center justify-between gap-3"
                 :style="{ background: 'linear-gradient(135deg, ' + brand + ' 0%, ' + brandDark + ' 100%)' }"
@@ -57,7 +57,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
-            <div class="lg:col-span-7 flex flex-col">
+            <div class="lg:col-span-7 flex flex-col" data-soft-enter="bottle">
                 <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden flex flex-col h-full min-h-[420px] lg:min-h-[460px]">
                     <div class="shrink-0 px-4 sm:px-5 py-2.5 border-b border-gray-100 flex items-center justify-between gap-2">
                         <h2 class="text-sm font-bold text-slate-900">{{ evomi_l('Cara pembayaran', 'How to pay') }}</h2>
@@ -169,7 +169,7 @@
                 </div>
             </div>
 
-            <aside class="lg:col-span-5 flex flex-col">
+            <aside class="lg:col-span-5 flex flex-col" data-soft-enter="fade">
                 <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden flex flex-col h-full min-h-[420px] lg:min-h-[460px]">
                     <div class="shrink-0 px-4 sm:px-5 py-2.5 border-b border-gray-100">
                         <h2 class="text-sm font-bold text-slate-900">{{ evomi_l('Ringkasan belanja', 'Order summary') }}</h2>
