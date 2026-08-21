@@ -53,6 +53,7 @@ class Order extends Model
         'payment_channel',
         'payment_ref',
         'payment_meta',
+        'note',
     ];
 
     /**

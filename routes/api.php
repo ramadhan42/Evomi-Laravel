@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PromoController;
 use App\Http\Controllers\Api\QuizAdminController;
 use App\Http\Controllers\Api\QuizController;
+use App\Http\Controllers\Api\TrafficController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\ContactMessageController;
@@ -56,10 +57,14 @@ Route::post('/guest/cart-email', [GuestController::class, 'emailCart'])->middlew
 Route::post('/guest/orders', [GuestController::class, 'orders'])->middleware('throttle:12,1');
 Route::post('/guest/trackings', [GuestController::class, 'trackings'])->middleware('throttle:12,1');
 
+Route::post('/traffic/ping', [TrafficController::class, 'ping'])->middleware('throttle:60,1');
+
 Route::get('/disclaimers', [DisclaimerController::class, 'index']);
 Route::get('/disclaimers/{id}', [DisclaimerController::class, 'show']);
 Route::get('/kurirs', [KurirController::class, 'index']);
+Route::get('/kurirs/quote', [KurirController::class, 'quote']);
 Route::get('/kurirs/{id}', [KurirController::class, 'show']);
+Route::get('/shipping-settings', [KurirController::class, 'shippingSettings']);
 Route::get('/promos', [PromoController::class, 'index']);
 Route::get('/promos/{id}', [PromoController::class, 'show']);
 
@@ -143,6 +148,7 @@ Route::middleware(['auth:sanctum', 'last.seen'])->group(function () {
         Route::put('/users/{id}', [UserController::class, 'updateByAdmin']);
         Route::delete('/users/{id}', [UserController::class, 'destroyByAdmin']);
         Route::get('/subscribers', [NewsletterController::class, 'index']);
+        Route::get('/traffic', [TrafficController::class, 'index']);
 
         Route::post('/disclaimers', [DisclaimerController::class, 'store']);
         Route::put('/disclaimers/{id}', [DisclaimerController::class, 'update']);
@@ -152,6 +158,14 @@ Route::middleware(['auth:sanctum', 'last.seen'])->group(function () {
         Route::post('/kurirs', [KurirController::class, 'store']);
         Route::put('/kurirs/{id}', [KurirController::class, 'update']);
         Route::delete('/kurirs/{id}', [KurirController::class, 'destroy']);
+        Route::get('/shipping-settings', [KurirController::class, 'shippingSettings']);
+        Route::put('/shipping-settings', [KurirController::class, 'updateShippingSettings']);
+
+    // Kurir tarif ongkir manual (per kota & rentang berat)
+    Route::get('/kurir-tarifs', [KurirController::class, 'tarifIndex']);
+    Route::post('/kurir-tarifs', [KurirController::class, 'tarifStore']);
+    Route::put('/kurir-tarifs/{id}', [KurirController::class, 'tarifUpdate']);
+    Route::delete('/kurir-tarifs/{id}', [KurirController::class, 'tarifDestroy']);
 
         Route::get('/promos', [PromoController::class, 'index']);
         Route::post('/promos', [PromoController::class, 'store']);

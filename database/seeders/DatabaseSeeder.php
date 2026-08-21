@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             ShopCmsSeeder::class,
             PaymentSettingSeeder::class,
             ArticleSeeder::class,
+            KurirTarifSeeder::class,
         ]);
     }
 }

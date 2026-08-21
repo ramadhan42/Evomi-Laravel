@@ -8,7 +8,10 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderTracking;
 use App\Models\Product;
+use App\Models\Promo;
+use App\Models\KurirTarif;
 use App\Support\OrderNumber;
+use App\Support\ShippingConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +21,8 @@ use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
+    private const UNIT_WEIGHT_GRAMS = ShippingConfig::UNIT_WEIGHT_GRAMS;
+
     /**
      * READ: Mengambil detail satu pesanan berdasarkan ID untuk user yang login
      */
@@ -148,13 +153,32 @@ class OrderController extends Controller
         $createdOrders = [];
         $guestEmailFromRequest = $request->input('guest_email');
         $shippingCost = max(0, (float) $request->input('shipping_cost', 0));
-        $promoDiscount = max(0, (float) $request->input('promo_discount', 0));
+        $promoDiscount = $this->checkoutPromoDiscount($items);
+
+        if (ShippingConfig::isFreeShipping()) {
+            $shippingCost = 0.0;
+        } else {
+            $shippingCost = $this->checkoutShippingCostFromTariffs(
+                items: $items,
+                recipientAddress: (string) $request->input('recipient_address', ''),
+                kurirId: $request->filled('kurir_id') ? (int) $request->input('kurir_id') : null,
+                weightGrams: $request->filled('shipping_weight_grams') ? (float) $request->input('shipping_weight_grams') : null,
+                shippingOriginCity: $request->filled('shipping_origin_city') ? (string) $request->input('shipping_origin_city') : null,
+                shippingCity: $request->filled('shipping_city') ? (string) $request->input('shipping_city') : null,
+                fallbackShippingCost: $shippingCost,
+            );
+        }
+
         $recipientSeed = [
-            'courier' => $request->input('courier'),
+            'courier' => ShippingConfig::isFreeShipping()
+                ? 'Gratis Ongkir'
+                : $request->input('courier'),
             'recipient_name' => (string) $request->input('recipient_name', $user->name ?? 'Pelanggan'),
             'recipient_phone' => (string) $request->input('recipient_phone', ''),
             'recipient_address' => (string) $request->input('recipient_address', ''),
         ];
+
+        $orderNote = $request->input('note');
 
         try {
             DB::transaction(function () use (
@@ -171,6 +195,7 @@ class OrderController extends Controller
                 $shippingCost,
                 $promoDiscount,
                 $recipientSeed,
+                $orderNote,
                 &$createdOrders
             ) {
                 foreach ($items as $index => $item) {
@@ -205,6 +230,7 @@ class OrderController extends Controller
                         'payment_channel' => $paymentChannel !== '' ? $paymentChannel : null,
                         'payment_provider' => $paymentProvider,
                         'payment_expires_at' => $paymentExpiresAt,
+                        'note' => $index === 0 ? $orderNote : null,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ]);
@@ -226,12 +252,14 @@ class OrderController extends Controller
                     $createdOrders[0],
                     $items,
                     $metodePembayaran,
-                    (float) $request->input('total', $createdOrders[0]->total_price),
+                    (float) $createdOrders[0]->grand_total,
                     [
                         'name' => (string) $request->input('recipient_name', $user->name ?? 'Pelanggan'),
                         'phone' => (string) $request->input('recipient_phone', ''),
                         'address' => (string) $request->input('recipient_address', ''),
-                        'courier' => $request->input('courier'),
+                        'courier' => ShippingConfig::isFreeShipping()
+                            ? 'Gratis Ongkir'
+                            : $request->input('courier'),
                     ],
                     $notifyEmail,
                 );
@@ -281,6 +309,10 @@ class OrderController extends Controller
             'total' => 'nullable|numeric|min:0',
             'shipping_cost' => 'nullable|numeric|min:0',
             'promo_discount' => 'nullable|numeric|min:0',
+            'kurir_id' => 'nullable|integer|exists:kurirs,id',
+            'shipping_origin_city' => 'nullable|string|max:120',
+            'shipping_city' => 'nullable|string|max:120',
+            'shipping_weight_grams' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1|max:20',
             'items.*.product_id' => 'required|integer|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -290,6 +322,7 @@ class OrderController extends Controller
             'recipient_phone' => 'required|string|max:50',
             'recipient_address' => 'required|string|max:1000',
             'courier' => 'nullable|string|max:80',
+            'note' => 'nullable|string|max:500',
         ]);
 
         if ($validator->fails()) {
@@ -328,8 +361,26 @@ class OrderController extends Controller
             $paymentExpiresAt = now()->addHours($hours);
         }
         $shippingCost = max(0, (float) ($data['shipping_cost'] ?? 0));
-        $promoDiscount = max(0, (float) ($data['promo_discount'] ?? 0));
+        $promoDiscount = $this->checkoutPromoDiscount($items);
         $now = now();
+
+        if (ShippingConfig::isFreeShipping()) {
+            $shippingCost = 0.0;
+        } else {
+            $shippingCost = $this->checkoutShippingCostFromTariffs(
+                items: $items,
+                recipientAddress: (string) ($data['recipient_address'] ?? ''),
+                kurirId: array_key_exists('kurir_id', $data) && $data['kurir_id'] !== null ? (int) $data['kurir_id'] : null,
+                weightGrams: array_key_exists('shipping_weight_grams', $data) && $data['shipping_weight_grams'] !== null
+                    ? (float) $data['shipping_weight_grams']
+                    : null,
+                shippingOriginCity: array_key_exists('shipping_origin_city', $data) && $data['shipping_origin_city'] !== null
+                    ? (string) $data['shipping_origin_city']
+                    : null,
+                shippingCity: array_key_exists('shipping_city', $data) && $data['shipping_city'] !== null ? (string) $data['shipping_city'] : null,
+                fallbackShippingCost: $shippingCost,
+            );
+        }
 
         try {
             $createdOrders = [];
@@ -375,6 +426,7 @@ class OrderController extends Controller
                         'payment_channel' => $paymentChannel !== '' ? $paymentChannel : null,
                         'payment_provider' => $paymentProvider,
                         'payment_expires_at' => $paymentExpiresAt,
+                        'note' => $index === 0 ? ($data['note'] ?? null) : null,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ]);
@@ -385,7 +437,7 @@ class OrderController extends Controller
 
                 OrderTracking::ensureForInvoice($invoiceId, $createdOrders[0] ?? null, [
                     'status' => $awaitingPay ? 'Menunggu Pembayaran' : 'Menunggu Konfirmasi',
-                    'courier' => $data['courier'] ?? null,
+                    'courier' => ShippingConfig::isFreeShipping() ? 'Gratis Ongkir' : ($data['courier'] ?? null),
                     'recipient_name' => $data['recipient_name'],
                     'recipient_phone' => $data['recipient_phone'],
                     'recipient_address' => $data['recipient_address'],
@@ -407,12 +459,12 @@ class OrderController extends Controller
                 $createdOrders[0],
                 $mailItems,
                 $metodePembayaran,
-                (float) ($data['total'] ?? $createdOrders[0]->grand_total),
+                    (float) $createdOrders[0]->grand_total,
                 [
                     'name' => $data['recipient_name'],
                     'phone' => $data['recipient_phone'],
                     'address' => $data['recipient_address'],
-                    'courier' => $data['courier'] ?? null,
+                    'courier' => ShippingConfig::isFreeShipping() ? 'Gratis Ongkir' : ($data['courier'] ?? null),
                 ],
                 $guestEmail,
             );
@@ -673,6 +725,113 @@ class OrderController extends Controller
         ]);
         $tracking->timeline = array_slice($timeline, 0, 20);
         $tracking->save();
+    }
+
+    /**
+     * Satu potongan per checkout (keranjang), dihitung dari harga katalog × qty.
+     */
+    private function checkoutPromoDiscount(array $items): float
+    {
+        $subtotal = 0.0;
+        foreach ($items as $item) {
+            $productId = (int) ($item['product_id'] ?? 0);
+            $qty = (int) ($item['quantity'] ?? 0);
+            if ($productId <= 0 || $qty <= 0) {
+                continue;
+            }
+            $price = (float) (Product::query()->where('id', $productId)->value('price') ?? 0);
+            $subtotal += $price * $qty;
+        }
+
+        return Promo::discountForSubtotal($subtotal);
+    }
+
+    private function inferShippingCity(?string $address): ?string
+    {
+        $s = mb_strtolower((string) $address);
+        if (trim($s) === '') return null;
+
+        $match = [
+            'Jakarta' => ['jakarta', 'jakbar', 'jaksel', 'jakpus', 'jaktim', 'jakut'],
+            'Bogor' => ['bogor'],
+            'Depok' => ['depok'],
+            'Tangerang' => ['tangerang', 'tangerang selatan', 'tangerang sel', 'cisauk', 'serpong'],
+            'Bekasi' => ['bekasi'],
+            'Bandung' => ['bandung'],
+            'Surabaya' => ['surabaya'],
+            'Yogyakarta' => ['yogyakarta', 'jogja'],
+            'Semarang' => ['semarang'],
+            'Medan' => ['medan'],
+            'Makassar' => ['makassar'],
+        ];
+
+        foreach ($match as $city => $needles) {
+            foreach ($needles as $n) {
+                if ($n !== '' && mb_strpos($s, $n) !== false) {
+                    return $city;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function checkoutShippingCostFromTariffs(
+        array $items,
+        string $recipientAddress,
+        ?int $kurirId,
+        ?float $weightGrams,
+        ?string $shippingOriginCity,
+        ?string $shippingCity,
+        float $fallbackShippingCost,
+    ): float {
+        if (! $kurirId || ! is_int($kurirId)) {
+            return $fallbackShippingCost;
+        }
+
+        $originCity = $shippingOriginCity;
+        if (! is_string($originCity) || trim($originCity) === '') {
+            $originCity = ShippingConfig::DEFAULT_ORIGIN_CITY;
+        }
+        $originCity = is_string($originCity) ? trim($originCity) : ShippingConfig::DEFAULT_ORIGIN_CITY;
+
+        $city = $shippingCity;
+        if (! is_string($city) || trim($city) === '') {
+            $city = $this->inferShippingCity($recipientAddress);
+        }
+        $city = is_string($city) ? trim($city) : '';
+
+        $weight = $weightGrams;
+        if (! is_numeric($weight) || ! is_finite((float) $weight) || (float) $weight <= 0) {
+            $weight = 0.0;
+            foreach ($items as $item) {
+                $qty = (int) ($item['quantity'] ?? 0);
+                if ($qty > 0) {
+                    $weight += $qty * self::UNIT_WEIGHT_GRAMS;
+                }
+            }
+        }
+
+        $weight = (float) max(0, $weight);
+        if ($originCity === '' || $city === '' || $weight <= 0) {
+            return $fallbackShippingCost;
+        }
+
+        $tarif = KurirTarif::query()
+            ->where('kurir_id', $kurirId)
+            ->where('kota_asal', $originCity)
+            ->where('kota_tujuan', $city)
+            ->where('is_active', true)
+            ->where('berat_min_gram', '<=', $weight)
+            ->where('berat_max_gram', '>=', $weight)
+            ->orderByDesc('berat_min_gram')
+            ->first();
+
+        if (! $tarif) {
+            return $fallbackShippingCost;
+        }
+
+        return (float) $tarif->harga;
     }
 
     /**

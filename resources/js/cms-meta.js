@@ -453,6 +453,32 @@ export function ensureBerandaContentFields(fields, page = 'beranda') {
     return extras.length ? [...list, ...extras] : list;
 }
 
+const BELANJA_DETAILS_SHIPPING_DEFAULTS = {
+    ships_from_label: 'Dikirim dari',
+    origin_address: 'Cisauk',
+    free_shipping_label: 'Gratis Ongkir',
+};
+
+/**
+ * Inject missing belanja_details shipping keys so they show in CMS.
+ */
+export function ensureBelanjaDetailsShippingFields(fields, page = 'belanja_details') {
+    if (page !== 'belanja_details') return Array.isArray(fields) ? fields : [];
+    const list = Array.isArray(fields) ? [...fields] : [];
+    const keys = new Set(list.filter((f) => f.section === 'shipping').map((f) => f.key));
+    const extras = [];
+    for (const [key, value] of Object.entries(BELANJA_DETAILS_SHIPPING_DEFAULTS)) {
+        if (keys.has(key)) continue;
+        extras.push({
+            section: 'shipping',
+            key,
+            type: 'string',
+            value,
+        });
+    }
+    return extras.length ? [...list, ...extras] : list;
+}
+
 export const FIFTH_FIELD_ORDER = withFontFieldOrder(
     [
         'gap_horizontal_mobile', 'gap_horizontal_desktop', 'gap_vertical_mobile', 'gap_vertical_desktop',
@@ -512,7 +538,7 @@ export const SEVENTH_FIELD_ORDER = withFontFieldOrder(SEVENTH_BASE, [
 export const SECTION_ORDER = {
     beranda: ['hero', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'],
     belanja: ['hero', 'cards', 'images', 'badges', 'list'],
-    belanja_details: ['labels', 'disclaimer', 'guarantee', 'chat', 'content', 'images', 'badges'],
+    belanja_details: ['labels', 'shipping', 'disclaimer', 'guarantee', 'chat', 'content', 'images', 'badges'],
     checkout: ['header', 'sections', 'labels', 'messages', 'images'],
     kontak: ['header', 'info'],
     navfooter: ['site', 'menu', 'bulletin', 'help', 'social', 'legal'],
@@ -545,6 +571,7 @@ export const SECTION_LABELS = {
     cards: 'Produk (Gambar, Judul, Deskripsi, Harga)',
     badges: 'Badge Karakter',
     labels: 'Label UI',
+    shipping: 'Pengiriman',
     guarantee: 'Jaminan Produk',
     chat: 'Chat',
     content: 'Konten',
@@ -660,6 +687,9 @@ const FIELD_LABELS = {
     card_gap_horizontal_desktop: 'Jarak Horizontal Antar Kartu — Desktop (legacy)',
     card_label_gap_mobile: 'Jarak Label Kartu — Mobile',
     card_label_gap_desktop: 'Jarak Label Kartu — Desktop',
+    ships_from_label: 'Label "Dikirim dari"',
+    origin_address: 'Alamat Awal Pengiriman',
+    free_shipping_label: 'Teks Gratis Ongkir',
 };
 
 const SUFFIX_PRIORITY = [

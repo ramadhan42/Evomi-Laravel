@@ -10,12 +10,21 @@
         'characterUrl' => $characterUrl,
         'kurirs' => $kurirs,
         'promo' => $promo,
+        'checkoutPromo' => $checkoutPromo ?? null,
+        'freeShipping' => (bool) ($freeShipping ?? false),
+        'freeShipping' => (bool) ($freeShipping ?? false),
         'loginUrl' => route('login'),
         'applyTheme' => $applyTheme ?? true,
         'shareImage' => $gallery[0] ?? ($product['img'] ?? ''),
     ];
     $detailCms = \App\Support\CmsStorefront::forPage('belanja_details');
     $lbl = fn (string $key, string $id, string $en = '') => $detailCms->get('labels', $key, $en !== '' ? evomi_l($id, $en) : evomi_l($id, $id));
+    $shipsFromLabel = $detailCms->get('shipping', 'ships_from_label', evomi_l('Dikirim dari', 'Ships from'));
+    $shippingOriginAddress = $detailCms->get('shipping', 'origin_address', 'Cisauk');
+    $freeShippingLabel = $detailCms->get('shipping', 'free_shipping_label', evomi_l('Gratis Ongkir', 'Free Shipping'));
+    $isFreeShipping = (bool) ($freeShipping ?? false);
+    $freeShippingLabel = $detailCms->get('shipping', 'free_shipping_label', evomi_l('Gratis Ongkir', 'Free Shipping'));
+    $isFreeShipping = (bool) ($freeShipping ?? false);
     $buyNowLabel = $lbl('buy_now', 'Beli Langsung', 'Buy Now');
     $addCartLabel = $lbl('add_cart', '+ Keranjang', '+ Cart');
     $stockLabel = $lbl('stock', 'Stok:', 'Stock:');
@@ -168,12 +177,12 @@
                 <div class="flex gap-4 items-start">
                     <svg class="text-gray-400 mt-0.5 shrink-0 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
                     <div>
-                        <p class="text-[15px] text-[#6A7282] font-parkinsans">{{ evomi_l('Dikirim dari', 'Ships from') }}</p>
-                        <p class="text-[16px] font-semibold text-[#364153] font-parkinsans">{{ $product['alamat_awal_pengiriman'] }}</p>
+                        <p class="text-[15px] text-[#6A7282] font-parkinsans">{{ $shipsFromLabel }}</p>
+                        <p class="text-[16px] font-semibold text-[#364153] font-parkinsans">{{ $shippingOriginAddress }}</p>
                     </div>
                 </div>
 
-                <div class="flex gap-4 items-start">
+                <div class="flex gap-4 items-start" x-show="!freeShipping">
                     <svg class="text-gray-400 mt-0.5 shrink-0 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m9.75 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h.375c.621 0 1.125-.504 1.125-1.125V14.25m-9.75 0h9.75"/></svg>
                     <div class="w-full">
                         <p class="text-[15px] text-[#6A7282] font-parkinsans" x-text="selectedKurir ? `${selectedKurir.nama} - ${selectedKurir.jenis}` : $L('Ongkir mulai', 'Shipping from')"></p>
@@ -188,6 +197,14 @@
                             class="mt-3 text-left font-parkinsans text-[15px] font-semibold underline-offset-4 hover:underline"
                             :style="accentTextStyle"
                         >{{ $lbl('other_couriers', 'Lihat Kurir Lainnya', 'See Other Couriers') }}</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 items-start" x-show="freeShipping" x-cloak>
+                    <svg class="text-emerald-500 mt-0.5 shrink-0 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                    <div>
+                        <p class="text-[15px] text-[#6A7282] font-parkinsans">{{ $lbl('shipping', 'Ongkir', 'Shipping') }}</p>
+                        <p class="text-[16px] font-semibold text-emerald-700 font-parkinsans">{{ $freeShippingLabel }}</p>
                     </div>
                 </div>
             </div>
@@ -208,8 +225,8 @@
                     <div class="p-5 flex flex-col gap-5">
                         <div>
                             <div class="font-nohemi text-[28px] font-bold text-[#101828] leading-none" x-text="formatPrice(price)"></div>
-                            <p class="mt-1 text-[12px] font-parkinsans text-[#CA3500]" x-show="promoDiscount > 0" x-cloak>
-                                Promo −<span x-text="formatPrice(promoDiscount)"></span>
+                            <p class="mt-1 text-[12px] font-parkinsans text-[#CA3500]" x-show="hasCheckoutPromo" x-cloak>
+                                {{ evomi_l('Promo diterapkan saat checkout', 'Promo applied at checkout') }}
                             </p>
                         </div>
 
@@ -235,13 +252,13 @@
                             <div class="flex justify-between items-center">
                                 <span class="text-[14px] font-parkinsans text-[#6A7282]">
                                     {{ $lbl('shipping', 'Ongkir', 'Shipping') }}
-                                    <span class="text-[#99A1AF]" x-show="selectedKurir?.nama" x-text="'(' + selectedKurir.nama + ')'" x-cloak></span>
+                                    <span class="text-[#99A1AF]" x-show="!freeShipping && selectedKurir?.nama" x-text="'(' + selectedKurir.nama + ')'" x-cloak></span>
                                 </span>
-                                <span class="text-[14px] font-nohemi font-semibold text-[#101828]" x-text="formatPrice(shippingCost)"></span>
-                            </div>
-                            <div class="flex justify-between items-center" x-show="promoDiscount > 0" x-cloak>
-                                <span class="text-[14px] font-parkinsans text-[#CA3500]">{{ $lbl('promo', 'Promo', 'Promo') }}</span>
-                                <span class="text-[14px] font-nohemi font-semibold text-[#CA3500]" x-text="'−' + formatPrice(promoDiscount)"></span>
+                                <span
+                                    class="text-[14px] font-nohemi font-semibold"
+                                    :class="freeShipping ? 'text-emerald-700' : 'text-[#101828]'"
+                                    x-text="freeShipping ? @js($freeShippingLabel) : formatPrice(shippingCost)"
+                                ></span>
                             </div>
                             <div class="flex justify-between items-center pt-1 border-t border-gray-100 mt-0.5">
                                 <span class="text-[17px] font-parkinsans text-[#6A7282]">{{ $lbl('total', 'Total', 'Total') }}</span>
@@ -303,9 +320,9 @@
                             </button>
                         </div>
 
-                        <div class="bg-[#FFF4E5] border border-[#FFE8CC] text-[#CA3500] rounded-[8px] p-3 flex gap-2.5 items-center mt-2 font-parkinsans" x-show="promoDiscount > 0" x-cloak>
+                        <div class="bg-[#FFF4E5] border border-[#FFE8CC] text-[#CA3500] rounded-[8px] p-3 flex gap-2.5 items-center mt-2 font-parkinsans" x-show="hasCheckoutPromo" x-cloak>
                             <svg class="w-[18px] h-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                            <p class="text-[14px] leading-snug">{{ evomi_l('Promo aktif! Hemat', 'Promo active! Save') }} <span x-text="formatPrice(promoDiscount)"></span></p>
+                            <p class="text-[14px] leading-snug">{{ evomi_l('Promo aktif! Potongan dihitung sekali dari total keranjang saat checkout.', 'Promo active! Discount is applied once from the cart total at checkout.') }}</p>
                         </div>
 
                         <div
@@ -447,47 +464,7 @@
         </div>
     </template>
 
-    {{-- Kurir modal — teleport ke body agar fixed di tengah viewport --}}
-    <template x-teleport="body">
-        <div x-show="showKurirList" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" @keydown.escape.window="showKurirList = false">
-            <div class="absolute inset-0" @click="showKurirList = false"></div>
-            <div class="relative bg-white w-full max-w-[450px] rounded-[24px] shadow-2xl flex flex-col overflow-hidden">
-                <div class="flex justify-between items-center p-5 border-b border-gray-100">
-                    <h3 class="font-nohemi text-[18px] font-bold text-[#1E2939]">{{ evomi_l('Pilih Pengiriman', 'Choose Shipping') }}</h3>
-                    <button type="button" @click="showKurirList = false" class="text-gray-400 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
-                    </button>
-                </div>
-                <div class="p-5 overflow-y-auto max-h-[60vh] flex flex-col gap-3">
-                    <template x-for="kurir in kurirs" :key="kurir.id">
-                        <button
-                            type="button"
-                            @click="selectKurir(kurir)"
-                            class="cursor-pointer p-4 flex justify-between items-center rounded-[16px] border transition-all text-left"
-                            :style="{ borderColor: selectedKurir?.id === kurir.id ? accent : undefined, borderWidth: selectedKurir?.id === kurir.id ? '2px' : '1px' }"
-                            :class="selectedKurir?.id === kurir.id ? 'bg-blue-50/30' : 'border-gray-200 hover:bg-gray-50'"
-                        >
-                            <div class="flex flex-col gap-1 min-w-0 pr-3">
-                                <span class="font-parkinsans font-semibold text-[15px] text-[#364153]">
-                                    <span x-text="kurir.nama"></span>
-                                    <span class="font-normal text-gray-500" x-text="'(' + kurir.jenis + ')'"></span>
-                                </span>
-                                <span class="font-parkinsans text-[13px] text-[#6A7282]">
-                                    {{ evomi_l('Estimasi tiba', 'Estimated arrival') }} <span x-text="estimasiTiba(kurir)"></span>
-                                    <span x-show="kurir.estimasi_hari" x-text="' · ±' + kurir.estimasi_hari + ' ' + $L('hari', 'days')"></span>
-                                </span>
-                                <span class="font-parkinsans text-[12px] text-[#99A1AF] truncate" x-show="kurir.destinasi" x-text="kurir.destinasi"></span>
-                            </div>
-                            <span class="font-parkinsans font-bold text-[16px]" :style="accentTextStyle" x-text="formatPrice(kurir.harga)"></span>
-                        </button>
-                    </template>
-                    <div x-show="!kurirs.length" x-cloak class="p-4 text-center text-[14px] text-gray-500 font-parkinsans">
-                        {{ $detailCms->get('disclaimer', 'empty_hint', evomi_l('Memuat data kurir...', 'Loading courier data...')) }}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </template>
+    @include('partials.kurir-modal', ['brandExpr' => 'accent'])
 
     {{-- Share modal --}}
     <template x-teleport="body">

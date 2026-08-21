@@ -431,10 +431,84 @@ function scheduleBelanjaEntrance(root = document) {
     window.setTimeout(play, (typeof LOADER_MAX_MS === 'number' ? LOADER_MAX_MS : 2400) + 400);
 }
 
+let footerEnterIo = null;
+
+function footerEnterRoot() {
+    return (
+        document.querySelector('#evomi-footer-wrap footer.evomi-footer') ||
+        document.querySelector('#evomi-footer-wrap footer')
+    );
+}
+
+function playFooterEntrance(footer) {
+    if (!footer) return;
+    if (typeof prefersReducedMotion === 'function' && prefersReducedMotion()) {
+        footer.classList.remove('is-footer-resetting');
+        footer.classList.add('is-footer-ready', 'is-footer-settled');
+        return;
+    }
+    if (footer._footerEnterTimer) window.clearTimeout(footer._footerEnterTimer);
+    footer.classList.remove('is-footer-ready', 'is-footer-settled');
+    footer.classList.add('is-footer-resetting');
+    void footer.offsetWidth;
+    requestAnimationFrame(() => {
+        footer.classList.remove('is-footer-resetting');
+        void footer.offsetWidth;
+        requestAnimationFrame(() => {
+            footer.classList.add('is-footer-ready');
+            footer._footerEnterTimer = window.setTimeout(() => {
+                footer.classList.add('is-footer-settled');
+            }, 1200);
+        });
+    });
+}
+
+function bindFooterEntrance() {
+    if (footerEnterIo) {
+        footerEnterIo.disconnect();
+        footerEnterIo = null;
+    }
+    const footer = footerEnterRoot();
+    if (!footer) return;
+    footer.classList.remove('is-footer-ready', 'is-footer-settled', 'is-footer-resetting');
+    if (typeof prefersReducedMotion === 'function' && prefersReducedMotion()) {
+        footer.classList.add('is-footer-ready', 'is-footer-settled');
+        return;
+    }
+    const observe = () => {
+        if (footerEnterIo) {
+            footerEnterIo.disconnect();
+            footerEnterIo = null;
+        }
+        footerEnterIo = new IntersectionObserver(
+            (entries) => {
+                if (!entries.some((entry) => entry.isIntersecting)) return;
+                playFooterEntrance(footer);
+                footerEnterIo?.disconnect();
+                footerEnterIo = null;
+            },
+            { root: null, rootMargin: '0px 0px -8% 0px', threshold: 0.12 },
+        );
+        footerEnterIo.observe(footer);
+    };
+    const loader = document.getElementById('evomi-loader');
+    const loaderDone =
+        !loader ||
+        loader.classList.contains('is-hidden') ||
+        loader.classList.contains('is-fading') ||
+        !document.documentElement.classList.contains('evomi-loading');
+    if (loaderDone) {
+        observe();
+        return;
+    }
+    window.addEventListener('evomi:loader-done', observe, { once: true });
+}
+
 /** Soft-nav / hard-load routes that should feel instant (no leave fade / full loader). */
 function shouldSkipPageLoadingFeel(pathname) {
     return (
         isArtikelDetailPath(pathname) ||
+        isKuisPath(pathname) ||
         isCheckoutPath(pathname) ||
         isPaymentPath(pathname)
     );
@@ -771,6 +845,21 @@ function formatRupiah(value) {
         currency: 'IDR',
         minimumFractionDigits: 0,
     }).format(numberValue);
+}
+
+/** Satu potongan per checkout/keranjang (persentase diprioritaskan, lalu nominal tetap). */
+function checkoutPromoDiscount(subtotal, promo) {
+    const sub = Math.max(0, Number(subtotal) || 0);
+    if (sub <= 0 || !promo) return 0;
+    const percent = Math.max(0, Number(promo.persentase_promo) || 0);
+    const flat = Math.max(0, Number(promo.harga_promo) || 0);
+    let amount = 0;
+    if (percent > 0) {
+        amount = Math.round(sub * (percent / 100) * 100) / 100;
+    } else if (flat > 0) {
+        amount = flat;
+    }
+    return Math.min(Math.max(0, amount), sub);
 }
 
 function fulfillmentStatusConfig(status) {
@@ -2011,6 +2100,89 @@ window.evomiAuthApi = {
     clearAuthSession,
     authHeaders,
 };
+
+const TRAFFIC_VISITOR_KEY = 'evomi_visitor_key_v1';
+let trafficPingTimer = null;
+let trafficHeartbeatTimer = null;
+
+function getOrCreateVisitorKey() {
+    try {
+        let key = localStorage.getItem(TRAFFIC_VISITOR_KEY);
+        if (!key || !/^[0-9a-f-]{36}$/i.test(key)) {
+            key =
+                typeof crypto !== 'undefined' && crypto.randomUUID
+                    ? crypto.randomUUID()
+                    : `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`.replace(/[xy]/g, (c) => {
+                          const r = (Math.random() * 16) | 0;
+                          const v = c === 'x' ? r : (r & 0x3) | 0x8;
+                          return v.toString(16);
+                      });
+            localStorage.setItem(TRAFFIC_VISITOR_KEY, key);
+        }
+        return key;
+    } catch {
+        return null;
+    }
+}
+
+async function pingSiteTraffic({ heartbeat = false } = {}) {
+    if (typeof window === 'undefined') return;
+    if (isDashboardPath(window.location.pathname)) return;
+
+    const visitorKey = getOrCreateVisitorKey();
+    if (!visitorKey) return;
+
+    const headers = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+    };
+    const token = getAuthToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    try {
+        const res = await fetch('/api/traffic/ping', {
+            method: 'POST',
+            headers,
+            credentials: 'same-origin',
+            keepalive: true,
+            body: JSON.stringify({
+                visitor_key: visitorKey,
+                path: window.location.pathname + window.location.search,
+                full_url: window.location.href,
+                referrer: document.referrer || '',
+                heartbeat: Boolean(heartbeat),
+            }),
+        });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        const nextKey = data?.data?.visitor_key;
+        if (nextKey) {
+            try {
+                localStorage.setItem(TRAFFIC_VISITOR_KEY, nextKey);
+            } catch {
+                /* ignore */
+            }
+        }
+    } catch {
+        /* ignore tracking errors */
+    }
+}
+
+function scheduleSiteTrafficPing() {
+    if (trafficPingTimer) clearTimeout(trafficPingTimer);
+    trafficPingTimer = setTimeout(() => {
+        pingSiteTraffic({ heartbeat: false });
+    }, 400);
+}
+
+function startSiteTrafficHeartbeat() {
+    if (trafficHeartbeatTimer) return;
+    trafficHeartbeatTimer = setInterval(() => {
+        if (document.visibilityState === 'hidden') return;
+        pingSiteTraffic({ heartbeat: true });
+    }, 45000);
+}
 
 function waitFrames(n = 2) {
     return new Promise((resolve) => {
@@ -4255,8 +4427,10 @@ document.addEventListener('alpine:init', () => {
         shareImage: payload.shareImage || '',
         kurirs: Array.isArray(payload.kurirs) ? payload.kurirs : [],
         promo: Math.max(0, Number(payload.promo) || 0),
+        checkoutPromo: payload.checkoutPromo || null,
         loginUrl: payload.loginUrl || '/login',
         applyTheme: payload.applyTheme !== false,
+        freeShipping: Boolean(payload.freeShipping),
 
         currentIndex: 0,
         quantity: 1,
@@ -4290,16 +4464,23 @@ document.addEventListener('alpine:init', () => {
         },
 
         get shippingCost() {
+            if (this.freeShipping) return 0;
             return this.selectedKurir ? Number(this.selectedKurir.harga) || 0 : 0;
         },
 
-        get promoDiscount() {
-            const gross = this.productSubtotal + this.shippingCost;
-            return Math.min(this.promo, gross);
+        get hasCheckoutPromo() {
+            const promo = this.checkoutPromo;
+            if (promo) {
+                return (
+                    (Number(promo.persentase_promo) || 0) > 0 ||
+                    (Number(promo.harga_promo) || 0) > 0
+                );
+            }
+            return this.promo > 0;
         },
 
         get totalWithShipping() {
-            return Math.max(this.productSubtotal + this.shippingCost - this.promoDiscount, 0);
+            return Math.max(this.productSubtotal + this.shippingCost, 0);
         },
 
         get accentSurfaceStyle() {
@@ -4499,7 +4680,6 @@ document.addEventListener('alpine:init', () => {
 
         selectKurir(kurir) {
             this.selectedKurir = kurir;
-            this.showKurirList = false;
             this.$nextTick(() => this.syncDetailHeight());
         },
 
@@ -4523,7 +4703,6 @@ document.addEventListener('alpine:init', () => {
                 productId: String(productId),
                 qty: String(this.quantity),
                 unitPrice: String(this.price),
-                productDiscount: String(this.promo || 0),
             });
             if (kurirId) params.set('kurirId', String(kurirId));
             const qs = params.toString();
@@ -4945,6 +5124,7 @@ document.addEventListener('alpine:init', () => {
         results,
         step: 0,
         finished: false,
+        ready: false,
         accent: DEFAULT_THEME_BLUE,
         scores: {
             peaceful_calm: 0,
@@ -4956,6 +5136,18 @@ document.addEventListener('alpine:init', () => {
         resultKey: null,
         result: null,
         submitting: false,
+
+        init() {
+            this.ready = false;
+            if (this._readyTimer) window.clearTimeout(this._readyTimer);
+            this._readyTimer = window.setTimeout(() => {
+                this.ready = true;
+            }, 550);
+        },
+
+        destroy() {
+            if (this._readyTimer) window.clearTimeout(this._readyTimer);
+        },
 
         get currentQuestion() {
             return this.questions[this.step] || null;
@@ -5071,6 +5263,7 @@ document.addEventListener('alpine:init', () => {
             this.resultKey = null;
             this.answers = [];
             this.accent = DEFAULT_THEME_BLUE;
+            this.ready = true;
             this.scores = {
                 peaceful_calm: 0,
                 purpose_prestige: 0,
@@ -7034,6 +7227,7 @@ document.addEventListener('alpine:init', () => {
         items: [],
         kurirs: [],
         selectedKurir: null,
+        showKurirList: false,
         paymentMethod: 'cod',
         paymentSettings: null,
         qrisAvailable: false,
@@ -7057,12 +7251,33 @@ document.addEventListener('alpine:init', () => {
         _vaPollTimer: null,
         _vaCopyTimer: null,
         codNotice: { open: false },
-        promoDiscount: 0,
+        checkoutPromo: null,
+        // Shipping quote context (manual tarif per kota & berat)
+        unitWeightGrams: 60,
+        shippingCity: null,
+        shippingWeightGrams: 0,
+        shippingOriginCity: 'Cisauk',
+        shippingOptionsError: '',
+        freeShipping: false,
+        _preferredKurirId: null,
         orderNote: '',
         editingAddress: false,
         savingAddress: false,
-        form: { name: '', email: '', phone: '', address: '' },
-        draft: { name: '', email: '', phone: '', address: '' },
+        shippingCities: [
+            'Jakarta',
+            'Bogor',
+            'Depok',
+            'Tangerang',
+            'Bekasi',
+            'Bandung',
+            'Surabaya',
+            'Yogyakarta',
+            'Semarang',
+            'Medan',
+            'Makassar',
+        ],
+        form: { name: '', email: '', phone: '', address: '', city: '' },
+        draft: { name: '', email: '', phone: '', address: '', city: '' },
         modal: { open: false, type: 'success', title: '', message: '' },
         completedOrderId: '',
 
@@ -7073,11 +7288,13 @@ document.addEventListener('alpine:init', () => {
         },
 
         get hasAddress() {
+            const city = String(this.form.city || '').trim() || this.detectShippingCity(this.form.address);
             return Boolean(
                 this.form.name?.trim() &&
                     this.form.email?.trim() &&
                     this.form.phone?.trim() &&
-                    this.form.address?.trim(),
+                    this.form.address?.trim() &&
+                    city,
             );
         },
 
@@ -7087,6 +7304,7 @@ document.addEventListener('alpine:init', () => {
                 email: String(next?.email || '').trim(),
                 phone: String(next?.phone || '').trim(),
                 address: String(next?.address || '').trim(),
+                city: String(next?.city || '').trim(),
             };
             this.form = { ...normalized };
             this.draft = { ...normalized };
@@ -7097,16 +7315,119 @@ document.addEventListener('alpine:init', () => {
 
         addressFromUser(user) {
             if (!user || typeof user !== 'object') {
-                return { name: '', email: '', phone: '', address: '' };
+                return { name: '', email: '', phone: '', address: '', city: '' };
             }
+            const address = String(
+                user.alamat_lengkap || user.alamat || user.address || '',
+            ).trim();
+            const explicitCity = String(user.kota || user.city || user.shipping_city || '').trim();
             return {
                 name: String(user.name || user.nama_lengkap || user.nama || '').trim(),
                 email: String(user.email || '').trim(),
                 phone: String(user.phone || user.no_hp || '').trim(),
-                address: String(
-                    user.alamat_lengkap || user.alamat || user.address || '',
-                ).trim(),
+                address,
+                city: explicitCity || this.detectShippingCity(address) || '',
             };
+        },
+
+        resolveShippingCity() {
+            const explicit = String(this.form.city || '').trim();
+            if (explicit) return explicit;
+            return this.detectShippingCity(this.form.address);
+        },
+
+        detectShippingCity(address) {
+            const s = String(address || '').toLowerCase();
+            if (!s) return null;
+
+            const rules = [
+                ['Jakarta', ['jakarta', 'jakbar', 'jaksel', 'jakpus', 'jaktim', 'jakut']],
+                ['Bogor', ['bogor']],
+                ['Depok', ['depok']],
+                ['Tangerang', ['tangerang', 'tangerang selatan', 'tangerang sel', 'cisauk', 'serpong']],
+                ['Bekasi', ['bekasi']],
+                ['Bandung', ['bandung']],
+                ['Surabaya', ['surabaya']],
+                ['Yogyakarta', ['yogyakarta', 'jogja']],
+                ['Semarang', ['semarang']],
+                ['Medan', ['medan']],
+                ['Makassar', ['makassar']],
+            ];
+
+            for (const [city, needles] of rules) {
+                for (const n of needles) {
+                    if (n && s.includes(n)) return city;
+                }
+            }
+
+            return null;
+        },
+
+        computeShippingWeightGrams() {
+            const unit = Math.max(0, Number(this.unitWeightGrams) || 60);
+            const raw = this.items.reduce(
+                (sum, i) => sum + Math.max(0, Number(i.quantity || 0)) * unit,
+                0,
+            );
+            return Math.max(0, raw);
+        },
+
+        async refreshShippingOptions(preferredId = null) {
+            this.shippingOptionsError = '';
+            this.shippingCity = null;
+            this.shippingWeightGrams = 0;
+            this.kurirs = [];
+            const currentPreferredId = preferredId ?? this.selectedKurir?.id ?? null;
+            this.selectedKurir = null;
+
+            if (this.freeShipping) return;
+
+            if (!this.hasAddress) return;
+
+            const city = this.resolveShippingCity();
+            const weight = this.computeShippingWeightGrams();
+
+            this.shippingCity = city;
+            this.shippingWeightGrams = weight;
+
+            if (!city) {
+                this.shippingOptionsError = storefrontL(
+                    'Pilih kota tujuan atau tuliskan nama kota di alamat lengkap.',
+                    'Select a destination city or include the city name in your full address.',
+                );
+                return;
+            }
+            if (!Number.isFinite(weight) || weight <= 0) return;
+
+            try {
+                const origin = encodeURIComponent(this.shippingOriginCity || 'Cisauk');
+                const res = await fetch(
+                    `/api/kurirs/quote?origin_city=${origin}&city=${encodeURIComponent(city)}&weight_grams=${encodeURIComponent(
+                        weight,
+                    )}`,
+                    { headers: { Accept: 'application/json' } },
+                );
+                const data = await readApiJson(res);
+                const list = Array.isArray(data) ? data : data.data || [];
+                this.kurirs = list;
+                if (!this.kurirs.length) {
+                    this.shippingOptionsError = storefrontL(
+                        'Ongkir untuk kota & berat ini belum tersedia.',
+                        'Shipping for this city & weight is not available.',
+                    );
+                    return;
+                }
+
+                const preferred = currentPreferredId
+                    ? this.kurirs.find((k) => String(k.id) === String(currentPreferredId))
+                    : null;
+                this.selectedKurir = preferred || this.kurirs[0];
+            } catch {
+                this.shippingOptionsError = storefrontL(
+                    'Gagal memuat ongkir. Coba lagi nanti.',
+                    'Failed to load shipping. Please try again.',
+                );
+            }
         },
 
         syncAuthUserLocal(userPatch) {
@@ -7124,16 +7445,28 @@ document.addEventListener('alpine:init', () => {
         },
 
         get productSubtotal() {
-            const raw = this.items.reduce((sum, i) => sum + Number(i.price) * Number(i.quantity), 0);
-            return Math.max(raw - this.promoDiscount, 0);
+            return Math.max(
+                this.items.reduce((sum, i) => sum + Number(i.price) * Number(i.quantity), 0),
+                0,
+            );
+        },
+
+        get promoDiscount() {
+            if (this.itemCount < 1) return 0;
+            return checkoutPromoDiscount(this.productSubtotal, this.checkoutPromo);
         },
 
         get shippingCost() {
-            return Number(this.selectedKurir?.harga || 0);
+            if (this.freeShipping) return 0;
+            return Number(this.selectedKurir?.customer_harga ?? this.selectedKurir?.harga ?? 0);
+        },
+
+        get shippingAdminSubsidy() {
+            return Math.max(0, Number(this.selectedKurir?.admin_subsidy ?? 0));
         },
 
         get total() {
-            return Math.max(this.productSubtotal + this.shippingCost, 0);
+            return Math.max(this.productSubtotal + this.shippingCost - this.promoDiscount, 0);
         },
 
         get courierLabel() {
@@ -7142,10 +7475,23 @@ document.addEventListener('alpine:init', () => {
         },
 
         get shippingEtaLabel() {
+            if (!this.selectedKurir) {
+                return this.shippingOptionsError
+                    || storefrontL('Isi alamat & kota tujuan untuk melihat ongkir.', 'Enter address and destination city to see shipping.');
+            }
             const days = Number(this.selectedKurir?.estimasi_hari || 3);
             const date = new Date();
             date.setDate(date.getDate() + (Number.isFinite(days) && days > 0 ? days : 3));
             return `Estimasi tiba ${date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+        },
+
+        get shippingWeightLabel() {
+            const grams = Number(this.shippingWeightGrams) || this.computeShippingWeightGrams();
+            if (!grams) return '';
+            return storefrontL(
+                `Berat paket ± ${grams} g (${this.itemCount} item × ${this.unitWeightGrams} g)`,
+                `Package weight ± ${grams} g (${this.itemCount} item × ${this.unitWeightGrams} g)`,
+            );
         },
 
         formatPrice(value) {
@@ -7153,9 +7499,6 @@ document.addEventListener('alpine:init', () => {
         },
 
         itemUnitPrice(item) {
-            if (this.items.length === 1 && item.quantity > 0 && this.promoDiscount > 0) {
-                return this.productSubtotal / item.quantity;
-            }
             return Number(item.price) || 0;
         },
 
@@ -7191,13 +7534,17 @@ document.addEventListener('alpine:init', () => {
         async boot() {
             const params = this.resolveCheckoutParams();
             this.type = (params.get('type') || 'buynow').toLowerCase();
-            this.promoDiscount = Math.max(0, Number(params.get('productDiscount') || 0));
+            this._preferredKurirId = params.get('kurirId') || null;
+            this.shippingOriginCity =
+                String(this.$el?.dataset?.shippingOrigin || '').trim() || this.shippingOriginCity;
+            this.freeShipping = this.$el?.dataset?.freeShipping === '1';
 
             try {
                 await Promise.all([
-                    this.loadKurirs(params.get('kurirId')),
                     this.loadItems(params),
                     this.loadPaymentSettings(),
+                    this.loadCheckoutPromo(),
+                    this.loadShippingSettings(),
                 ]);
                 await this.prefillProfile();
                 try {
@@ -7205,11 +7552,28 @@ document.addEventListener('alpine:init', () => {
                 } catch {
                     /* ignore */
                 }
+
+                if (this.hasAddress) {
+                    await this.refreshShippingOptions(this._preferredKurirId);
+                }
             } catch (err) {
                 this.fatalError = err instanceof Error ? err.message : storefrontL('Gagal memuat checkout.', 'Failed to load checkout.');
             } finally {
                 this.loading = false;
                 applyProductTheme(this.brand);
+            }
+        },
+
+        async loadCheckoutPromo() {
+            try {
+                const res = await fetch('/api/promos?active=1', {
+                    headers: { Accept: 'application/json' },
+                });
+                const data = await readApiJson(res);
+                const list = Array.isArray(data) ? data : data.data || [];
+                this.checkoutPromo = list[0] || null;
+            } catch {
+                this.checkoutPromo = null;
             }
         },
 
@@ -7262,12 +7626,42 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async loadKurirs(preferredId) {
-            const res = await fetch('/api/kurirs', { headers: { Accept: 'application/json' } });
+        async loadShippingSettings() {
+            try {
+                const res = await fetch('/api/shipping-settings', {
+                    headers: { Accept: 'application/json' },
+                });
+                const data = await readApiJson(res);
+                const settings = data?.data || data || {};
+                if (typeof settings.free_shipping !== 'undefined') {
+                    this.freeShipping = Boolean(settings.free_shipping);
+                }
+            } catch {
+                /* keep whatever data-attr gave us */
+            }
+        },
+
+        async loadKurirs(preferredId, { city = null, weightGrams = null } = {}) {
+            const cityNorm = city ? String(city).trim() : null;
+            const weightNorm = weightGrams !== null ? Number(weightGrams) : null;
+
+            const shouldQuote =
+                cityNorm && Number.isFinite(weightNorm) && Number(weightNorm) > 0;
+
+            const url = shouldQuote
+                ? `/api/kurirs/quote?city=${encodeURIComponent(cityNorm)}&weight_grams=${encodeURIComponent(
+                      weightNorm,
+                  )}`
+                : '/api/kurirs';
+
+            const res = await fetch(url, { headers: { Accept: 'application/json' } });
             const data = await readApiJson(res);
             const list = Array.isArray(data) ? data : data.data || [];
             this.kurirs = list;
-            if (!this.kurirs.length) return;
+            if (!this.kurirs.length) {
+                this.selectedKurir = null;
+                return;
+            }
             const preferred = this.kurirs.find((k) => String(k.id) === String(preferredId));
             this.selectedKurir = preferred || this.kurirs[0];
         },
@@ -7408,10 +7802,14 @@ document.addEventListener('alpine:init', () => {
                 email: (this.draft.email || '').trim(),
                 phone: (this.draft.phone || '').trim(),
                 address: (this.draft.address || '').trim(),
+                city: (this.draft.city || '').trim(),
             };
 
-            if (!next.name || !next.email || !next.phone || !next.address) {
-                this.formError = 'Lengkapi nama, email, telepon, dan alamat.';
+            if (!next.name || !next.email || !next.phone || !next.address || !next.city) {
+                this.formError = storefrontL(
+                    'Lengkapi nama, email, telepon, alamat, dan kota tujuan.',
+                    'Complete name, email, phone, address, and destination city.',
+                );
                 return false;
             }
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next.email)) {
@@ -7423,6 +7821,9 @@ document.addEventListener('alpine:init', () => {
             this.draft = { ...next };
             this.editingAddress = false;
             this.formError = '';
+            if (this.hasAddress) {
+                await this.refreshShippingOptions();
+            }
 
             const token = getAuthToken();
             if (!token) return true;
@@ -7467,6 +7868,32 @@ document.addEventListener('alpine:init', () => {
             return true;
         },
 
+        estimasiTiba(kurir) {
+            const date = new Date();
+            let days = 3;
+            if (kurir && typeof kurir === 'object') {
+                const fromDb = Number(kurir.estimasi_hari);
+                if (Number.isFinite(fromDb) && fromDb > 0) {
+                    days = fromDb;
+                } else {
+                    const j = String(kurir.jenis || '').toLowerCase();
+                    if (
+                        j.includes('yes') ||
+                        j.includes('express') ||
+                        j.includes('sameday') ||
+                        j.includes('same day') ||
+                        j.includes('halu') ||
+                        j.includes('gokil') ||
+                        j.includes('ons')
+                    ) {
+                        days = 1;
+                    }
+                }
+            }
+            date.setDate(date.getDate() + days);
+            return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+        },
+
         selectKurir(kurir) {
             this.selectedKurir = kurir;
         },
@@ -7483,6 +7910,11 @@ document.addEventListener('alpine:init', () => {
                 const next = Math.min(max, Math.max(1, Number(item.quantity) + delta));
                 return { ...item, quantity: next };
             });
+
+            // Ongkir bergantung pada berat total, jadi refresh setelah qty berubah.
+            if (this.hasAddress) {
+                this.refreshShippingOptions();
+            }
         },
 
         async validateForm() {
@@ -7490,8 +7922,11 @@ document.addEventListener('alpine:init', () => {
                 const saved = await this.saveAddress();
                 if (!saved) return false;
             }
-            if (!this.hasAddress) {
-                this.formError = 'Lengkapi nama, email, telepon, dan alamat.';
+            if (!this.hasAddress || !this.form.city) {
+                this.formError = storefrontL(
+                    'Lengkapi alamat dan kota tujuan sebelum checkout.',
+                    'Complete address and destination city before checkout.',
+                );
                 this.editingAddress = true;
                 this.draft = { ...this.form };
                 return false;
@@ -7500,8 +7935,9 @@ document.addEventListener('alpine:init', () => {
                 this.formError = 'Format email tidak valid.';
                 return false;
             }
-            if (!this.selectedKurir) {
-                this.formError = 'Pilih kurir pengiriman.';
+            if (!this.freeShipping && !this.selectedKurir) {
+                this.formError =
+                    this.shippingOptionsError || storefrontL('Pilih kurir pengiriman.', 'Select a courier.');
                 return false;
             }
             if (!this.items.length) {
@@ -7639,6 +8075,10 @@ document.addEventListener('alpine:init', () => {
                 recipient_phone: this.form.phone,
                 recipient_address: this.form.address,
                 courier: this.courierLabel,
+                kurir_id: this.selectedKurir?.id ?? null,
+                shipping_city: this.shippingCity,
+                shipping_origin_city: this.shippingOriginCity,
+                shipping_weight_grams: this.shippingWeightGrams,
                 note: this.orderNote || undefined,
                 items: this.items.map((item) => ({
                     product_id: Number(item.product_id),
@@ -8362,6 +8802,10 @@ document.addEventListener('alpine:init', () => {
                 recipient_phone: this.form.phone,
                 recipient_address: this.form.address,
                 courier: this.courierLabel,
+                kurir_id: this.selectedKurir?.id ?? null,
+                shipping_city: this.shippingCity,
+                shipping_origin_city: this.shippingOriginCity,
+                shipping_weight_grams: this.shippingWeightGrams,
                 note: this.orderNote || undefined,
                 items: this.items.map((item) => ({
                     product_id: Number(item.product_id),
@@ -9109,6 +9553,7 @@ async function softNavigate(href, { push = true, navIndex = null, force = false,
             window.scrollTo({ top: 0, left: 0 });
 
             lastSoftPath = toPath;
+            scheduleSiteTrafficPing();
 
             content.classList.remove('is-leaving');
             content.classList.add('is-entering');
@@ -9221,6 +9666,7 @@ async function softNavigate(href, { push = true, navIndex = null, force = false,
 
             document.body?.style.setProperty('--evomi-theme', nextTheme);
             lastSoftPath = toPath;
+            scheduleSiteTrafficPing();
 
             // URL must update BEFORE Alpine init — checkout boot() reads window.location.search
             if (push) {
@@ -9281,6 +9727,7 @@ async function softNavigate(href, { push = true, navIndex = null, force = false,
             berandaMotionCleanup();
             berandaMotionCleanup = null;
         }
+        bindFooterEntrance();
 
         if (url.hash) {
             requestAnimationFrame(() => {
@@ -9617,8 +10064,11 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
     scheduleBelanjaEntrance(document);
+    bindFooterEntrance();
     initBerandaMotion(document);
     bindAdminNav();
+    scheduleSiteTrafficPing();
+    startSiteTrafficHeartbeat();
     try {
         const st = history.state;
         if (!st || (typeof st === 'object' && !st.soft && !st.admin)) {

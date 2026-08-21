@@ -39,4 +39,38 @@ class Promo extends Model
                     ->orWhereDate('tanggal_berakhir_promo', '>=', $today);
             });
     }
+
+    public static function current(): ?self
+    {
+        return static::query()->active()->orderByDesc('id')->first();
+    }
+
+    /**
+     * Satu potongan per checkout/keranjang, bukan per produk.
+     * Persentase diprioritaskan; jika kosong memakai harga_promo (nominal tetap).
+     */
+    public static function discountForSubtotal(float $subtotal): float
+    {
+        $subtotal = max(0, $subtotal);
+        if ($subtotal <= 0) {
+            return 0.0;
+        }
+
+        $promo = static::current();
+        if (! $promo) {
+            return 0.0;
+        }
+
+        $percent = (float) ($promo->persentase_promo ?? 0);
+        $flat = (float) ($promo->harga_promo ?? 0);
+        $amount = 0.0;
+
+        if ($percent > 0) {
+            $amount = round($subtotal * ($percent / 100), 2);
+        } elseif ($flat > 0) {
+            $amount = $flat;
+        }
+
+        return min(max(0, $amount), $subtotal);
+    }
 }

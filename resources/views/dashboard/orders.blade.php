@@ -46,7 +46,11 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4"><p class="text-sm font-semibold text-gray-900" x-text="customerName(o)"></p><p class="text-xs text-gray-400 mt-0.5" x-text="customerEmail(o)"></p></td>
+                            <td class="px-6 py-4">
+                                <p class="text-sm font-semibold text-gray-900" x-text="customerName(o)"></p>
+                                <p class="text-xs text-gray-400 mt-0.5" x-text="customerEmail(o)"></p>
+                                <p x-show="o.note" x-cloak class="mt-1 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded px-2 py-1 max-w-[220px] truncate" x-text="'📝 ' + o.note"></p>
+                            </td>
                             <td class="px-6 py-4 text-center"><p class="text-sm font-bold" :class="payLabel(o.payment_status) === payLabel('success') ? 'text-gray-900' : 'text-gray-400 line-through'" x-text="total(o)"></p><span class="mt-1 inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold border" :class="payClass(o.payment_status)" x-text="payLabel(o.payment_status)"></span><p x-show="o.is_cod_payment || (o.payment_channel || '').toLowerCase() === 'cod'" x-cloak class="mt-1 text-[10px] font-bold uppercase tracking-wider text-sky-700">COD</p></td>
                             <td class="px-6 py-4 text-center"><span class="inline-flex px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border" :class="statusClass(o.status)" x-text="statusLabel(o.status)"></span></td>
                             <td class="px-6 py-4 text-center"><div class="flex justify-center gap-2">
@@ -131,6 +135,11 @@
                             <p class="text-[11px] text-gray-400 mt-0.5 tabular-nums" x-text="edit.totalLabel"></p>
                             <p x-show="edit.isCod" x-cloak class="text-[10px] font-bold uppercase tracking-wider text-sky-700 mt-1">COD</p>
                         </div>
+                    </div>
+
+                    <div x-show="edit.note" x-cloak class="rounded-xl border border-amber-100 bg-amber-50 px-3.5 py-2.5">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-1">Catatan dari Pembeli</p>
+                        <p class="text-[13px] text-amber-900 leading-relaxed" x-text="edit.note"></p>
                     </div>
 
                     <div

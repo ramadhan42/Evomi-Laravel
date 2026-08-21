@@ -178,7 +178,7 @@ class BelanjaCatalog
             'kategori' => $localized['kategori'] ?? ($product->kategori ?: 'Parfum'),
             'brand' => $localized['brand'] ?? ($product->brand ?: 'Evomi'),
             'etalase' => $localized['etalase'] ?? ($product->etalase ?: 'Semua Etalase'),
-            'alamat_awal_pengiriman' => $product->alamat_awal_pengiriman ?: 'Jakarta Selatan',
+            'alamat_awal_pengiriman' => $product->alamat_awal_pengiriman ?: 'Cisauk',
         ];
     }
 
@@ -280,9 +280,28 @@ class BelanjaCatalog
 
     public static function activePromoAmount(): float
     {
-        $amount = Promo::query()->active()->orderByDesc('harga_promo')->value('harga_promo');
+        $promo = Promo::current();
+        if (! $promo) {
+            return 0.0;
+        }
 
-        return $amount !== null ? (float) $amount : 0.0;
+        return (float) ($promo->harga_promo ?? 0);
+    }
+
+    /**
+     * @return array{harga_promo: float, persentase_promo: float}|null
+     */
+    public static function activeCheckoutPromo(): ?array
+    {
+        $promo = Promo::current();
+        if (! $promo) {
+            return null;
+        }
+
+        return [
+            'harga_promo' => (float) ($promo->harga_promo ?? 0),
+            'persentase_promo' => (float) ($promo->persentase_promo ?? 0),
+        ];
     }
 
     /**
@@ -293,30 +312,16 @@ class BelanjaCatalog
     public static function kurirs(): array
     {
         return [
-            [
-                'id' => 1,
-                'nama' => 'JNE',
-                'jenis' => 'Reguler',
-                'harga' => 15000,
-                'estimasi_hari' => 3,
-                'destinasi' => 'Jakarta → seluruh Indonesia',
-            ],
-            [
-                'id' => 2,
-                'nama' => 'SiCepat',
-                'jenis' => 'HALU',
-                'harga' => 22000,
-                'estimasi_hari' => 1,
-                'destinasi' => 'Jakarta → Jabodetabek',
-            ],
-            [
-                'id' => 3,
-                'nama' => 'AnterAja',
-                'jenis' => 'Same Day',
-                'harga' => 25000,
-                'estimasi_hari' => 1,
-                'destinasi' => 'Jakarta → Jabodetabek',
-            ],
+            ['id' => 1, 'nama' => 'JNE', 'jenis' => 'REG', 'harga' => 9000, 'estimasi_hari' => 3, 'destinasi' => 'Cisauk → seluruh Indonesia'],
+            ['id' => 2, 'nama' => 'JNE', 'jenis' => 'YES', 'harga' => 18000, 'estimasi_hari' => 1, 'destinasi' => 'Cisauk → kota besar'],
+            ['id' => 3, 'nama' => 'JNE', 'jenis' => 'OKE', 'harga' => 7000, 'estimasi_hari' => 4, 'destinasi' => 'Cisauk → seluruh Indonesia'],
+            ['id' => 4, 'nama' => 'J&T Express', 'jenis' => 'EZ', 'harga' => 9000, 'estimasi_hari' => 3, 'destinasi' => 'Cisauk → seluruh Indonesia'],
+            ['id' => 5, 'nama' => 'J&T Express', 'jenis' => 'J&T Super', 'harga' => 15000, 'estimasi_hari' => 1, 'destinasi' => 'Cisauk → Jabodetabek'],
+            ['id' => 6, 'nama' => 'SiCepat', 'jenis' => 'REG', 'harga' => 8500, 'estimasi_hari' => 3, 'destinasi' => 'Cisauk → seluruh Indonesia'],
+            ['id' => 7, 'nama' => 'SiCepat', 'jenis' => 'BEST', 'harga' => 12000, 'estimasi_hari' => 1, 'destinasi' => 'Cisauk → kota besar'],
+            ['id' => 8, 'nama' => 'AnterAja', 'jenis' => 'Reguler', 'harga' => 8000, 'estimasi_hari' => 3, 'destinasi' => 'Cisauk → seluruh Indonesia'],
+            ['id' => 9, 'nama' => 'AnterAja', 'jenis' => 'Next Day', 'harga' => 14000, 'estimasi_hari' => 1, 'destinasi' => 'Cisauk → Jabodetabek'],
+            ['id' => 10, 'nama' => 'AnterAja', 'jenis' => 'Same Day', 'harga' => 22000, 'estimasi_hari' => 1, 'destinasi' => 'Cisauk → Tangerang & sekitar'],
         ];
     }
 }

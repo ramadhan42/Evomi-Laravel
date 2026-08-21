@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Article;
 use App\Models\Faq;
 use App\Models\Kurir;
+use App\Models\KurirTarif;
 use App\Models\OrderTracking;
 use App\Models\Product;
 use App\Models\QuizPersonalityResult;
@@ -12,6 +13,7 @@ use App\Models\QuizQuestion;
 use App\Models\SiteContent;
 use App\Support\BelanjaCatalog;
 use App\Support\CmsStorefront;
+use App\Support\ShippingConfig;
 use App\Support\LocaleResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -49,6 +51,9 @@ class PageController extends Controller
     {
         return view('pages.checkout', [
             'themeAccent' => '#1172BA',
+            'shippingOriginCity' => ShippingConfig::DEFAULT_ORIGIN_CITY,
+            'shippingCities' => ShippingConfig::destinationCities(),
+            'freeShipping' => ShippingConfig::isFreeShipping(),
         ]);
     }
 
@@ -488,19 +493,34 @@ class PageController extends Controller
             $gallery = [$imgSrc, $imgSrc, $imgSrc];
         }
 
-        $kurirs = Kurir::query()->active()->orderBy('nama')->orderBy('jenis')->get()
-            ->map(fn (Kurir $k) => [
-                'id' => $k->id,
-                'nama' => $k->nama,
-                'jenis' => $k->jenis,
-                'harga' => (float) $k->harga,
-                'estimasi_hari' => (int) ($k->estimasi_hari ?: 3),
-            ])
-            ->values()
-            ->all();
+        $kurirs = [];
+        if (! ShippingConfig::isFreeShipping()) {
+            $kurirIdsWithTarif = KurirTarif::query()
+                ->where('is_active', true)
+                ->where('kota_asal', ShippingConfig::DEFAULT_ORIGIN_CITY)
+                ->distinct()
+                ->pluck('kurir_id');
 
-        if ($kurirs === []) {
-            $kurirs = BelanjaCatalog::kurirs();
+            $query = Kurir::query()->active()->orderBy('nama')->orderBy('jenis');
+
+            if ($kurirIdsWithTarif->isNotEmpty()) {
+                $query->whereIn('id', $kurirIdsWithTarif);
+            }
+
+            $kurirs = $query->get()
+                ->map(fn (Kurir $k) => [
+                    'id' => $k->id,
+                    'nama' => $k->nama,
+                    'jenis' => $k->jenis,
+                    'harga' => (float) $k->harga,
+                    'estimasi_hari' => (int) ($k->estimasi_hari ?: 3),
+                ])
+                ->values()
+                ->all();
+
+            if ($kurirs === []) {
+                $kurirs = BelanjaCatalog::kurirs();
+            }
         }
 
         return [
@@ -510,7 +530,9 @@ class PageController extends Controller
             'kurirs' => $kurirs,
             'disclaimers' => BelanjaCatalog::disclaimers(),
             'promo' => BelanjaCatalog::activePromoAmount(),
+            'checkoutPromo' => BelanjaCatalog::activeCheckoutPromo(),
             'showDivider' => false,
+            'freeShipping' => ShippingConfig::isFreeShipping(),
         ];
     }
 }

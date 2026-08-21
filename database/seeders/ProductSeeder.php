@@ -102,7 +102,7 @@ class ProductSeeder extends Seeder
                     'gender' => $item['gender'],
                     'quantity' => 50,
                     'stock_status' => 'tersedia',
-                    'alamat_awal_pengiriman' => 'Jakarta',
+                    'alamat_awal_pengiriman' => 'Cisauk',
                     'kondisi' => 'Baru',
                     'kategori' => 'Parfum',
                     'berat_satuan' => 200,

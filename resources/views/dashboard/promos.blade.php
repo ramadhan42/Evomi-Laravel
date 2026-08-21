@@ -42,7 +42,7 @@
                     </template>
                     <template x-for="p in pagedItems()" :key="p.id">
                         <tr>
-                            <td class="px-6 py-4 text-center text-sm font-bold text-gray-900" x-text="formatRupiah(p.harga_promo)"></td>
+                            <td class="px-6 py-4 text-center text-sm font-bold text-gray-900" x-text="promoValueLabel(p)"></td>
                             <td class="px-6 py-4 text-center text-sm text-gray-600" x-text="formatDate(p.tanggal_berlaku_promo)"></td>
                             <td class="px-6 py-4 text-center text-sm text-gray-600" x-text="formatDate(p.tanggal_berakhir_promo)"></td>
                             <td class="px-6 py-4 text-center">
@@ -95,8 +95,13 @@
             <form @submit.prevent="save" class="flex flex-col flex-1 min-h-0">
                 <div class="admin-modal-panel__body space-y-4">
                     <label class="block">
+                        <span class="admin-field-label" x-text="t('promos','col_percent')"></span>
+                        <input type="number" min="0" max="100" step="0.01" x-model="form.persentase_promo" class="admin-field-input">
+                        <span class="mt-1 block text-[11px] text-gray-400" x-text="t('promos','percent_hint')"></span>
+                    </label>
+                    <label class="block">
                         <span class="admin-field-label" x-text="t('promos','col_amount_input')"></span>
-                        <input type="number" min="0" step="1" required x-model="form.harga_promo" class="admin-field-input">
+                        <input type="number" min="0" step="1" x-model="form.harga_promo" class="admin-field-input">
                         <span class="mt-1 block text-[11px] text-gray-400" x-text="t('promos','amount_hint')"></span>
                     </label>
                     <label class="block">

@@ -2034,13 +2034,95 @@ body.evomi-belanja-page #evomi-header-spacer {
 .evomi-payment-page [data-soft-enter='fade'] { --belanja-enter-delay: 0.16s; }
 .kuis-enter [data-soft-enter='up'] { --belanja-enter-delay: 0s; }
 .kuis-enter [data-soft-enter='bottle'] { --belanja-enter-delay: 0.08s; }
+
+.evomi-kuis-stage {
+    width: 100%;
+    min-height: calc(100dvh - var(--evomi-nav-h, 3.75rem) - 9rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.evomi-kuis-stage--finished {
+    min-height: 100vh;
+    justify-content: flex-start;
+}
+
+.evomi-kuis-card {
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;
+}
+
+.evomi-kuis-card__body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.evomi-kuis-skeleton,
+.evomi-kuis-card__content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
 .profile-page-card.evomi-soft-enter [data-soft-enter='up'] { --belanja-enter-delay: 0s; }
 .profile-page-card.evomi-soft-enter .profile-page-card__scroll[data-soft-enter] { --belanja-enter-delay: 0.1s; }
+
+/* Footer entrance — same curve & stagger feel as beranda hero */
+.evomi-footer:not(.is-footer-settled) [data-footer-enter] {
+    opacity: 0;
+    will-change: opacity, transform;
+    transition:
+        opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1) var(--footer-enter-delay, 0s),
+        transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) var(--footer-enter-delay, 0s);
+}
+
+.evomi-footer:not(.is-footer-settled) [data-footer-enter='up'] {
+    transform: translate3d(0, 20px, 0);
+}
+
+.evomi-footer:not(.is-footer-settled) [data-footer-enter='fade'] {
+    transform: none;
+}
+
+.evomi-footer.is-footer-resetting [data-footer-enter] {
+    transition: none !important;
+    opacity: 0 !important;
+}
+
+.evomi-footer.is-footer-ready:not(.is-footer-settled) [data-footer-enter] {
+    opacity: var(--footer-enter-opacity, 1);
+    transform: translate3d(0, 0, 0);
+}
+
+.evomi-footer__bulletin { --footer-enter-delay: 0s; }
+.evomi-footer__nav > [data-footer-enter]:nth-child(1) { --footer-enter-delay: 0.1s; }
+.evomi-footer__nav > [data-footer-enter]:nth-child(2) { --footer-enter-delay: 0.18s; }
+.evomi-footer__nav > [data-footer-enter]:nth-child(3) { --footer-enter-delay: 0.26s; }
+.evomi-footer__rule { --footer-enter-delay: 0.32s; }
+.evomi-footer__legal { --footer-enter-delay: 0.38s; --footer-enter-opacity: 0.9; }
+
+.evomi-footer:not(.is-footer-settled) .evomi-footer__rule {
+    will-change: transform;
+}
 
 @media (prefers-reduced-motion: reduce) {
     .belanja-page [data-belanja-enter],
     .belanja-detail-enter [data-belanja-enter],
-    .evomi-soft-enter [data-soft-enter] {
+    .evomi-soft-enter [data-soft-enter],
+    .evomi-footer [data-footer-enter] {
+        opacity: var(--footer-enter-opacity, 1) !important;
+        transform: none !important;
+        transition: none !important;
+    }
+}
+
+@media print {
+    .evomi-footer [data-footer-enter] {
         opacity: 1 !important;
         transform: none !important;
         transition: none !important;
@@ -6639,6 +6721,30 @@ select.admin-field-input {
 .evomi-skel--block { height: 58px; border-radius: 14px; }
 .evomi-skel--pill { height: 36px; border-radius: 999px; }
 .evomi-skel--cta { height: 48px; border-radius: 16px; }
+
+.evomi-quiz-skel-bar {
+  background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.72) 45%, rgba(255,255,255,0.3) 100%);
+  background-size: 200% 100%;
+  animation: evomi-product-modal-shimmer 1.35s ease-in-out infinite;
+}
+
+.evomi-quiz-skel-q {
+  display: block;
+  height: 18px;
+  border-radius: 10px;
+}
+
+@media (min-width: 768px) {
+  .evomi-quiz-skel-q {
+    height: 22px;
+  }
+}
+
+.evomi-quiz-skel-icon {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+}
 
 @keyframes evomi-product-modal-shimmer {
   0% { background-position: 100% 0; }

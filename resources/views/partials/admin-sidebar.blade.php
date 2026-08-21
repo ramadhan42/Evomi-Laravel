@@ -15,6 +15,7 @@
         ['key' => 'cart', 'path' => route('dashboard.page', 'cart'), 'label' => 'Keranjang', 'icon' => 'cart'],
         ['key' => 'wishlist', 'path' => route('dashboard.page', 'wishlist'), 'label' => 'Wishlist', 'icon' => 'wishlist'],
         ['key' => 'users', 'path' => route('dashboard.page', 'users'), 'label' => 'Semua User', 'icon' => 'users'],
+        ['key' => 'traffic', 'path' => route('dashboard.page', 'traffic'), 'label' => 'Traffic', 'icon' => 'traffic'],
         ['key' => 'subscribers', 'path' => route('dashboard.page', 'subscribers'), 'label' => 'Subscriber', 'icon' => 'subscribers'],
         ['key' => 'profile', 'path' => route('dashboard.page', 'profile'), 'label' => 'Profil Admin', 'icon' => 'profile'],
     ];

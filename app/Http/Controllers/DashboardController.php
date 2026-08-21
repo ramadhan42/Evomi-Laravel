@@ -21,6 +21,7 @@ class DashboardController extends Controller
         'cart' => ['title' => 'Keranjang', 'view' => 'dashboard.cart'],
         'wishlist' => ['title' => 'Wishlist', 'view' => 'dashboard.wishlist'],
         'users' => ['title' => 'Semua User', 'view' => 'dashboard.users'],
+        'traffic' => ['title' => 'Traffic Pengunjung', 'view' => 'dashboard.traffic'],
         'subscribers' => ['title' => 'Subscriber', 'view' => 'dashboard.subscribers'],
         'profile' => ['title' => 'Profil Admin', 'view' => 'dashboard.profile'],
     ];

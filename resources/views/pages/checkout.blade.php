@@ -11,6 +11,8 @@
     class="bg-[#F0F3F7] w-full min-h-screen pt-4 pb-16 relative"
     x-data="evomiCheckout()"
     x-init="boot()"
+    data-shipping-origin="{{ $shippingOriginCity }}"
+    data-free-shipping="{{ $freeShipping ? '1' : '0' }}"
 >
     <div
         x-show="loading"
@@ -86,6 +88,8 @@
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-bold text-gray-900" x-text="form.name"></p>
                                 <p class="text-[13px] text-gray-600 mt-1 leading-relaxed" x-text="form.address"></p>
+                                <p class="text-[12px] font-semibold text-gray-700 mt-1.5" x-show="form.city" x-text="'Kota tujuan: ' + form.city" x-cloak></p>
+                                <p class="text-[11px] text-gray-400 mt-1">{{ evomi_l('Dikirim dari gudang', 'Ships from warehouse') }}: {{ $shippingOriginCity }}</p>
                                 <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-gray-500 font-parkinsans">
                                     <span x-text="form.phone"></span>
                                     <span x-show="form.email" class="text-gray-300">·</span>
@@ -119,6 +123,21 @@
                                     <input type="tel" x-model="draft.phone" placeholder="08xxxxxxxxxx" class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 outline-none focus:ring-2" :style="{ '--tw-ring-color': brand + '40' }">
                                 </div>
                             </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-gray-500 mb-1.5">{{ evomi_l('Kota tujuan', 'Destination city') }}</label>
+                            <select
+                                x-model="draft.city"
+                                required
+                                class="w-full max-w-md px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 outline-none focus:ring-2"
+                                :style="{ '--tw-ring-color': brand + '40' }"
+                            >
+                                <option value="">{{ evomi_l('Pilih kota tujuan', 'Select destination city') }}</option>
+                                @foreach ($shippingCities as $city)
+                                    <option value="{{ $city }}">{{ $city }}</option>
+                                @endforeach
+                            </select>
+                            <p class="text-[11px] text-gray-400 mt-1">{{ evomi_l('Ongkir dihitung dari gudang', 'Shipping is calculated from warehouse') }} {{ $shippingOriginCity }} → {{ evomi_l('kota tujuan', 'destination city') }}.</p>
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold text-gray-500 mb-1.5">{{ evomi_l('Alamat lengkap', 'Full address') }}</label>
@@ -183,38 +202,52 @@
                         </template>
                     </div>
 
-                    <div class="mt-4 rounded-xl border p-3.5" :style="{ borderColor: brand + '28', backgroundColor: brand + '08' }">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <p class="text-sm font-bold text-gray-900">
-                                        <span x-text="courierLabel || 'Metode pengiriman'"></span>
-                                        <span class="font-semibold" :style="{ color: brand }" x-text="' (' + formatPrice(shippingCost) + ')'"></span>
-                                    </p>
-                                    <span
-                                        x-show="paymentMethod === 'cod'"
-                                        x-cloak
-                                        class="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-white"
-                                        :style="{ color: brand, borderColor: brand + '55' }"
-                                    >COD</span>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1" x-text="shippingEtaLabel"></p>
-                                <p class="text-[11px] text-gray-400 mt-0.5" x-show="selectedKurir?.destinasi" x-text="selectedKurir?.destinasi" x-cloak></p>
-                            </div>
-                            <div class="relative shrink-0">
-                                <select
-                                    class="appearance-none text-xs font-semibold pl-2 pr-6 py-1.5 rounded-lg border bg-white cursor-pointer outline-none max-w-[160px] text-gray-800"
-                                    :style="{ borderColor: brand + '40' }"
-                                    :value="selectedKurir?.id || ''"
-                                    @change="selectKurirById($event.target.value)"
-                                >
-                                    <template x-for="kurir in kurirs" :key="'ship-' + kurir.id">
-                                        <option :value="kurir.id" x-text="kurir.nama + ' ' + (kurir.jenis || '')"></option>
-                                    </template>
-                                </select>
-                                <svg class="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                    <div class="mt-4 rounded-xl border p-3.5 md:p-4" :style="{ borderColor: brand + '28', backgroundColor: brand + '08' }">
+
+                        {{-- FREE SHIPPING banner --}}
+                        <div x-show="freeShipping" x-cloak class="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100 mb-3">
+                            <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                            <div>
+                                <p class="text-sm font-bold text-emerald-800">{{ evomi_l('Gratis Ongkir', 'Free Shipping') }}</p>
+                                <p class="text-[11px] text-emerald-600 mt-0.5">{{ evomi_l('Pengiriman ditanggung Evomi', 'Shipping is on Evomi') }}</p>
                             </div>
                         </div>
+
+                        <div x-show="!freeShipping" x-cloak>
+                        <p class="text-sm font-bold text-gray-900 mb-2">{{ evomi_l('Metode Pengiriman', 'Shipping Method') }}</p>
+
+                        <p x-show="shippingOptionsError" x-cloak class="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-3" x-text="shippingOptionsError"></p>
+                        <p x-show="!hasAddress && !shippingOptionsError" class="text-sm text-gray-500">{{ evomi_l('Isi alamat dan kota tujuan untuk melihat kurir.', 'Enter address and destination city to see couriers.') }}</p>
+
+                        {{-- Kurir terpilih (1 item) --}}
+                        <div x-show="selectedKurir" x-cloak class="flex gap-3 items-start">
+                            <svg class="text-gray-400 mt-0.5 shrink-0 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m9.75 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h.375c.621 0 1.125-.504 1.125-1.125V14.25m-9.75 0h9.75"/></svg>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-bold text-gray-900" x-text="selectedKurir.nama + (selectedKurir.jenis ? ' - ' + selectedKurir.jenis : '')"></p>
+                                <p class="text-sm font-bold mt-0.5" :style="{ color: brand }" x-text="formatPrice(selectedKurir.customer_harga ?? selectedKurir.harga)"></p>
+                                <p class="text-[11px] text-gray-500 mt-1">
+                                    {{ evomi_l('Estimasi tiba', 'Est. arrival') }} <span x-text="estimasiTiba(selectedKurir)"></span>
+                                </p>
+                                <p class="text-[11px] text-gray-400 mt-0.5" x-show="selectedKurir.destinasi" x-text="selectedKurir.destinasi" x-cloak></p>
+                                <p class="text-[11px] text-gray-400 mt-0.5">
+                                    {{ evomi_l('Dikirim dari', 'Ships from') }} <span class="font-semibold" x-text="shippingOriginCity"></span>
+                                    <span x-show="shippingCity || form.city"> → <span class="font-semibold" x-text="shippingCity || form.city"></span></span>
+                                </p>
+                                <button
+                                    type="button"
+                                    x-show="kurirs.length > 1"
+                                    @click="showKurirList = true"
+                                    class="mt-2 text-left text-[13px] font-semibold underline-offset-4 hover:underline"
+                                    :style="{ color: brand }"
+                                >{{ evomi_l('Lihat Kurir Lainnya', 'See Other Couriers') }}</button>
+                            </div>
+                        </div>
+
+                        {{-- Loading state --}}
+                        <div x-show="hasAddress && !selectedKurir && !kurirs.length && !shippingOptionsError" x-cloak class="text-sm text-gray-500 py-2">
+                            {{ evomi_l('Memuat opsi kurir...', 'Loading courier options...') }}
+                        </div>
+                        </div>{{-- /!freeShipping --}}
                     </div>
 
                     <div class="mt-3 pt-3 border-t border-gray-100">
@@ -345,11 +378,22 @@
                             <span class="font-medium text-gray-800" x-text="formatPrice(productSubtotal)"></span>
                         </div>
                         <div class="flex justify-between text-gray-600">
-                            <span>Total Ongkos Kirim</span>
-                            <span class="font-medium text-gray-800" x-text="formatPrice(shippingCost)"></span>
+                            <span>
+                                Total Ongkos Kirim
+                                <span class="text-gray-400" x-show="!freeShipping && courierLabel" x-text="'(' + courierLabel + ')'" x-cloak></span>
+                            </span>
+                            <span
+                                class="font-medium"
+                                :class="freeShipping ? 'text-emerald-700' : 'text-gray-800'"
+                                x-text="freeShipping ? $L('Gratis Ongkir', 'Free Shipping') : formatPrice(shippingCost)"
+                            ></span>
+                        </div>
+                        <div class="flex justify-between text-emerald-700" x-show="shippingAdminSubsidy > 0" x-cloak>
+                            <span>Ongkir ditanggung admin</span>
+                            <span class="font-medium" x-text="'−' + formatPrice(shippingAdminSubsidy)"></span>
                         </div>
                         <div class="flex justify-between text-[#CA3500]" x-show="promoDiscount > 0" x-cloak>
-                            <span>Promo</span>
+                            <span>{{ evomi_l('Promo keranjang', 'Cart promo') }}</span>
                             <span class="font-medium" x-text="'−' + formatPrice(promoDiscount)"></span>
                         </div>
                         <div class="h-px bg-gray-100 my-2"></div>
@@ -572,6 +616,8 @@
             </div>
         </div>
     </template>
+
+    @include('partials.kurir-modal', ['brandExpr' => 'brand'])
 
     <template x-teleport="body">
         <div x-show="modal.open" x-cloak class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">

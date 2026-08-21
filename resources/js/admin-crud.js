@@ -11,6 +11,7 @@ import {
     ensureFontCompanionFields,
     ensureSectionSpacingFields,
     ensureBerandaContentFields,
+    ensureBelanjaDetailsShippingFields,
     ensureHeroHeadlineGapFields,
     defaultFaqTypographyFields,
     isTypographyBaseField,
@@ -916,6 +917,7 @@ export function registerAdminCrud(Alpine, deps) {
                     o.product?.title || this.t('orders', 'no_name', 'Tanpa Nama', 'No Name'),
                 customerName: this.customerName(o),
                 totalLabel: formatRupiah(orderGrandTotal(o)),
+                note: o.note || '',
             };
             this.originalEdit = { status, payment_status: payment };
             this.editOpen = true;
@@ -1456,11 +1458,17 @@ export function registerAdminCrud(Alpine, deps) {
     /* ---------- PROMOS ---------- */
     Alpine.data('evomiAdminPromos', () => ({
         ...listMixin(5),
-        form: { id: null, harga_promo: '', tanggal_berlaku_promo: '', tanggal_berakhir_promo: '' },
+        form: { id: null, harga_promo: '', persentase_promo: '', tanggal_berlaku_promo: '', tanggal_berakhir_promo: '' },
 
         init() {
             this.watchSearch();
             this.load();
+        },
+
+        promoValueLabel(promo) {
+            const percent = Number(promo?.persentase_promo) || 0;
+            if (percent > 0) return `${percent}%`;
+            return this.formatRupiah(promo?.harga_promo);
         },
 
         isActive(promo) {
@@ -1492,7 +1500,7 @@ export function registerAdminCrud(Alpine, deps) {
 
         openAdd() {
             this.modalMode = 'add';
-            this.form = { id: null, harga_promo: '', tanggal_berlaku_promo: '', tanggal_berakhir_promo: '' };
+            this.form = { id: null, harga_promo: '', persentase_promo: '', tanggal_berlaku_promo: '', tanggal_berakhir_promo: '' };
             this.openModal();
         },
 
@@ -1501,6 +1509,7 @@ export function registerAdminCrud(Alpine, deps) {
             this.form = {
                 id: p.id,
                 harga_promo: p.harga_promo ?? '',
+                persentase_promo: p.persentase_promo ?? '',
                 tanggal_berlaku_promo: (p.tanggal_berlaku_promo || '').slice(0, 10),
                 tanggal_berakhir_promo: (p.tanggal_berakhir_promo || '').slice(0, 10),
             };
@@ -1512,7 +1521,11 @@ export function registerAdminCrud(Alpine, deps) {
             this.saving = true;
             try {
                 const body = {
-                    harga_promo: Number(this.form.harga_promo),
+                    harga_promo: Number(this.form.harga_promo) || 0,
+                    persentase_promo:
+                        this.form.persentase_promo === '' || this.form.persentase_promo == null
+                            ? null
+                            : Number(this.form.persentase_promo),
                     tanggal_berlaku_promo: this.form.tanggal_berlaku_promo,
                     tanggal_berakhir_promo: this.form.tanggal_berakhir_promo,
                 };
@@ -1547,6 +1560,45 @@ export function registerAdminCrud(Alpine, deps) {
                 await this.load();
             } catch (e) {
                 this.notify(e.message, 'error');
+            }
+        },
+    }));
+
+    /* ---------- FREE SHIPPING TOGGLE ---------- */
+    Alpine.data('evomiAdminFreeShipping', () => ({
+        enabled: false,
+        loading: true,
+        saving: false,
+
+        init() {
+            this.load();
+        },
+
+        async load() {
+            this.loading = true;
+            try {
+                const data = await adminJson('/api/admin/shipping-settings');
+                const settings = data?.data || data || {};
+                this.enabled = Boolean(settings.free_shipping);
+            } catch {
+                /* ignore */
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async toggle() {
+            this.saving = true;
+            try {
+                await adminJson('/api/admin/shipping-settings', {
+                    method: 'PUT',
+                    body: { free_shipping: this.enabled },
+                });
+            } catch (e) {
+                this.enabled = !this.enabled;
+                if (typeof this.notify === 'function') this.notify(e.message || 'Gagal menyimpan', 'error');
+            } finally {
+                this.saving = false;
             }
         },
     }));
@@ -1641,6 +1693,107 @@ export function registerAdminCrud(Alpine, deps) {
         },
     }));
 
+    Alpine.data('evomiAdminKurirTarifs', () => ({
+        ...listMixin(8),
+        kurirOptions: [],
+        form: emptyKurirTarifForm(),
+
+        init() {
+            this.watchSearch();
+            this.load();
+        },
+
+        async load() {
+            this.loading = true;
+            this.error = '';
+            try {
+                const [tarifData, kurirData] = await Promise.all([
+                    adminJson('/api/admin/kurir-tarifs'),
+                    adminJson('/api/admin/kurirs?all=1'),
+                ]);
+                this.items = unwrapList(tarifData);
+                this.kurirOptions = unwrapList(kurirData);
+            } catch (e) {
+                this.error = e.message || this.t('kurirs', 'load_error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        openAdd() {
+            this.modalMode = 'add';
+            this.form = emptyKurirTarifForm();
+            this.openModal();
+        },
+
+        openEdit(t) {
+            this.modalMode = 'edit';
+            this.form = {
+                id: t.id,
+                kurir_id: t.kurir_id ?? t.kurirId ?? '',
+                kota_asal: t.kota_asal ?? 'Cisauk',
+                kota_tujuan: t.kota_tujuan ?? '',
+                berat_min_gram: t.berat_min_gram ?? 0,
+                berat_max_gram: t.berat_max_gram ?? 0,
+                harga: t.harga ?? '',
+                estimasi_hari: t.estimasi_hari ?? 3,
+                is_active: t.is_active ? true : false,
+            };
+            this.openModal();
+        },
+
+        async save() {
+            if (this.saving) return;
+            this.saving = true;
+            try {
+                const body = {
+                    kurir_id: Number(this.form.kurir_id),
+                    kota_asal: this.form.kota_asal,
+                    kota_tujuan: this.form.kota_tujuan,
+                    berat_min_gram: Number(this.form.berat_min_gram),
+                    berat_max_gram: Number(this.form.berat_max_gram),
+                    harga: Number(this.form.harga),
+                    estimasi_hari: Number(this.form.estimasi_hari),
+                    is_active: !!this.form.is_active,
+                };
+
+                if (this.modalMode === 'add') {
+                    await adminJson('/api/admin/kurir-tarifs', { method: 'POST', body });
+                    this.notify('Tarif berhasil ditambahkan', 'success');
+                } else {
+                    await adminJson(`/api/admin/kurir-tarifs/${this.form.id}`, { method: 'PUT', body });
+                    this.notify('Tarif berhasil diperbarui', 'success');
+                }
+
+                this.closeModal();
+                await this.load();
+            } catch (e) {
+                this.notify(e.message, 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        async remove(id) {
+            if (
+                !(await this.confirmDelete(
+                    'Tarif ongkir ini akan dihapus permanen.',
+                    'Hapus Tarif Ongkir?',
+                ))
+            ) {
+                return;
+            }
+
+            try {
+                await adminJson(`/api/admin/kurir-tarifs/${id}`, { method: 'DELETE' });
+                this.notify('Tarif berhasil dihapus', 'success');
+                await this.load();
+            } catch (e) {
+                this.notify(e.message, 'error');
+            }
+        },
+    }));
+
     function emptyKurirForm() {
         return {
             id: null,
@@ -1648,6 +1801,20 @@ export function registerAdminCrud(Alpine, deps) {
             jenis: 'reguler',
             harga: '',
             destinasi: 'Seluruh Indonesia',
+            estimasi_hari: 3,
+            is_active: true,
+        };
+    }
+
+    function emptyKurirTarifForm() {
+        return {
+            id: null,
+            kurir_id: '',
+            kota_asal: 'Cisauk',
+            kota_tujuan: '',
+            berat_min_gram: 0,
+            berat_max_gram: 250,
+            harga: '',
             estimasi_hari: 3,
             is_active: true,
         };
@@ -2406,6 +2573,188 @@ export function registerAdminCrud(Alpine, deps) {
         },
     }));
 
+    /* ---------- TRAFFIC / VISITORS ---------- */
+    Alpine.data('evomiAdminTraffic', () => ({
+        ...listMixin(5),
+        filterType: 'all',
+        autoRefresh: true,
+        lastUpdatedAt: null,
+        _pollTimer: null,
+        viewOpen: false,
+        viewVisit: null,
+        stats: {
+            online_now: 0,
+            online_guest: 0,
+            online_user: 0,
+            today_guest: 0,
+            today_user: 0,
+            today_views: 0,
+            online_window_seconds: 120,
+            generated_at: null,
+        },
+
+        get typeOptions() {
+            return [
+                { id: 'all', label: this.t('traffic', 'filter_all') },
+                { id: 'user', label: this.t('traffic', 'filter_user') },
+                { id: 'guest', label: this.t('traffic', 'filter_guest') },
+            ];
+        },
+
+        async init() {
+            this.watchSearch();
+            this.$watch('filterType', () => {
+                this.page = 1;
+            });
+            this.$watch('autoRefresh', (on) => {
+                if (on) this.startPolling();
+                else this.stopPolling();
+            });
+            await this.load(true);
+            this.startPolling();
+            window.addEventListener('beforeunload', () => this.stopPolling(), { once: true });
+        },
+
+        startPolling() {
+            this.stopPolling();
+            if (!this.autoRefresh) return;
+            window.__evomiTrafficPoll = setInterval(() => {
+                if (document.visibilityState === 'hidden') return;
+                this.load(false);
+            }, 10000);
+            this._pollTimer = window.__evomiTrafficPoll;
+        },
+
+        stopPolling() {
+            if (window.__evomiTrafficPoll) {
+                clearInterval(window.__evomiTrafficPoll);
+                window.__evomiTrafficPoll = null;
+            }
+            this._pollTimer = null;
+        },
+
+        async load(showSpinner = true) {
+            if (showSpinner) this.loading = true;
+            this.error = '';
+            try {
+                const qs = new URLSearchParams({ limit: '120' });
+                if (this.filterType === 'user' || this.filterType === 'guest') {
+                    qs.set('type', this.filterType);
+                }
+                if (this.search.trim()) qs.set('q', this.search.trim());
+                const data = await adminJson(`/api/admin/traffic?${qs.toString()}`);
+                const payload = data?.data || data || {};
+                this.stats = {
+                    ...this.stats,
+                    ...(payload.stats || {}),
+                };
+                this.items = Array.isArray(payload.items) ? payload.items : [];
+                this.lastUpdatedAt = new Date();
+            } catch (e) {
+                this.error = e.message || this.t('traffic', 'load_error');
+                if (showSpinner) this.items = [];
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        openView(v) {
+            this.viewVisit = v || null;
+            this.viewOpen = true;
+        },
+
+        closeView() {
+            this.viewOpen = false;
+            this.viewVisit = null;
+        },
+
+        filteredItems() {
+            const q = this.search.trim().toLowerCase();
+            let rows = this.items;
+            if (this.filterType === 'user' || this.filterType === 'guest') {
+                rows = rows.filter((r) => r.visitor_type === this.filterType);
+            }
+            if (!q) return rows;
+            return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(q));
+        },
+
+        visitorName(v) {
+            if (v?.user?.name) return v.user.name;
+            if (v?.visitor_type === 'user') return this.t('traffic', 'user_fallback');
+            return this.t('traffic', 'guest_fallback');
+        },
+
+        visitorSub(v) {
+            if (v?.user?.email) return v.user.email;
+            return String(v?.visitor_key || '').slice(0, 8) + '…';
+        },
+
+        locationLabel(v) {
+            const parts = [v?.city, v?.region, v?.country].filter(Boolean);
+            if (!parts.length) return this.t('traffic', 'unknown_location');
+            return parts.join(', ');
+        },
+
+        countryFlagUrl(v) {
+            const code = String(v?.country_code || '').toLowerCase();
+            if (!code || code === 'lo' || !/^[a-z]{2}$/.test(code)) return '';
+            return `https://flagcdn.com/w40/${code}.png`;
+        },
+
+        countryCodeLabel(v) {
+            const code = String(v?.country_code || '').toUpperCase();
+            if (!code || code === 'LO') return '';
+            return code;
+        },
+
+        deviceLabel(v) {
+            const parts = [v?.device, v?.browser, v?.platform].filter(Boolean);
+            return parts.length ? parts.join(' · ') : '-';
+        },
+
+        shortUrl(url) {
+            try {
+                const u = new URL(url);
+                return u.host + u.pathname;
+            } catch {
+                return String(url || '').slice(0, 60);
+            }
+        },
+
+        formatWhen(iso) {
+            if (!iso) return '-';
+            try {
+                return new Date(iso).toLocaleString(this.locale === 'en' ? 'en-GB' : 'id-ID', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                });
+            } catch {
+                return String(iso);
+            }
+        },
+
+        relativeWhen(iso) {
+            if (!iso) return '';
+            const ts = new Date(iso).getTime();
+            if (!Number.isFinite(ts)) return '';
+            const diff = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+            if (diff < 15) return this.t('traffic', 'just_now');
+            if (diff < 60) return `${diff}s`;
+            if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+            return `${Math.floor(diff / 86400)}d`;
+        },
+
+        lastUpdatedLabel() {
+            if (!this.lastUpdatedAt) return this.t('traffic', 'not_updated');
+            return `${this.t('traffic', 'updated')} ${this.relativeWhen(this.lastUpdatedAt.toISOString())}`;
+        },
+    }));
+
     /* ---------- PROFILE ---------- */
     Alpine.data('evomiAdminProfile', () => ({
         ...i18nMixin(),
@@ -3039,7 +3388,12 @@ export function registerAdminCrud(Alpine, deps) {
                             ? ensureHeroHeadlineGapFields(baseFields, page)
                             : ensureSectionSpacingFields(
                                   ensureFontCompanionFields(
-                                      ensureBerandaContentFields(baseFields, page),
+                                      page === 'belanja_details'
+                                          ? ensureBelanjaDetailsShippingFields(
+                                                ensureBerandaContentFields(baseFields, page),
+                                                page,
+                                            )
+                                          : ensureBerandaContentFields(baseFields, page),
                                   ),
                                   page,
                               );
