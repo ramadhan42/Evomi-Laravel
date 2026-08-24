@@ -1,5 +1,4 @@
-{{-- Custom cursor — same CDN & size as evomi.shop (96px, hotspot 33 30) --}}
-{{-- Applied on html/body so teleported modals (outside .evomi-site) keep the CDN cursor --}}
+{{-- Custom cursor: CDN 96px only (ukuran default evomi.shop) --}}
 @php
     $cursor = config('evomi.cursor', []);
     $enabled = filter_var($cursor['enabled'] ?? true, FILTER_VALIDATE_BOOLEAN);

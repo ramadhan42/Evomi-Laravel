@@ -1,7 +1,11 @@
 <?php
 
+use App\Http\Middleware\BlockProbePaths;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\RejectHoneypotBots;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\UpdateUserLastSeen;
+use App\Http\Middleware\VerifyTurnstile;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -20,13 +24,20 @@ return Application::configure(basePath: dirname(__DIR__))
             'evomi_locale',
         ]);
 
-        if (env('APP_ENV', 'production') !== 'local') {
-            $middleware->throttleApi('60,1');
+        if (filter_var(env('SECURITY_API_THROTTLE', true), FILTER_VALIDATE_BOOL)) {
+            $middleware->throttleApi(env('SECURITY_API_THROTTLE_LIMIT', '120,1'));
         }
+
+        $middleware->append([
+            BlockProbePaths::class,
+            SecurityHeaders::class,
+        ]);
 
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
             'last.seen' => UpdateUserLastSeen::class,
+            'honeypot' => RejectHoneypotBots::class,
+            'turnstile' => VerifyTurnstile::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

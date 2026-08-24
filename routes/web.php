@@ -23,6 +23,8 @@ Route::get('/pengiriman', [PageController::class, 'pengiriman'])->name('pengirim
 Route::get('/pengiriman/{resi}', [PageController::class, 'pengirimanShow'])->name('pengiriman.show');
 Route::get('/login', [PageController::class, 'login'])->name('login');
 Route::get('/register', [PageController::class, 'register'])->name('register');
+Route::get('/lupa-password', [PageController::class, 'lupaPassword'])->name('password.request');
+Route::get('/reset-password/{token}', [PageController::class, 'resetPassword'])->name('password.reset');
 
 Route::get('/dashboard', [DashboardController::class, 'home'])->name('dashboard');
 Route::get('/dashboard/{page}', [DashboardController::class, 'page'])

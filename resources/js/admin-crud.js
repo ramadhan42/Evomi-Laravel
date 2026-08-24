@@ -2393,6 +2393,59 @@ export function registerAdminCrud(Alpine, deps) {
             });
         },
 
+        threadText(row) {
+            if (!row || typeof row !== 'object') return '';
+            const value =
+                row.body ||
+                row.text ||
+                row.message ||
+                row.reply_message ||
+                row.reply ||
+                '';
+            return String(value).trim();
+        },
+
+        normalizeThread(raw) {
+            const rows = Array.isArray(raw) ? raw : [];
+            const bubbles = [];
+
+            for (const row of rows) {
+                if (row?.type && (row.text || row.message || row.body || row.reply_message)) {
+                    bubbles.push({
+                        id: String(row.id || `${row.type}-${row.created_at}`),
+                        type: row.type === 'admin' ? 'admin' : 'user',
+                        text: this.threadText(row),
+                        subject: row.subject || '',
+                        created_at: row.created_at || row.createdAt || null,
+                    });
+                    continue;
+                }
+
+                const userText = String(row?.message || '').trim();
+                if (userText && userText !== '[Percakapan dimulai oleh admin]') {
+                    bubbles.push({
+                        id: `msg-${row.id}`,
+                        type: 'user',
+                        text: userText,
+                        subject: row.subject || '',
+                        created_at: row.created_at || null,
+                    });
+                }
+
+                for (const reply of row?.replies || row?.contact_replies || []) {
+                    bubbles.push({
+                        id: `reply-${reply.id}`,
+                        type: 'admin',
+                        text: String(reply.reply_message || reply.message || reply.text || '').trim(),
+                        subject: '',
+                        created_at: reply.created_at || null,
+                    });
+                }
+            }
+
+            return bubbles.filter((b) => b.text);
+        },
+
         async openThread(conv) {
             const email = typeof conv === 'string' ? conv : conv.email;
             this.selectedEmail = email;
@@ -2407,7 +2460,12 @@ export function registerAdminCrud(Alpine, deps) {
                     `/api/admin/contact/thread?email=${encodeURIComponent(email)}`,
                 );
                 const payload = unwrapData(data) || {};
-                this.thread = Array.isArray(payload.messages) ? payload.messages : [];
+                const rawMessages = Array.isArray(payload.messages)
+                    ? payload.messages
+                    : Array.isArray(payload)
+                      ? payload
+                      : [];
+                this.thread = this.normalizeThread(rawMessages);
                 this.selectedMeta = {
                     ...(this.selectedMeta || {}),
                     email,

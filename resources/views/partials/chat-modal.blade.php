@@ -114,7 +114,7 @@
                 role="dialog"
                 aria-modal="true"
                 aria-label="{{ evomi_l('Pesan Anda', 'Your Messages') }}"
-                x-data="evomiProfileChat"
+                x-data="evomiProfileChat('evomi-chat-window-turnstile')"
                 x-show="$store.evomiChatModal.open"
                 x-transition:enter="ease-[cubic-bezier(0.22,1,0.36,1)] duration-420"
                 x-transition:enter-start="opacity-0 scale-[0.96] translate-y-4"
@@ -244,6 +244,11 @@
                             <button type="button" class="evomi-chat-modal__chip" @click="useHint(hint)" x-text="hint"></button>
                         </template>
                     </div>
+                    @include('partials.turnstile-field', [
+                        'theme' => 'light',
+                        'mountId' => 'evomi-chat-window-turnstile',
+                    ])
+
                     <p x-show="sendError" x-cloak class="text-[12px] text-rose-600 font-medium" x-text="sendError"></p>
                     <form class="evomi-chat-modal__composer" @submit.prevent="send()">
                         <textarea

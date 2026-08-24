@@ -18,11 +18,10 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Storefront custom cursor (same CDN as evomi.shop)
+    | Storefront custom cursor
     |--------------------------------------------------------------------------
     |
-    | Production URL: https://cdn.cursors-4u.net/previews/normal-9e607e2c-48.webp
-    | Original size ~96px, hotspot 33 30 — match localhost to production.
+    | CDN 96px untuk semua halaman (ukuran default evomi.shop).
     |
     */
     'cursor' => [

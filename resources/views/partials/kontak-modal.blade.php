@@ -63,6 +63,12 @@
                         <input type="text" class="evomi-help-modal__input" required x-model="$store.evomiKontakModal.form.subject" :placeholder="$L('Subjek', 'Subject')">
                         <textarea class="evomi-help-modal__textarea" required x-model="$store.evomiKontakModal.form.message" :placeholder="$L('Tulis pesan Anda di sini...', 'Write your message here...')"></textarea>
 
+                        @include('partials.turnstile-field', [
+                            'theme' => 'light',
+                            'scope' => '$store.evomiKontakModal.',
+                            'mountId' => 'evomi-kontak-modal-turnstile',
+                        ])
+
                         <button type="submit" class="evomi-help-modal__submit" :disabled="$store.evomiKontakModal.loading">
                             <span x-text="$store.evomiKontakModal.loading ? $L('Mengirim...', 'Sending...') : $L('Kirim Pesan', 'Send Message')"></span>
                         </button>

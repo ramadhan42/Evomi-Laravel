@@ -55,6 +55,8 @@
                 class="w-full h-[150px] p-5 rounded-3xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:border-[#1172BA] outline-none resize-none text-sm"
             ></textarea>
 
+            @include('partials.turnstile-field', ['theme' => 'light'])
+
             <button
                 type="submit"
                 :disabled="loading"

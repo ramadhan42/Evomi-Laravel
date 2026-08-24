@@ -29,9 +29,14 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:60,1');
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:60,1');
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:10,1');
+// Throttle selalu paling depan supaya verifikasi Turnstile (yang memanggil API
+// Cloudflare) tidak bisa dipakai membanjiri server dengan token palsu.
+Route::post('/register', [AuthController::class, 'register'])->middleware(['throttle:auth-register', 'honeypot', 'turnstile']);
+Route::post('/login', [AuthController::class, 'login'])->middleware(['throttle:auth-login', 'turnstile']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
+    ->middleware(['throttle:auth-forgot', 'honeypot', 'turnstile']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])
+    ->middleware(['throttle:auth-reset', 'turnstile']);
 Route::post('/logout-beacon', [AuthController::class, 'logoutBeacon']);
 
 Route::get('/products', [ProductController::class, 'index']);
@@ -40,24 +45,26 @@ Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::get('/quiz/questions', [QuizController::class, 'getQuestions']);
 Route::get('/quiz/results', [QuizController::class, 'getResults']);
 
-Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe']);
+Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])
+    ->middleware(['throttle:newsletter', 'honeypot', 'turnstile']);
 
-// Contact: kirim pesan public; list butuh auth (lihat controller)
-Route::get('/contact', [ContactMessageController::class, 'index']);
-Route::get('/contact-show', [ContactMessageController::class, 'show']);
-Route::post('/contact', [ContactMessageController::class, 'store']);
-Route::get('/contact/unread-count', [ContactMessageController::class, 'getUnreadCount']);
-Route::post('/contact/mark-read', [ContactMessageController::class, 'markUserRead']);
+// Contact: kirim pesan public; baca thread butuh login + email cocok (lihat controller)
+Route::get('/contact', [ContactMessageController::class, 'index'])->middleware('throttle:30,1');
+Route::get('/contact-show', [ContactMessageController::class, 'show'])->middleware('throttle:30,1');
+Route::post('/contact', [ContactMessageController::class, 'store'])->middleware(['throttle:contact-post', 'honeypot', 'turnstile:session']);
+Route::get('/contact/unread-count', [ContactMessageController::class, 'getUnreadCount'])->middleware('throttle:30,1');
+Route::post('/contact/mark-read', [ContactMessageController::class, 'markUserRead'])->middleware('throttle:30,1');
 
 // Tracking: public read (lacak paket), write di auth
 Route::get('/trackings/{resi}', [OrderTrackingController::class, 'show']);
 
-Route::post('/checkout/guest', [OrderController::class, 'guestCheckout']);
+Route::post('/checkout/guest', [OrderController::class, 'guestCheckout'])
+    ->middleware(['throttle:guest-checkout', 'honeypot']);
 Route::post('/guest/cart-email', [GuestController::class, 'emailCart'])->middleware('throttle:8,1');
 Route::post('/guest/orders', [GuestController::class, 'orders'])->middleware('throttle:12,1');
 Route::post('/guest/trackings', [GuestController::class, 'trackings'])->middleware('throttle:12,1');
 
-Route::post('/traffic/ping', [TrafficController::class, 'ping'])->middleware('throttle:60,1');
+Route::post('/traffic/ping', [TrafficController::class, 'ping'])->middleware('throttle:traffic-ping');
 
 Route::get('/disclaimers', [DisclaimerController::class, 'index']);
 Route::get('/disclaimers/{id}', [DisclaimerController::class, 'show']);

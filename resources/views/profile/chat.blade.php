@@ -5,7 +5,7 @@
 @section('content')
 <x-profile-shell>
     <div
-        x-data="evomiProfileChat"
+        x-data="evomiProfileChat('evomi-chat-page-turnstile')"
         class="profile-page-card"
         style="--chat-brand: #1172BA"
     >
@@ -135,6 +135,11 @@
                     <button type="button" class="text-[11px] px-3 py-1 rounded-full bg-white text-gray-600 border border-gray-200 hover:border-[#1172BA] hover:text-[#1172BA] transition" @click="useHint(hint)" x-text="hint"></button>
                 </template>
             </div>
+            @include('partials.turnstile-field', [
+                'theme' => 'light',
+                'mountId' => 'evomi-chat-page-turnstile',
+            ])
+
             <p x-show="sendError" x-cloak class="text-xs text-rose-600 font-medium" x-text="sendError"></p>
             <form class="flex gap-2 items-end" @submit.prevent="send">
                 <textarea

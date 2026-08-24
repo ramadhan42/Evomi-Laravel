@@ -287,7 +287,7 @@
                         </div>
 
                         <div class="flex justify-center gap-12 mt-2 font-parkinsans font-medium text-[14px] text-[#6A7282]" :style="{ '--hover-color': accent }">
-                            <button type="button" @click="isChatOpen = true" class="flex flex-col items-center gap-1.5 hover:text-[var(--hover-color)] transition">
+                            <button type="button" @click="openChat()" class="flex flex-col items-center gap-1.5 hover:text-[var(--hover-color)] transition">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>
                                 {{ $lbl('chat', 'Chat', 'Chat') }}
                             </button>
@@ -367,7 +367,7 @@
             x-show="isChatOpen"
             x-cloak
             :class="isChatOpen ? 'pointer-events-auto' : 'pointer-events-none'"
-            @keydown.escape.window="isChatOpen && (isChatOpen = false)"
+            @keydown.escape.window="isChatOpen && closeChat()"
         >
             <div
                 class="evomi-product-modal__backdrop"
@@ -378,10 +378,10 @@
                 x-transition:leave="ease-in duration-200"
                 x-transition:leave-start="opacity-100"
                 x-transition:leave-end="opacity-0"
-                @click="isChatOpen = false"
+                @click="closeChat()"
             ></div>
 
-            <div class="evomi-product-modal__frame evomi-product-modal__frame--chat" x-show="isChatOpen" @click.self="isChatOpen = false">
+            <div class="evomi-product-modal__frame evomi-product-modal__frame--chat" x-show="isChatOpen" @click.self="closeChat()">
                 <div
                     class="evomi-chat-panel"
                     role="dialog"
@@ -408,18 +408,23 @@
                                 <p class="evomi-chat-panel__subtitle truncate">{{ $detailCms->get('chat', 'reply_hint', evomi_l('Biasanya membalas dalam beberapa menit', 'Usually replies within a few minutes')) }}</p>
                             </div>
                         </div>
-                        <button type="button" class="evomi-overlay-close" @click="isChatOpen = false" :aria-label="$L('Tutup', 'Close')">
+                        <button type="button" class="evomi-overlay-close" @click="closeChat()" :aria-label="$L('Tutup', 'Close')">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4 4 12M4 4l8 8"/></svg>
                         </button>
                     </div>
 
-                    <div class="evomi-chat-panel__body">
+                    <div class="evomi-chat-panel__body" x-ref="chatThread">
                         <div class="evomi-chat-panel__welcome">
                             <p class="text-[12px] font-semibold text-slate-500 mb-1">{{ evomi_l('Tentang produk', 'About this product') }}</p>
                             <p class="text-[13px] text-slate-800 leading-snug">
                                 {{ evomi_l('Halo! Ada yang bisa kami bantu terkait', 'Hi! How can we help with') }}
                                 <span class="font-semibold" :style="accentTextStyle" x-text="title"></span>?
                             </p>
+                            <p class="text-[11px] text-slate-400 mt-1.5">{{ evomi_l('Percakapan ini menyatu untuk semua produk, jadi riwayat chat Anda tidak hilang saat pindah halaman.', 'This conversation is shared across products, so your chat history stays when you switch pages.') }}</p>
+                        </div>
+
+                        <div x-show="chatLoading && !chatBubbles.length" class="py-6 flex justify-center">
+                            <div class="w-6 h-6 border-[3px] border-slate-200 border-t-[#1172BA] rounded-full animate-spin"></div>
                         </div>
 
                         <template x-for="bubble in chatBubbles" :key="bubble.id">
@@ -428,8 +433,10 @@
                                     class="evomi-chat-panel__bubble"
                                     :class="bubble.type === 'user' ? 'is-user' : 'is-admin'"
                                     :style="bubble.type === 'user' ? accentSurfaceStyle : {}"
-                                    x-text="bubble.text"
-                                ></div>
+                                >
+                                    <p x-show="bubble.subject && bubble.type === 'user'" class="text-[10px] opacity-80 mb-1 font-medium" x-text="bubble.subject"></p>
+                                    <p class="whitespace-pre-wrap" x-text="bubble.text"></p>
+                                </div>
                             </div>
                         </template>
                     </div>
@@ -440,6 +447,14 @@
                                 <button type="button" class="evomi-chat-panel__chip" @click="draft = tpl" x-text="tpl"></button>
                             </template>
                         </div>
+
+                        @include('partials.turnstile-field', [
+                            'theme' => 'light',
+                            'mountId' => 'evomi-chat-turnstile-produk-'.$product['id'],
+                        ])
+
+                        <p x-show="chatError" x-cloak class="text-[11px] font-medium text-rose-600 px-1" x-text="chatError"></p>
+
                         <div class="evomi-chat-panel__composer">
                             <input
                                 type="text"
@@ -452,6 +467,7 @@
                                 type="button"
                                 class="evomi-chat-panel__send"
                                 :style="accentSurfaceStyle"
+                                :disabled="chatSending"
                                 @click="sendChat()"
                                 :aria-label="$L('Kirim', 'Send')"
                             >

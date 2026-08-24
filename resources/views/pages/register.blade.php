@@ -81,6 +81,8 @@
                 </div>
             </div>
 
+            @include('partials.turnstile-field', ['theme' => 'dark'])
+
             <button
                 type="submit"
                 :disabled="loading"

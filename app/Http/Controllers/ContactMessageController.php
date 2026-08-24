@@ -13,29 +13,33 @@ class ContactMessageController extends Controller
 {
     /**
      * Menampilkan data pesan.
-     * Filter berdasarkan email untuk User, atau tampilkan semua untuk Admin.
+     * Admin: semua pesan atau filter email. User: hanya email sendiri (wajib login).
      */
     public function index(Request $request)
     {
         try {
             $email = $request->query('email');
 
-            if (!$email) {
+            if ($email) {
+                if ($denied = $this->denyUnlessContactOwner($request, $email)) {
+                    return $denied;
+                }
+
+                $messages = ContactMessage::with('replies')
+                    ->where('email', $email)
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+            } else {
                 $user = auth('sanctum')->user();
-                if (!$user || !$user->is_admin) {
+                if (! $user || ! $user->is_admin) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Akses ditolak. Login sebagai admin atau sertakan parameter email.',
+                        'message' => 'Akses ditolak. Login sebagai admin atau sertakan parameter email milik Anda.',
                     ], 403);
                 }
 
                 $messages = ContactMessage::with('replies')
                     ->orderBy('created_at', 'desc')
-                    ->get();
-            } else {
-                $messages = ContactMessage::with('replies')
-                    ->where('email', $email)
-                    ->orderBy('created_at', 'asc')
                     ->get();
             }
 
@@ -57,17 +61,22 @@ class ContactMessageController extends Controller
     {
         $email = $request->query('email');
 
+        if (! $email) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parameter email wajib diisi.',
+            ], 422);
+        }
+
+        if ($denied = $this->denyUnlessContactOwner($request, $email)) {
+            return $denied;
+        }
+
         try {
-            if ($email) {
-                $messages = ContactMessage::with('replies')
-                    ->where('email', $email)
-                    ->orderBy('created_at', 'asc')
-                    ->get();
-            } else {
-                $messages = ContactMessage::with('replies')
-                    ->orderBy('created_at', 'asc')
-                    ->get();
-            }
+            $messages = ContactMessage::with('replies')
+                ->where('email', $email)
+                ->orderBy('created_at', 'asc')
+                ->get();
 
             return response()->json([
                 'success' => true,
@@ -87,7 +96,7 @@ class ContactMessageController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'subject' => 'required|string|max:255',
-            'message' => 'required|string',
+            'message' => 'required|string|max:5000',
         ]);
 
         try {
@@ -232,6 +241,7 @@ class ContactMessageController extends Controller
                     'id' => 'msg-' . $msg->id,
                     'type' => 'user',
                     'text' => $msg->message,
+                    'body' => $msg->message,
                     'subject' => $msg->subject,
                     'created_at' => optional($msg->created_at)->toIso8601String(),
                     'ticket_id' => $msg->id,
@@ -241,6 +251,7 @@ class ContactMessageController extends Controller
                         'id' => 'reply-' . $reply->id,
                         'type' => 'admin',
                         'text' => $reply->reply_message,
+                        'body' => $reply->reply_message,
                         'created_at' => optional($reply->created_at)->toIso8601String(),
                         'ticket_id' => $msg->id,
                         'reply_id' => $reply->id,
@@ -376,8 +387,12 @@ class ContactMessageController extends Controller
     public function getUnreadCount(Request $request)
     {
         $email = $request->query('email');
-        if (!$email) {
+        if (! $email) {
             return response()->json(['count' => 0]);
+        }
+
+        if ($denied = $this->denyUnlessContactOwner($request, $email)) {
+            return $denied;
         }
 
         $count = ContactReply::where(function ($q) {
@@ -394,8 +409,12 @@ class ContactMessageController extends Controller
     public function markUserRead(Request $request)
     {
         $email = $request->input('email');
-        if (!$email) {
+        if (! $email) {
             return response()->json(['success' => false, 'message' => 'Email tidak valid']);
+        }
+
+        if ($denied = $this->denyUnlessContactOwner($request, $email)) {
+            return $denied;
         }
 
         try {
@@ -412,6 +431,31 @@ class ContactMessageController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
+    }
+
+    private function denyUnlessContactOwner(Request $request, string $email): ?\Illuminate\Http\JsonResponse
+    {
+        $user = auth('sanctum')->user();
+
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Login diperlukan untuk melihat pesan.',
+            ], 401);
+        }
+
+        if ($user->is_admin) {
+            return null;
+        }
+
+        if (strcasecmp((string) $user->email, $email) !== 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak.',
+            ], 403);
+        }
+
+        return null;
     }
 
     private function buildConversationSummary(

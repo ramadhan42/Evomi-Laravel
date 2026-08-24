@@ -10,26 +10,23 @@
 @endphp
 
 <div
-    class="kuis-enter evomi-soft-enter w-full bg-white flex flex-col items-center font-nohemi transition-colors duration-500"
+    class="kuis-enter evomi-soft-enter evomi-kuis-stage w-full bg-white flex flex-col items-center font-nohemi transition-colors duration-500 py-4 md:py-8 md:mb-7 px-4 md:px-6"
     x-data="evomiKuis(@js($questions), @js($results))"
-    :class="finished ? 'min-h-screen justify-start pt-0 pb-0 px-0' : 'min-h-[60vh] justify-center py-4 md:py-12 md:mb-7 px-4 md:px-6'"
+    :class="finished ? 'evomi-kuis-stage--finished min-h-screen justify-start !py-0 !px-0' : ''"
 >
     <div
         x-show="!finished"
-        x-cloak
-        data-soft-enter="up"
-        class="w-full max-w-[900px] min-h-[420px] rounded-[24px] flex flex-col overflow-hidden bg-white border-2 border-[#1172BA]/55"
+        class="evomi-kuis-card w-full max-w-[900px] min-h-[420px] rounded-[24px] flex flex-col overflow-hidden bg-white border-2 border-[#1172BA]/55"
     >
-        <template x-if="questions.length === 0">
+        @if (count($questions) === 0)
             <div class="flex-grow px-6 md:px-10 py-16 flex flex-col items-center justify-center text-center bg-white">
                 <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ evomi_l('Soal kuis belum tersedia', 'Quiz questions are not available yet') }}</h2>
                 <p class="text-sm text-gray-500 max-w-md">{{ evomi_l('Data soal/jawaban diambil dari database. Silakan seed quiz atau tambah soal di admin.', 'Question and answer data is loaded from the database. Please seed the quiz or add questions in admin.') }}</p>
             </div>
-        </template>
-
-        <template x-if="questions.length > 0">
+        @else
             <div class="flex flex-col min-h-[420px]">
                 <div
+                    data-soft-enter="up"
                     class="px-8 md:px-10 py-6 shrink-0 flex flex-col justify-center h-[160px] transition-colors duration-500"
                     :style="{ backgroundColor: accent }"
                 >
@@ -38,13 +35,32 @@
                         <p class="text-[12px] md:text-[13px] text-white font-normal uppercase tracking-wide">{{ evomi_l('Kuis Scent Finder', 'Scent Finder Quiz') }}</p>
                     </div>
                     <h1 class="text-[28px] md:text-[32px] font-semibold text-white tracking-tight">{{ evomi_l('Temukan aromamu', 'Discover your scent') }}</h1>
-                    <div class="mt-4 w-full h-1.5 bg-white/30 rounded-full overflow-hidden">
+                    <div x-show="!ready" class="mt-4">
+                        <div class="h-1.5 w-full rounded-full bg-white/20 overflow-hidden">
+                            <div class="h-full w-1/3 rounded-full bg-white/55 evomi-quiz-skel-bar"></div>
+                        </div>
+                    </div>
+                    <div x-show="ready" x-cloak class="mt-4 w-full h-1.5 bg-white/30 rounded-full overflow-hidden">
                         <div class="h-full bg-[#A5E194] rounded-full transition-all duration-500 ease-out" :style="{ width: progress + '%' }"></div>
                     </div>
                 </div>
 
-                <div class="flex-grow px-6 md:px-10 py-6 md:py-8 flex flex-col justify-center bg-white">
-                    <div class="flex flex-col h-full justify-between">
+                <div class="evomi-kuis-card__body flex-1 min-h-[260px] px-6 md:px-10 py-6 md:py-8 flex flex-col justify-center bg-white">
+                    <div x-show="!ready" class="evomi-kuis-skeleton w-full">
+                        <div class="text-[18px] md:text-[22px] font-semibold leading-snug">
+                            <span class="evomi-skel evomi-quiz-skel-q w-[88%] max-w-xl"></span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
+                            @foreach (range(1, 4) as $i)
+                                <div class="evomi-quiz-skel-option rounded-[16px] border-2 border-[#1172BA]/45 bg-white p-3.5 md:p-4 flex justify-between items-center gap-3 text-left">
+                                    <span class="evomi-skel evomi-skel--sm flex-1 max-w-[75%]"></span>
+                                    <span class="evomi-skel evomi-quiz-skel-icon shrink-0" aria-hidden="true"></span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div x-show="ready" x-cloak data-soft-enter="up" class="evomi-kuis-card__content w-full">
                         <h2 class="text-[18px] md:text-[22px] font-semibold leading-snug transition-colors duration-500" :style="{ color: accent }" x-text="currentQuestion?.text"></h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
                             <template x-for="option in (currentQuestion?.options || [])" :key="option.id">
@@ -61,7 +77,7 @@
                     </div>
                 </div>
             </div>
-        </template>
+        @endif
     </div>
 
     <div x-show="finished && result" x-cloak class="w-full flex flex-col items-center">

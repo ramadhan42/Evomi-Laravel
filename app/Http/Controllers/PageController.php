@@ -16,6 +16,7 @@ use App\Support\CmsStorefront;
 use App\Support\ShippingConfig;
 use App\Support\LocaleResolver;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PageController extends Controller
@@ -391,6 +392,19 @@ class PageController extends Controller
         return view('pages.register');
     }
 
+    public function lupaPassword(): View
+    {
+        return view('pages.lupa-password');
+    }
+
+    public function resetPassword(Request $request, string $token): View
+    {
+        return view('pages.reset-password', [
+            'token' => $token,
+            'email' => (string) $request->query('email', ''),
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -495,28 +509,34 @@ class PageController extends Controller
 
         $kurirs = [];
         if (! ShippingConfig::isFreeShipping()) {
-            $kurirIdsWithTarif = KurirTarif::query()
-                ->where('is_active', true)
-                ->where('kota_asal', ShippingConfig::DEFAULT_ORIGIN_CITY)
-                ->distinct()
-                ->pluck('kurir_id');
+            try {
+                if (class_exists(KurirTarif::class)) {
+                    $kurirIdsWithTarif = KurirTarif::query()
+                        ->where('is_active', true)
+                        ->where('kota_asal', ShippingConfig::DEFAULT_ORIGIN_CITY)
+                        ->distinct()
+                        ->pluck('kurir_id');
 
-            $query = Kurir::query()->active()->orderBy('nama')->orderBy('jenis');
+                    $query = Kurir::query()->active()->orderBy('nama')->orderBy('jenis');
 
-            if ($kurirIdsWithTarif->isNotEmpty()) {
-                $query->whereIn('id', $kurirIdsWithTarif);
+                    if ($kurirIdsWithTarif->isNotEmpty()) {
+                        $query->whereIn('id', $kurirIdsWithTarif);
+                    }
+
+                    $kurirs = $query->get()
+                        ->map(fn (Kurir $k) => [
+                            'id' => $k->id,
+                            'nama' => $k->nama,
+                            'jenis' => $k->jenis,
+                            'harga' => (float) $k->harga,
+                            'estimasi_hari' => (int) ($k->estimasi_hari ?: 3),
+                        ])
+                        ->values()
+                        ->all();
+                }
+            } catch (\Throwable) {
+                $kurirs = [];
             }
-
-            $kurirs = $query->get()
-                ->map(fn (Kurir $k) => [
-                    'id' => $k->id,
-                    'nama' => $k->nama,
-                    'jenis' => $k->jenis,
-                    'harga' => (float) $k->harga,
-                    'estimasi_hari' => (int) ($k->estimasi_hari ?: 3),
-                ])
-                ->values()
-                ->all();
 
             if ($kurirs === []) {
                 $kurirs = BelanjaCatalog::kurirs();

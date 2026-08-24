@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken; // Pastikan ini di-import
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -64,31 +67,84 @@ class AuthController extends Controller
     }
 
     /**
-     * Lupa Password: Memperbarui password berdasarkan email.
+     * Lupa Password langkah 1: kirim tautan reset berisi token sekali pakai.
+     *
+     * Response-nya selalu sama baik email terdaftar maupun tidak, supaya form
+     * ini tidak bisa dipakai memetakan alamat email mana saja yang punya akun.
      */
     public function forgotPassword(Request $request)
     {
-        // 1. Validasi input dari request
         $request->validate([
-            'email' => 'required|email|exists:users,email', // Pastikan email valid dan ada di database
-            'password' => 'required|string|min:8', // Anda bisa menambahkan aturan 'confirmed' jika menggunakan form konfirmasi password
+            'email' => 'required|string|email|max:255',
+        ]);
+
+        $generic = response()->json([
+            'success' => true,
+            'message' => 'Jika email tersebut terdaftar, kami sudah mengirim tautan reset password. Silakan cek kotak masuk maupun folder spam Anda.',
+        ]);
+
+        try {
+            $status = Password::sendResetLink($request->only('email'));
+        } catch (Throwable $e) {
+            Log::error('Gagal mengirim email reset password', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Email reset gagal dikirim karena kendala server. Coba lagi beberapa saat lagi.',
+            ], 500);
+        }
+
+        // RESET_THROTTLED tetap dibalas generik supaya tidak membocorkan bahwa
+        // email tersebut ada; user cukup memakai tautan yang sudah dikirim.
+        if (! in_array($status, [Password::RESET_LINK_SENT, Password::INVALID_USER, Password::RESET_THROTTLED], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Permintaan reset password tidak dapat diproses. Silakan coba lagi.',
+            ], 422);
+        }
+
+        return $generic;
+    }
+
+    /**
+     * Lupa Password langkah 2: tukar token dari email dengan password baru.
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string',
+            'email' => 'required|string|email|max:255',
+            'password' => 'required|string|min:8|confirmed',
         ], [
-            'email.exists' => 'Email tidak ditemukan di sistem kami.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
         ]);
 
-        // 2. Cari user berdasarkan email
-        $user = User::where('email', $request->email)->first();
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill(['password' => $password])->save();
 
-        // 3. Update password user (jangan lupa di-hash)
-        $user->update([
-            'password' => $request->password,
-        ]);
+                // Password berganti berarti sesi lama harus mati: kalau akun ini
+                // sempat dibajak, token Sanctum penyerang ikut hangus.
+                $user->tokens()->delete();
+            }
+        );
 
-        // 4. Kembalikan response sukses
+        if ($status !== Password::PASSWORD_RESET) {
+            return response()->json([
+                'success' => false,
+                'message' => $status === Password::INVALID_TOKEN
+                    ? 'Tautan reset sudah kedaluwarsa atau pernah dipakai. Silakan minta tautan baru.'
+                    : 'Reset password gagal. Pastikan tautan yang Anda buka masih berlaku.',
+            ], 422);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Password berhasil diperbarui. Silakan login dengan password baru Anda.',
-        ], 200);
+        ]);
     }
 
     public function logout(Request $request)

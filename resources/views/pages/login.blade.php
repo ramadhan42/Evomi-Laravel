@@ -27,7 +27,7 @@
             <div class="space-y-2">
                 <div class="flex justify-between items-center ml-1">
                     <label for="login-password" class="text-xs font-semibold text-white/80 uppercase tracking-widest">Password</label>
-                    <a href="#" class="text-[10px] text-white/60 hover:text-white uppercase tracking-wider transition-colors" @click.prevent>Lupa?</a>
+                    <a href="{{ route('password.request') }}" data-soft-nav class="text-[10px] text-white/60 hover:text-white uppercase tracking-wider transition-colors">Lupa?</a>
                 </div>
                 <div class="relative">
                     <input
@@ -54,6 +54,8 @@
                     </button>
                 </div>
             </div>
+
+            @include('partials.turnstile-field', ['theme' => 'dark'])
 
             <button
                 type="submit"

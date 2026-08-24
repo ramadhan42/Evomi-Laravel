@@ -132,8 +132,7 @@ body {
     background: var(--background);
 }
 
-/* Custom cursor — same CDN & size as evomi.shop (96px, hotspot 33 30)
-   Include body/* so teleported modals keep the CDN cursor. */
+/* Custom cursor: CDN 96px only (ukuran default evomi.shop). */
 html,
 body,
 body *,
@@ -7233,4 +7232,187 @@ select.admin-field-input {
   .evomi-overlay-close {
     transition: none !important;
   }
+}
+
+/* Cloudflare Turnstile — custom checkbox shell (widget itself runs in execute mode) */
+.evomi-turnstile {
+  width: 100%;
+}
+
+.evomi-turnstile__box {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.evomi-turnstile__box:hover:not(:disabled) {
+  border-color: rgba(17, 114, 186, 0.55);
+  box-shadow: 0 4px 14px rgba(17, 114, 186, 0.12);
+}
+
+.evomi-turnstile__box:active:not(:disabled) {
+  transform: scale(0.995);
+}
+
+.evomi-turnstile__box:disabled {
+  cursor: progress;
+}
+
+.evomi-turnstile__box.is-error {
+  border-color: rgba(220, 38, 38, 0.5);
+  background: #fef2f2;
+}
+
+.evomi-turnstile--dark .evomi-turnstile__box {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.evomi-turnstile--dark .evomi-turnstile__box:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.evomi-turnstile--dark .evomi-turnstile__box.is-error {
+  border-color: rgba(252, 165, 165, 0.7);
+  background: rgba(220, 38, 38, 0.18);
+}
+
+.evomi-turnstile__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  border: 2px solid rgba(15, 23, 42, 0.28);
+  background: #fff;
+  color: #1172ba;
+  transition: border-color 0.2s ease;
+}
+
+.evomi-turnstile__box:hover .evomi-turnstile__mark {
+  border-color: #1172ba;
+}
+
+.evomi-turnstile__mark.is-loading {
+  border-color: transparent;
+  background: transparent;
+}
+
+.evomi-turnstile--dark .evomi-turnstile__mark {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.evomi-turnstile__spinner {
+  width: 20px;
+  height: 20px;
+  animation: evomi-turnstile-spin 0.8s linear infinite;
+}
+
+@keyframes evomi-turnstile-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.evomi-turnstile__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #334155;
+}
+
+.evomi-turnstile--dark .evomi-turnstile__text {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.evomi-turnstile__box.is-error .evomi-turnstile__text {
+  color: #b91c1c;
+}
+
+.evomi-turnstile--dark .evomi-turnstile__box.is-error .evomi-turnstile__text {
+  color: #fecaca;
+}
+
+.evomi-turnstile__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.evomi-turnstile__brand svg {
+  width: 13px;
+  height: 13px;
+}
+
+.evomi-turnstile--dark .evomi-turnstile__brand {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.evomi-turnstile__done {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid rgba(5, 150, 105, 0.35);
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.evomi-turnstile--dark .evomi-turnstile__done {
+  border-color: rgba(110, 231, 183, 0.45);
+  background: rgba(16, 185, 129, 0.18);
+  color: #a7f3d0;
+}
+
+.evomi-turnstile__done-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: #059669;
+  color: #fff;
+}
+
+.evomi-turnstile__done-mark svg {
+  width: 14px;
+  height: 14px;
+}
+
+.evomi-turnstile--dark .evomi-turnstile__done-mark {
+  background: #34d399;
+  color: #04352a;
+}
+
+/* Holds the Turnstile iframe; stays collapsed until Cloudflare needs interaction */
+.evomi-turnstile__mount {
+  display: flex;
+  justify-content: center;
 }

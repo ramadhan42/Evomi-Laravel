@@ -43,10 +43,10 @@
     @php
         $route = request()->route()?->getName();
         $path = trim(request()->path(), '/');
-        $skipFullLoader = in_array($route, ['artikel.show', 'checkout', 'pembayaran'], true)
+        $skipFullLoader = in_array($route, ['artikel.show', 'checkout', 'pembayaran', 'kuis'], true)
             || (bool) preg_match('#^artikel/[^/]+$#', $path)
             || (bool) preg_match('#^pembayaran/#', $path)
-            || $path === 'checkout';
+            || in_array($path, ['checkout', 'kuis'], true);
         $surfaceBlue = in_array($route, ['beranda', 'artikel', 'artikel.show', 'login', 'register'], true)
             || $path === 'artikel'
             || str_starts_with($path, 'artikel/');
@@ -55,12 +55,22 @@
         $paymentMode = $route === 'pembayaran' || str_starts_with($path, 'pembayaran/');
         $themeAccent = $themeAccent ?? '#1172BA';
         $footerSeamless = $route === 'belanja.show';
+        $turnstileConfig = [
+            'enabled' => (bool) config('security.turnstile.enabled') && filled(config('security.turnstile.site_key')),
+            'siteKey' => config('security.turnstile.site_key'),
+            'requiredMessage' => evomi_l('Selesaikan verifikasi keamanan terlebih dahulu.', 'Please complete the security verification first.'),
+            'sessionMinutes' => (int) config('security.turnstile.session_minutes', 30),
+        ];
     @endphp
     @unless ($skipFullLoader)
         <script>document.documentElement.classList.add('evomi-loading');</script>
     @else
         <script>document.documentElement.classList.remove('evomi-loading');</script>
     @endunless
+    <script>
+        window.EVOMI_TURNSTILE = @json($turnstileConfig);
+    </script>
+    @include('partials.source-guard-config')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body

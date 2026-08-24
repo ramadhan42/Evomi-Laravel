@@ -16,68 +16,39 @@
     $fbUrl = $footerCms->get('social', 'facebook_url', 'https://facebook.com/evomi');
 @endphp
 <footer
-    class="w-full py-10 md:pt-12 md:pb-8 px-5 md:px-8 lg:px-24 relative font-nohemi text-white"
+    class="evomi-footer w-full py-10 md:pt-12 md:pb-8 px-5 md:px-8 lg:px-24 relative font-nohemi text-white"
     style="background-color: {{ $footerAccent }}; --footer-accent: {{ $footerAccent }}"
 >
     <div class="flex flex-col lg:flex-row justify-between gap-y-12 lg:gap-y-0 mb-12 md:mb-8">
         {{-- Buletin --}}
-        <div class="flex flex-col gap-3 md:gap-4 w-full lg:w-[45%] max-w-[400px] mx-auto lg:mx-0 text-center lg:text-left items-center lg:items-start">
+        <div class="evomi-footer__bulletin flex flex-col gap-3 md:gap-4 w-full lg:w-[45%] max-w-[400px] mx-auto lg:mx-0 text-center lg:text-left items-center lg:items-start" data-footer-enter="up">
             <h3 class="text-[32px] md:text-[40px] text-white font-bold leading-tight">{{ $fTitle }}</h3>
             <p class="text-[16px] md:text-[18px] text-white opacity-90 leading-relaxed">
                 {{ $fDesc }}
             </p>
             <form
-                class="flex flex-row gap-2 w-full mt-3"
-                x-data="{ email: '', submitting: false, toast: null }"
-                @submit.prevent="
-                    const value = (email || '').trim();
-                    if (!value) {
-                        toast = { type: 'error', title: $L('Perhatian', 'Notice'), message: $L('Harap masukkan alamat email Anda terlebih dahulu.', 'Please enter your email address first.') };
-                        setTimeout(() => toast = null, 3000);
-                        return;
-                    }
-                    submitting = true;
-                    toast = { type: 'loading', title: $L('Memproses...', 'Processing...'), message: $L('Sedang mendaftarkan email Anda ke Buletin Evomi.', 'Subscribing your email to Evomi Bulletin.') };
-                    try {
-                        const res = await fetch('/api/newsletter/subscribe', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                            body: JSON.stringify({ email: value }),
-                        });
-                        const data = await res.json().catch(() => ({}));
-                        if (!res.ok) {
-                            throw new Error(data.message || $L('Gagal mendaftar buletin.', 'Failed to subscribe to the bulletin.'));
-                        }
-                        toast = { type: 'success', title: $L('Berhasil!', 'Success!'), message: $L('Terima kasih telah berlangganan Buletin Evomi.', 'Thanks for subscribing to Evomi Bulletin.') };
-                        email = '';
-                    } catch (err) {
-                        toast = {
-                            type: 'error',
-                            title: $L('Pendaftaran Gagal', 'Subscription Failed'),
-                            message: (err && err.message) ? err.message : $L('Terjadi kesalahan pada server. Coba lagi nanti.', 'A server error occurred. Please try again later.'),
-                        };
-                    } finally {
-                        submitting = false;
-                        setTimeout(() => {
-                            if (toast && (toast.type === 'success' || toast.type === 'error')) toast = null;
-                        }, 3000);
-                    }
-                "
+                class="flex flex-col gap-3 w-full mt-3"
+                x-data="evomiNewsletter(@js($fCta))"
+                @submit.prevent="submit"
             >
-                <input
-                    type="email"
-                    x-model="email"
-                    :disabled="submitting"
-                    placeholder="email@kamu.com"
-                    class="flex-grow bg-white rounded-full outline-none px-4 md:px-5 h-[50px] md:h-[48px] text-[14px] md:text-[16px] text-gray-600 placeholder-gray-400 shadow-sm min-w-0 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                >
-                <button
-                    type="submit"
-                    :disabled="submitting"
-                    class="footer-daftar-btn flex-shrink-0 w-[100px] md:w-[120px] h-[50px] md:h-[48px] rounded-full text-[14px] md:text-[16px] font-bold transition-all shadow-sm bg-white disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                    <span x-text="submitting ? '...' : @js($fCta)">{{ $fCta }}</span>
-                </button>
+                <div class="flex flex-row gap-2 w-full">
+                    <input
+                        type="email"
+                        x-model="email"
+                        :disabled="submitting"
+                        placeholder="email@kamu.com"
+                        class="flex-grow bg-white rounded-full outline-none px-4 md:px-5 h-[50px] md:h-[48px] text-[14px] md:text-[16px] text-gray-600 placeholder-gray-400 shadow-sm min-w-0 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                    <button
+                        type="submit"
+                        :disabled="submitting"
+                        class="footer-daftar-btn flex-shrink-0 w-[100px] md:w-[120px] h-[50px] md:h-[48px] rounded-full text-[14px] md:text-[16px] font-bold transition-all shadow-sm bg-white disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                        <span x-text="submitting ? '...' : ctaLabel">{{ $fCta }}</span>
+                    </button>
+                </div>
+
+                @include('partials.turnstile-field', ['theme' => 'dark'])
 
                 {{-- Simple toast modal --}}
                 <template x-teleport="body">
@@ -138,8 +109,8 @@
         </div>
 
         {{-- Menu / Bantuan / Social --}}
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-y-8 gap-x-4 w-full lg:w-[45%] mt-2 lg:mt-0 text-left">
-            <div class="flex flex-col gap-3">
+        <div class="evomi-footer__nav grid grid-cols-2 sm:grid-cols-3 gap-y-8 gap-x-4 w-full lg:w-[45%] mt-2 lg:mt-0 text-left">
+            <div class="flex flex-col gap-3" data-footer-enter="up">
                 <span class="text-[14px] md:text-[16px] text-white/70 font-medium tracking-wide">{{ $fMenuHeading }}</span>
                 <ul class="flex flex-col gap-2 md:gap-3 text-white">
                     <li>
@@ -157,7 +128,7 @@
                 </ul>
             </div>
 
-            <div class="flex flex-col gap-3">
+            <div class="flex flex-col gap-3" data-footer-enter="up">
                 <span class="text-[14px] md:text-[16px] text-white/70 font-medium tracking-wide">{{ $fHelpHeading }}</span>
                 <ul class="flex flex-col gap-2 md:gap-3 text-white">
                     <li>
@@ -172,7 +143,7 @@
                 </ul>
             </div>
 
-            <div class="flex flex-col gap-3 col-span-2 sm:col-span-1">
+            <div class="flex flex-col gap-3 col-span-2 sm:col-span-1" data-footer-enter="up">
                 <span class="text-[14px] md:text-[16px] text-white/70 font-medium tracking-wide">{{ $fSocialHeading }}</span>
                 <div class="flex gap-4 text-white">
                     <a
@@ -209,8 +180,10 @@
     </div>
 
     {{-- Bottom bar --}}
-    <div class="w-full h-px bg-white rounded-full mb-6 md:mb-8 opacity-30"></div>
-    <div class="flex flex-col md:flex-row justify-between items-center text-white text-[14px] opacity-90 gap-y-2 text-center md:text-left">
+    <div class="evomi-footer__rule mb-6 md:mb-8" data-footer-enter="up">
+        <div class="w-full h-px rounded-full bg-white/30"></div>
+    </div>
+    <div class="evomi-footer__legal flex flex-col md:flex-row justify-between items-center text-white text-[14px] opacity-90 gap-y-2 text-center md:text-left" data-footer-enter="up">
         <p>{{ str_contains($fCopyright, '©') ? $fCopyright : ('© '.date('Y').' evomi.id — Every Version of Me') }}</p>
         <p>{{ evomi_l('Discover the scent of every personality', 'Discover the scent of every personality') }}</p>
     </div>

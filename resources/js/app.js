@@ -6,6 +6,21 @@ import {
     writeAdminLocale,
 } from './admin-i18n';
 import { L as storefrontL, currentLocale, registerStorefrontI18n } from './storefront-i18n';
+import { initSourceGuard } from './source-guard';
+import {
+    clearTurnstileSessionVerified,
+    destroyTurnstile,
+    ensureTurnstileMounted,
+    isTurnstileSessionVerified,
+    markTurnstileSessionVerified,
+    resetTurnstile,
+    runTurnstile,
+    setupTurnstile,
+    turnstileEnabled,
+    turnstileRequiredMessage,
+    turnstileState,
+    turnstileToken,
+} from './turnstile';
 import {
     buildSalesChartModel,
     salesChartHoverAt,
@@ -69,9 +84,176 @@ function isArtikelPath(pathname) {
     return p === '/artikel' || p.startsWith('/artikel/');
 }
 
+function contactTimeLabel(iso) {
+    return new Date(iso).toLocaleString(
+        document.documentElement.lang === 'en' ? 'en-US' : 'id-ID',
+        { hour: '2-digit', minute: '2-digit' },
+    );
+}
+
+/**
+ * Ratakan respons /api/contact (tiket + balasan admin, atau bubble siap pakai)
+ * menjadi satu daftar percakapan urut waktu.
+ */
+function normalizeContactBubbles(raw) {
+    const bubbles = [];
+
+    for (const row of raw) {
+        if (row.type && (row.text || row.message)) {
+            bubbles.push({
+                id: String(row.id || `${row.type}-${row.created_at}`),
+                type: row.type === 'admin' ? 'admin' : 'user',
+                text: row.text || row.message || '',
+                createdAt: row.created_at,
+                subject: row.subject || '',
+                isReadByAdmin: Boolean(row.isReadByAdmin ?? row.is_read_by_admin),
+                isNew: Boolean(row.isNew),
+                timeLabel: contactTimeLabel(row.created_at),
+            });
+            continue;
+        }
+
+        if (row.message && row.message !== '[Percakapan dimulai oleh admin]') {
+            const readByAdmin =
+                row.is_read_by_admin === true ||
+                row.is_read_by_admin === 1 ||
+                row.is_read_by_admin === '1' ||
+                (Array.isArray(row.replies) && row.replies.length > 0);
+            bubbles.push({
+                id: `u-${row.id}`,
+                type: 'user',
+                text: row.message,
+                createdAt: row.created_at,
+                subject: row.subject || '',
+                isReadByAdmin: Boolean(readByAdmin),
+                isNew: false,
+                timeLabel: contactTimeLabel(row.created_at),
+            });
+        }
+
+        for (const rep of row.replies || row.contact_replies || []) {
+            const unread = !(
+                rep.is_read_by_user === true ||
+                rep.is_read_by_user === 1 ||
+                rep.is_read_by_user === '1'
+            );
+            bubbles.push({
+                id: `a-${rep.id}`,
+                type: 'admin',
+                text: rep.reply_message || rep.message || rep.reply || rep.text || '',
+                createdAt: rep.created_at,
+                subject: '',
+                isReadByAdmin: true,
+                isNew: unread,
+                timeLabel: contactTimeLabel(rep.created_at),
+            });
+        }
+    }
+
+    return bubbles.sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+}
+
+async function fetchContactThread(email) {
+    const res = await fetch(`/api/contact?email=${encodeURIComponent(email)}`, {
+        headers: authHeaders(false),
+        credentials: 'same-origin',
+    });
+    const data = await readApiJson(res);
+    const raw = Array.isArray(data) ? data : data.data || data.messages || [];
+
+    return normalizeContactBubbles(raw);
+}
+
+/**
+ * Captcha untuk composer chat.
+ *
+ * persistSession: setelah lolos, widget disembunyikan dan server mengingat
+ * verifikasi selama beberapa menit (halaman / modal pesan profil).
+ *
+ * freshOnOpen: setiap kali panel dibuka, captcha diminta ulang. Dipakai chat
+ * di detail produk — tutup modal = verifikasi hangus.
+ */
+function chatCaptcha(mountId, { persistSession = true, freshOnOpen = false } = {}) {
+    return {
+        turnstileMountId: mountId,
+        captchaScope: '',
+        ...turnstileState(turnstileEnabled() && (persistSession ? !isTurnstileSessionVerified() : true)),
+
+        runTurnstile() {
+            runTurnstile(this);
+        },
+
+        async mountChatCaptcha() {
+            if (!freshOnOpen && this.hasTurnstile && isTurnstileSessionVerified()) {
+                this.hasTurnstile = false;
+            }
+
+            await ensureTurnstileMounted(
+                this,
+                document.getElementById(this.turnstileMountId),
+                { theme: 'light' },
+            );
+        },
+
+        async startFreshCaptcha() {
+            this.captchaScope = freshOnOpen
+                ? `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+                : '';
+            this.hasTurnstile = turnstileEnabled();
+            destroyTurnstile(this);
+            await this.$nextTick();
+            await setupTurnstile(
+                this,
+                document.getElementById(this.turnstileMountId),
+                { theme: 'light' },
+            );
+        },
+
+        stopChatCaptcha() {
+            destroyTurnstile(this);
+            this.captchaScope = '';
+            this.hasTurnstile = turnstileEnabled();
+        },
+
+        /** Kembalikan null bila captcha tampil tapi belum dicentang. */
+        chatCaptchaToken() {
+            if (!this.hasTurnstile) {
+                return '';
+            }
+
+            return turnstileToken(this) || null;
+        },
+
+        markChatCaptchaPassed() {
+            if (!this.hasTurnstile) return;
+
+            if (persistSession) {
+                markTurnstileSessionVerified();
+            }
+            resetTurnstile(this);
+            this.hasTurnstile = false;
+        },
+
+        /** Server menolak (verifikasi kedaluwarsa/cache hilang): tampilkan lagi. */
+        async askChatCaptchaAgain() {
+            if (persistSession) {
+                clearTurnstileSessionVerified();
+            }
+            await this.startFreshCaptcha();
+        },
+    };
+}
+
 function isAuthPath(pathname) {
     const p = (pathname || '').replace(/\/$/, '') || '/';
-    return p === '/login' || p === '/register';
+    return (
+        p === '/login' ||
+        p === '/register' ||
+        p === '/lupa-password' ||
+        p.startsWith('/reset-password')
+    );
 }
 
 function isBelanjaDetailPath(pathname) {
@@ -2595,6 +2777,10 @@ document.addEventListener('alpine:init', () => {
         open: false,
     });
 
+    Alpine.store('evomiProductChat', {
+        bubbles: [],
+    });
+
     Alpine.store('evomiFaqModal', {
         open: false,
         loading: false,
@@ -2658,6 +2844,7 @@ document.addEventListener('alpine:init', () => {
         loading: false,
         form: { name: '', email: '', subject: '', message: '' },
         status: { type: null, message: '' },
+        ...turnstileState(),
         cms: {
             title: 'Hubungi Kami',
             subtitle: 'Punya pertanyaan atau ingin berkolaborasi? Tim Evomi siap mendengarkan Anda.',
@@ -2693,9 +2880,27 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        runTurnstile() {
+            runTurnstile(this);
+        },
+
         async submit() {
             this.loading = true;
             this.status = { type: null, message: '' };
+
+            let captchaToken = '';
+            if (this.hasTurnstile) {
+                captchaToken = turnstileToken(this);
+                if (!captchaToken) {
+                    this.status = {
+                        type: 'error',
+                        message: turnstileRequiredMessage(),
+                    };
+                    this.loading = false;
+                    return;
+                }
+            }
+
             try {
                 const res = await fetch('/api/contact', {
                     method: 'POST',
@@ -2703,7 +2908,11 @@ document.addEventListener('alpine:init', () => {
                         Accept: 'application/json',
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(this.form),
+                    body: JSON.stringify({
+                        ...this.form,
+                        _hp: '',
+                        captcha_token: captchaToken,
+                    }),
                 });
                 const data = await readApiJson(res);
                 if (!res.ok) {
@@ -2728,10 +2937,33 @@ document.addEventListener('alpine:init', () => {
                             : storefrontL('Gagal mengirim pesan.', 'Failed to send message.'),
                 };
             } finally {
+                resetTurnstile(this);
                 this.loading = false;
             }
         },
     });
+
+    async function ensureKontakModalTurnstile(store) {
+        // Sama seperti halaman kontak: request dikirim tanpa token auth sehingga
+        // server memperlakukannya sebagai tamu dan selalu meminta captcha.
+        store.hasTurnstile = turnstileEnabled();
+
+        if (!store.hasTurnstile) {
+            resetTurnstile(store);
+            return;
+        }
+
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+
+        if (store.turnstileWidgetId) {
+            resetTurnstile(store);
+            return;
+        }
+
+        await setupTurnstile(store, document.getElementById('evomi-kontak-modal-turnstile'), {
+            theme: 'light',
+        });
+    }
 
     window.evomiOpenProduct = (id) => {
         try {
@@ -3722,6 +3954,7 @@ document.addEventListener('alpine:init', () => {
             store.open = true;
             this.syncBodyScrollLock();
             await store.loadCms();
+            await ensureKontakModalTurnstile(store);
         },
 
         closeKontakModal() {
@@ -4446,6 +4679,14 @@ document.addEventListener('alpine:init', () => {
         wishlistMessage: '',
         draft: '',
         chatBubbles: [],
+        chatError: '',
+        chatSending: false,
+        chatLoading: false,
+        _chatPoll: null,
+        ...chatCaptcha(`evomi-chat-turnstile-produk-${payload.id ?? 'x'}`, {
+            persistSession: false,
+            freshOnOpen: true,
+        }),
         detailScrollHeight: null,
         alert: { show: false, message: '' },
         chatTemplates: ['Hai, barang ini ready?', 'Bisa dikirim hari ini?', 'Terima kasih'],
@@ -4578,6 +4819,21 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('wishlist_updated', this._onWishlistSync);
             window.addEventListener('auth-change', this._onWishlistSync);
             this.syncWishlistState();
+
+            this._onChatReload = () => {
+                if (this.isChatOpen && getAuthToken()) this.loadChatThread(true);
+            };
+            this._onProductChatSync = (event) => {
+                if (Array.isArray(event.detail)) this.chatBubbles = event.detail;
+            };
+            window.addEventListener('chat_updated', this._onChatReload);
+            window.addEventListener('evomi-chat-reload', this._onChatReload);
+            window.addEventListener('evomi-product-chat-sync', this._onProductChatSync);
+
+            const shared = Alpine.store('evomiProductChat')?.bubbles;
+            if (Array.isArray(shared) && shared.length) {
+                this.chatBubbles = shared;
+            }
         },
 
         destroy() {
@@ -4587,6 +4843,14 @@ document.addEventListener('alpine:init', () => {
             if (this._onWishlistSync) {
                 window.removeEventListener('wishlist_updated', this._onWishlistSync);
                 window.removeEventListener('auth-change', this._onWishlistSync);
+            }
+            this.stopChatPoll();
+            if (this._onChatReload) {
+                window.removeEventListener('chat_updated', this._onChatReload);
+                window.removeEventListener('evomi-chat-reload', this._onChatReload);
+            }
+            if (this._onProductChatSync) {
+                window.removeEventListener('evomi-product-chat-sync', this._onProductChatSync);
             }
         },
 
@@ -4863,14 +5127,87 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async sendChat() {
-            const text = (this.draft || '').trim();
-            if (!text) return;
-            if (!getAuthToken()) {
-                this.requireLogin(storefrontL('Anda harus login terlebih dahulu untuk mengirim pesan ke admin.', 'Please log in first to message admin.'));
-                this.isChatOpen = false;
+        applySharedChat(bubbles) {
+            this.chatBubbles = Array.isArray(bubbles) ? bubbles : [];
+            const store = Alpine.store('evomiProductChat');
+            if (store) store.bubbles = this.chatBubbles;
+            window.dispatchEvent(
+                new CustomEvent('evomi-product-chat-sync', { detail: this.chatBubbles }),
+            );
+        },
+
+        async loadChatThread(silent = false) {
+            const user = getAuthUser();
+            if (!getAuthToken() || !user?.email) {
+                this.applySharedChat([]);
                 return;
             }
+            if (!silent) this.chatLoading = true;
+            try {
+                const bubbles = await fetchContactThread(user.email);
+                this.applySharedChat(bubbles);
+                this.$nextTick(() => this.scrollChatLatest());
+            } catch {
+                /* keep previous bubbles */
+            } finally {
+                this.chatLoading = false;
+            }
+        },
+
+        scrollChatLatest() {
+            const pane = this.$refs.chatThread;
+            if (!pane) return;
+            pane.scrollTop = pane.scrollHeight;
+        },
+
+        startChatPoll() {
+            this.stopChatPoll();
+            this._chatPoll = window.setInterval(() => {
+                if (this.isChatOpen && getAuthToken()) this.loadChatThread(true);
+            }, 30000);
+        },
+
+        stopChatPoll() {
+            if (this._chatPoll) {
+                window.clearInterval(this._chatPoll);
+                this._chatPoll = null;
+            }
+        },
+
+        closeChat() {
+            this.stopChatCaptcha();
+            this.isChatOpen = false;
+            this.stopChatPoll();
+            this.chatError = '';
+        },
+
+        async openChat() {
+            this.isChatOpen = true;
+            this.chatError = '';
+            await this.$nextTick();
+            await this.startFreshCaptcha();
+            await this.loadChatThread();
+            this.startChatPoll();
+        },
+
+        async sendChat() {
+            const text = (this.draft || '').trim();
+            if (!text || this.chatSending) return;
+            if (!getAuthToken()) {
+                this.requireLogin(storefrontL('Anda harus login terlebih dahulu untuk mengirim pesan ke admin.', 'Please log in first to message admin.'));
+                this.closeChat();
+                return;
+            }
+
+            const captchaToken = this.chatCaptchaToken();
+            if (captchaToken === null) {
+                this.chatError = turnstileRequiredMessage();
+                return;
+            }
+
+            this.chatSending = true;
+            this.chatError = '';
+
             try {
                 const user = getAuthUser();
                 const res = await fetch('/api/contact', {
@@ -4882,22 +5219,32 @@ document.addEventListener('alpine:init', () => {
                         email: user?.email || '',
                         subject: `Chat Produk, ${this.title}`,
                         message: text,
+                        _hp: '',
+                        captcha_token: captchaToken,
+                        captcha_scope: this.captchaScope || undefined,
                     }),
                 });
                 const data = await readApiJson(res);
                 if (!res.ok) {
+                    if (data?.captcha_required) {
+                        await this.askChatCaptchaAgain();
+                    }
+                    if (data?.captcha_required || res.status === 429) {
+                        this.chatError = apiErrorMessage(data, storefrontL('Gagal mengirim pesan.', 'Failed to send message.'));
+                        return;
+                    }
                     throw new Error(apiErrorMessage(data, storefrontL('Gagal mengirim pesan.', 'Failed to send message.')));
                 }
-                this.chatBubbles.push({
-                    id: Date.now(),
-                    type: 'user',
-                    text,
-                });
+                this.markChatCaptchaPassed();
                 this.draft = '';
+                await this.loadChatThread(true);
                 emitEvomiEvent('chat_updated');
+                emitEvomiEvent('evomi-chat-reload');
             } catch (err) {
                 this.requireLogin(err instanceof Error ? err.message : storefrontL('Gagal mengirim pesan.', 'Failed to send message.'));
-                this.isChatOpen = false;
+                this.closeChat();
+            } finally {
+                this.chatSending = false;
             }
         },
 
@@ -5086,10 +5433,36 @@ document.addEventListener('alpine:init', () => {
         form: { name: '', email: '', subject: '', message: '' },
         loading: false,
         status: { type: null, message: '' },
+        // Form kontak dikirim tanpa header auth, jadi server selalu menilainya
+        // sebagai tamu — captcha wajib tampil walau pengunjung sedang login.
+        ...turnstileState(),
+
+        async init() {
+            await this.$nextTick();
+            await setupTurnstile(this, this.$refs.turnstile, { theme: 'light' });
+        },
+
+        runTurnstile() {
+            runTurnstile(this);
+        },
 
         async submit() {
             this.loading = true;
             this.status = { type: null, message: '' };
+
+            let captchaToken = '';
+            if (this.hasTurnstile) {
+                captchaToken = turnstileToken(this);
+                if (!captchaToken) {
+                    this.status = {
+                        type: 'error',
+                        message: turnstileRequiredMessage(),
+                    };
+                    this.loading = false;
+                    return;
+                }
+            }
+
             try {
                 const res = await fetch('/api/contact', {
                     method: 'POST',
@@ -5097,7 +5470,11 @@ document.addEventListener('alpine:init', () => {
                         Accept: 'application/json',
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(this.form),
+                    body: JSON.stringify({
+                        ...this.form,
+                        _hp: '',
+                        captcha_token: captchaToken,
+                    }),
                 });
                 const data = await readApiJson(res);
                 if (!res.ok) {
@@ -5114,7 +5491,112 @@ document.addEventListener('alpine:init', () => {
                     message: err instanceof Error ? err.message : 'Gagal mengirim pesan.',
                 };
             } finally {
+                resetTurnstile(this);
                 this.loading = false;
+            }
+        },
+    }));
+
+    Alpine.data('evomiNewsletter', (ctaLabel = 'Daftar') => ({
+        email: '',
+        submitting: false,
+        toast: null,
+        ctaLabel,
+        ...turnstileState(),
+
+        async init() {
+            await this.$nextTick();
+            await setupTurnstile(this, this.$refs.turnstile, { theme: 'light' });
+        },
+
+        runTurnstile() {
+            runTurnstile(this);
+        },
+
+        async submit() {
+            const value = (this.email || '').trim();
+            if (!value) {
+                this.toast = {
+                    type: 'error',
+                    title: storefrontL('Perhatian', 'Notice'),
+                    message: storefrontL(
+                        'Harap masukkan alamat email Anda terlebih dahulu.',
+                        'Please enter your email address first.',
+                    ),
+                };
+                setTimeout(() => {
+                    this.toast = null;
+                }, 3000);
+                return;
+            }
+
+            let captchaToken = '';
+            if (this.hasTurnstile) {
+                captchaToken = turnstileToken(this);
+                if (!captchaToken) {
+                    this.toast = {
+                        type: 'error',
+                        title: storefrontL('Perhatian', 'Notice'),
+                        message: turnstileRequiredMessage(),
+                    };
+                    setTimeout(() => {
+                        this.toast = null;
+                    }, 3000);
+                    return;
+                }
+            }
+
+            this.submitting = true;
+            this.toast = {
+                type: 'loading',
+                title: storefrontL('Memproses...', 'Processing...'),
+                message: storefrontL(
+                    'Sedang mendaftarkan email Anda ke Buletin Evomi.',
+                    'Subscribing your email to Evomi Bulletin.',
+                ),
+            };
+
+            try {
+                const res = await fetch('/api/newsletter/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({ email: value, _hp: '', captcha_token: captchaToken }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(
+                        data.message || storefrontL('Gagal mendaftar buletin.', 'Failed to subscribe to the bulletin.'),
+                    );
+                }
+                this.toast = {
+                    type: 'success',
+                    title: storefrontL('Berhasil!', 'Success!'),
+                    message: storefrontL(
+                        'Terima kasih telah berlangganan Buletin Evomi.',
+                        'Thanks for subscribing to Evomi Bulletin.',
+                    ),
+                };
+                this.email = '';
+            } catch (err) {
+                this.toast = {
+                    type: 'error',
+                    title: storefrontL('Pendaftaran Gagal', 'Subscription Failed'),
+                    message:
+                        err && err.message
+                            ? err.message
+                            : storefrontL(
+                                  'Terjadi kesalahan pada server. Coba lagi nanti.',
+                                  'A server error occurred. Please try again later.',
+                              ),
+                };
+            } finally {
+                resetTurnstile(this);
+                this.submitting = false;
+                setTimeout(() => {
+                    if (this.toast && (this.toast.type === 'success' || this.toast.type === 'error')) {
+                        this.toast = null;
+                    }
+                }, 3000);
             }
         },
     }));
@@ -5285,6 +5767,7 @@ document.addEventListener('alpine:init', () => {
         showPassword: false,
         passwordFocused: false,
         form: { name: '', email: '', password: '' },
+        ...turnstileState(),
         modal: {
             show: false,
             type: 'success',
@@ -5292,6 +5775,15 @@ document.addEventListener('alpine:init', () => {
             message: '',
             cta: 'Tutup',
             go: null,
+        },
+
+        async init() {
+            await this.$nextTick();
+            await setupTurnstile(this, this.$refs.turnstile, { theme: 'dark' });
+        },
+
+        runTurnstile() {
+            runTurnstile(this);
         },
 
         openModal({ type = 'success', title, message, cta, go = null }) {
@@ -5334,17 +5826,37 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
+            let captchaToken = '';
+            if (this.hasTurnstile) {
+                captchaToken = turnstileToken(this);
+                if (!captchaToken) {
+                    if (this.mode === 'login') {
+                        this.openModal({
+                            type: 'warning',
+                            title: 'Verifikasi Diperlukan',
+                            message: turnstileRequiredMessage(),
+                            cta: 'Mengerti',
+                        });
+                    } else {
+                        this.error = turnstileRequiredMessage();
+                    }
+                    return;
+                }
+            }
+
             this.loading = true;
 
             try {
                 const endpoint = this.mode === 'login' ? '/api/login' : '/api/register';
                 const body =
                     this.mode === 'login'
-                        ? { email: this.form.email, password }
+                        ? { email: this.form.email, password, captcha_token: captchaToken }
                         : {
                               name: this.form.name.trim(),
                               email: this.form.email,
                               password,
+                              _hp: '',
+                              captcha_token: captchaToken,
                           };
 
                 const res = await fetch(endpoint, {
@@ -5373,6 +5885,7 @@ document.addEventListener('alpine:init', () => {
                     } else {
                         this.error = msg;
                     }
+                    resetTurnstile(this);
                     return;
                 }
 
@@ -5412,6 +5925,211 @@ document.addEventListener('alpine:init', () => {
                 } else {
                     this.error = msg;
                 }
+                resetTurnstile(this);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        closeModal() {
+            const go = this.modal.go;
+            const type = this.modal.type;
+            this.modal.show = false;
+            if (go && type === 'success') softNavigate(go);
+        },
+    }));
+
+    Alpine.data('evomiForgotPassword', () => ({
+        loading: false,
+        error: '',
+        sent: false,
+        sentTo: '',
+        form: { email: '', _hp: '' },
+        ...turnstileState(),
+        modal: { show: false, type: 'success', title: '', message: '', cta: 'Tutup', go: null },
+
+        async init() {
+            await this.$nextTick();
+            await setupTurnstile(this, this.$refs.turnstile, { theme: 'dark' });
+        },
+
+        runTurnstile() {
+            runTurnstile(this);
+        },
+
+        openModal({ type = 'success', title, message, cta, go = null }) {
+            this.modal = {
+                show: true,
+                type,
+                title,
+                message,
+                cta: cta || (type === 'success' ? 'Lanjutkan' : 'Mengerti'),
+                go,
+            };
+        },
+
+        reopen() {
+            this.sent = false;
+            this.error = '';
+            resetTurnstile(this);
+        },
+
+        async submit() {
+            this.error = '';
+            const email = (this.form.email || '').trim();
+
+            if (!email) {
+                this.error = 'Email wajib diisi.';
+                return;
+            }
+
+            let captchaToken = '';
+            if (this.hasTurnstile) {
+                captchaToken = turnstileToken(this);
+                if (!captchaToken) {
+                    this.error = turnstileRequiredMessage();
+                    return;
+                }
+            }
+
+            this.loading = true;
+
+            try {
+                const res = await fetch('/api/forgot-password', {
+                    method: 'POST',
+                    headers: authHeaders(true),
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        email,
+                        _hp: this.form._hp || '',
+                        captcha_token: captchaToken,
+                    }),
+                });
+
+                const data = await readApiJson(res);
+
+                if (!res.ok) {
+                    this.error = apiErrorMessage(
+                        data,
+                        'Permintaan reset gagal dikirim. Silakan coba lagi.',
+                    );
+                    resetTurnstile(this);
+                    return;
+                }
+
+                this.sentTo = email;
+                this.sent = true;
+                this.form._hp = '';
+            } catch (err) {
+                this.error =
+                    err instanceof Error ? err.message : 'Tidak dapat terhubung ke server.';
+                resetTurnstile(this);
+            } finally {
+                this.loading = false;
+                // Token Turnstile sekali pakai: siapkan widget untuk permintaan berikutnya.
+                if (this.sent) resetTurnstile(this);
+            }
+        },
+
+        closeModal() {
+            const go = this.modal.go;
+            const type = this.modal.type;
+            this.modal.show = false;
+            if (go && type === 'success') softNavigate(go);
+        },
+    }));
+
+    Alpine.data('evomiResetPassword', (token = '', email = '') => ({
+        loading: false,
+        error: '',
+        showPassword: false,
+        form: { email, password: '', password_confirmation: '' },
+        token,
+        ...turnstileState(),
+        modal: { show: false, type: 'success', title: '', message: '', cta: 'Tutup', go: null },
+
+        async init() {
+            await this.$nextTick();
+            await setupTurnstile(this, this.$refs.turnstile, { theme: 'dark' });
+        },
+
+        runTurnstile() {
+            runTurnstile(this);
+        },
+
+        openModal({ type = 'success', title, message, cta, go = null }) {
+            this.modal = {
+                show: true,
+                type,
+                title,
+                message,
+                cta: cta || (type === 'success' ? 'Lanjutkan' : 'Mengerti'),
+                go,
+            };
+        },
+
+        async submit() {
+            this.error = '';
+            const password = this.form.password || '';
+
+            if (password.length < 8) {
+                this.error = 'Password minimal 8 karakter.';
+                return;
+            }
+
+            if (password !== this.form.password_confirmation) {
+                this.error = 'Konfirmasi password tidak cocok.';
+                return;
+            }
+
+            let captchaToken = '';
+            if (this.hasTurnstile) {
+                captchaToken = turnstileToken(this);
+                if (!captchaToken) {
+                    this.error = turnstileRequiredMessage();
+                    return;
+                }
+            }
+
+            this.loading = true;
+
+            try {
+                const res = await fetch('/api/reset-password', {
+                    method: 'POST',
+                    headers: authHeaders(true),
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        token: this.token,
+                        email: this.form.email,
+                        password,
+                        password_confirmation: this.form.password_confirmation,
+                        captcha_token: captchaToken,
+                    }),
+                });
+
+                const data = await readApiJson(res);
+
+                if (!res.ok) {
+                    this.error = apiErrorMessage(
+                        data,
+                        'Reset password gagal. Silakan minta tautan baru.',
+                    );
+                    resetTurnstile(this);
+                    return;
+                }
+
+                this.openModal({
+                    type: 'success',
+                    title: 'Password Diperbarui',
+                    message:
+                        'Password baru Anda sudah aktif. Silakan masuk kembali menggunakan password tersebut.',
+                    cta: 'Masuk Sekarang',
+                    go: '/login',
+                });
+            } catch (err) {
+                this.error =
+                    err instanceof Error ? err.message : 'Tidak dapat terhubung ke server.';
+                resetTurnstile(this);
             } finally {
                 this.loading = false;
             }
@@ -6946,12 +7664,13 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
-    Alpine.data('evomiProfileChat', () => ({
+    Alpine.data('evomiProfileChat', (mountId = 'evomi-chat-page-turnstile') => ({
         loading: true,
         refreshing: false,
         sending: false,
         draft: '',
         sendError: '',
+        ...chatCaptcha(mountId),
         messages: [],
         showJumpLatest: false,
         hints: [
@@ -6972,6 +7691,7 @@ document.addEventListener('alpine:init', () => {
                 this.loading = false;
                 this._unwatchModal = this.$watch?.(() => Alpine.store('evomiChatModal')?.open, (open) => {
                     if (open) {
+                        this.mountChatCaptcha();
                         this.load();
                         if (!this._poll) {
                             this._poll = window.setInterval(() => {
@@ -6984,6 +7704,7 @@ document.addEventListener('alpine:init', () => {
                     }
                 });
                 if (Alpine.store('evomiChatModal')?.open && getAuthToken()) {
+                    await this.mountChatCaptcha();
                     await this.load();
                     this._poll = window.setInterval(() => {
                         if (Alpine.store('evomiChatModal')?.open) this.load(true);
@@ -6996,6 +7717,7 @@ document.addEventListener('alpine:init', () => {
                 this.loading = false;
                 return;
             }
+            await this.mountChatCaptcha();
             await this.load();
             this._poll = window.setInterval(() => this.load(true), 30000);
         },
@@ -7075,76 +7797,7 @@ document.addEventListener('alpine:init', () => {
             if (!silent) this.loading = true;
             else this.refreshing = true;
             try {
-                const res = await fetch(`/api/contact?email=${encodeURIComponent(user.email)}`, {
-                    headers: { Accept: 'application/json' },
-                });
-                const data = await readApiJson(res);
-                const raw = Array.isArray(data) ? data : data.data || data.messages || [];
-                const bubbles = [];
-                for (const row of raw) {
-                    if (row.type && (row.text || row.message)) {
-                        bubbles.push({
-                            id: String(row.id || `${row.type}-${row.created_at}`),
-                            type: row.type === 'admin' ? 'admin' : 'user',
-                            text: row.text || row.message || '',
-                            createdAt: row.created_at,
-                            subject: row.subject || '',
-                            isReadByAdmin: Boolean(row.isReadByAdmin ?? row.is_read_by_admin),
-                            isNew: Boolean(row.isNew),
-                            timeLabel: new Date(row.created_at).toLocaleString(
-                                document.documentElement.lang === 'en' ? 'en-US' : 'id-ID',
-                                { hour: '2-digit', minute: '2-digit' },
-                            ),
-                        });
-                        continue;
-                    }
-                    if (row.message && row.message !== '[Percakapan dimulai oleh admin]') {
-                        const readByAdmin =
-                            row.is_read_by_admin === true ||
-                            row.is_read_by_admin === 1 ||
-                            row.is_read_by_admin === '1' ||
-                            (Array.isArray(row.replies) && row.replies.length > 0);
-                        bubbles.push({
-                            id: `u-${row.id}`,
-                            type: 'user',
-                            text: row.message,
-                            createdAt: row.created_at,
-                            subject: row.subject || '',
-                            isReadByAdmin: Boolean(readByAdmin),
-                            isNew: false,
-                            timeLabel: new Date(row.created_at).toLocaleString(
-                                document.documentElement.lang === 'en' ? 'en-US' : 'id-ID',
-                                { hour: '2-digit', minute: '2-digit' },
-                            ),
-                        });
-                    }
-                    const replies = row.replies || row.contact_replies || [];
-                    for (const rep of replies) {
-                        const unread =
-                            !(
-                                rep.is_read_by_user === true ||
-                                rep.is_read_by_user === 1 ||
-                                rep.is_read_by_user === '1'
-                            );
-                        bubbles.push({
-                            id: `a-${rep.id}`,
-                            type: 'admin',
-                            text: rep.reply_message || rep.message || rep.reply || rep.text || '',
-                            createdAt: rep.created_at,
-                            subject: '',
-                            isReadByAdmin: true,
-                            isNew: unread,
-                            timeLabel: new Date(rep.created_at).toLocaleString(
-                                document.documentElement.lang === 'en' ? 'en-US' : 'id-ID',
-                                { hour: '2-digit', minute: '2-digit' },
-                            ),
-                        });
-                    }
-                }
-                bubbles.sort(
-                    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-                );
-                this.messages = bubbles;
+                this.messages = await fetchContactThread(user.email);
 
                 await fetch('/api/contact/mark-read', {
                     method: 'POST',
@@ -7170,6 +7823,12 @@ document.addEventListener('alpine:init', () => {
             if (!text || this.sending) return;
             const user = getAuthUser();
             if (!user?.email) return;
+
+            const captchaToken = this.chatCaptchaToken();
+            if (captchaToken === null) {
+                this.sendError = turnstileRequiredMessage();
+                return;
+            }
 
             this.sending = true;
             this.sendError = '';
@@ -7201,10 +7860,16 @@ document.addEventListener('alpine:init', () => {
                         email: user.email,
                         subject: storefrontL('Pesan Dukungan Pelanggan', 'Customer Support Message'),
                         message: text,
+                        _hp: '',
+                        captcha_token: captchaToken,
                     }),
                 });
                 const data = await readApiJson(res);
-                if (!res.ok) throw new Error(apiErrorMessage(data, storefrontL('Gagal mengirim pesan.', 'Failed to send message.')));
+                if (!res.ok) {
+                    if (data?.captcha_required) await this.askChatCaptchaAgain();
+                    throw new Error(apiErrorMessage(data, storefrontL('Gagal mengirim pesan.', 'Failed to send message.')));
+                }
+                this.markChatCaptchaPassed();
                 await this.load(true);
             } catch (err) {
                 this.messages = this.messages.filter((m) => m.id !== pendingId);
@@ -8098,6 +8763,7 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({
                         ...payload,
                         guest_email: this.form.email,
+                        _hp: '',
                     }),
                 });
                 const data = await readApiJson(res);
@@ -8826,6 +9492,7 @@ document.addEventListener('alpine:init', () => {
                         body: JSON.stringify({
                             ...payload,
                             guest_email: this.form.email,
+                            _hp: '',
                         }),
                     });
                     const data = await readApiJson(res);
@@ -8846,6 +9513,7 @@ document.addEventListener('alpine:init', () => {
                         body: JSON.stringify({
                             ...payload,
                             guest_email: this.form.email,
+                            _hp: '',
                         }),
                     });
                     const data = await readApiJson(res);
@@ -10067,6 +10735,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindFooterEntrance();
     initBerandaMotion(document);
     bindAdminNav();
+    initSourceGuard(getAuthUser);
     scheduleSiteTrafficPing();
     startSiteTrafficHeartbeat();
     try {
