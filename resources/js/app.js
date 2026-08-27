@@ -629,6 +629,14 @@ function playFooterEntrance(footer) {
         footer.classList.add('is-footer-ready', 'is-footer-settled');
         return;
     }
+    // A hidden tab does not run animation frames, so the entrance transition
+    // would freeze at its start value while the settle timer still fires. Skip
+    // straight to the end state -- nobody is watching the stagger anyway.
+    if (document.hidden) {
+        footer.classList.remove('is-footer-resetting');
+        footer.classList.add('is-footer-ready', 'is-footer-settled');
+        return;
+    }
     if (footer._footerEnterTimer) window.clearTimeout(footer._footerEnterTimer);
     footer.classList.remove('is-footer-ready', 'is-footer-settled');
     footer.classList.add('is-footer-resetting');
@@ -641,6 +649,14 @@ function playFooterEntrance(footer) {
             footer._footerEnterTimer = window.setTimeout(() => {
                 footer.classList.add('is-footer-settled');
             }, 1200);
+            // If the tab is hidden before the transition finishes it stalls
+            // mid-flight; settling on return guarantees the footer is visible.
+            const settleOnReturn = () => {
+                if (document.hidden) return;
+                document.removeEventListener('visibilitychange', settleOnReturn);
+                footer.classList.add('is-footer-ready', 'is-footer-settled');
+            };
+            document.addEventListener('visibilitychange', settleOnReturn);
         });
     });
 }

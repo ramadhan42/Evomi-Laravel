@@ -2110,6 +2110,17 @@ body.evomi-belanja-page #evomi-header-spacer {
     transform: translate3d(0, 0, 0);
 }
 
+/* Settled is declared explicitly instead of being left to the :not() rules
+   dropping out. A transition that never advanced -- a tab hidden mid-entrance
+   freezes it at time 0 -- otherwise stays pinned at opacity 0 and the footer
+   columns never appear. transition: none cancels it and snaps to the end state. */
+.evomi-footer.is-footer-settled [data-footer-enter] {
+    opacity: var(--footer-enter-opacity, 1);
+    transform: none;
+    transition: none;
+    will-change: auto;
+}
+
 .evomi-footer__bulletin { --footer-enter-delay: 0s; }
 .evomi-footer__nav > [data-footer-enter]:nth-child(1) { --footer-enter-delay: 0.1s; }
 .evomi-footer__nav > [data-footer-enter]:nth-child(2) { --footer-enter-delay: 0.18s; }
