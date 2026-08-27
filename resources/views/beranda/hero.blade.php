@@ -206,17 +206,23 @@
         data-hero-enter="fade"
         style="--hero-enter-delay: 1.15s; --hero-enter-dur: 0.7s;"
     >
-        <div class="animate-marquee flex items-center gap-4 sm:gap-6 md:gap-8">
-            @for ($i = 0; $i < 4; $i++)
-                <div class="flex items-center gap-4 sm:gap-6 md:gap-8 shrink-0">
-                    @foreach ($dividerIcons as $idx => $icon)
-                        <div class="flex items-center gap-4 sm:gap-6 md:gap-8">
-                            <span class="hero-marquee-text whitespace-nowrap text-white font-medium">{{ $marqueeText }}</span>
-                            <div class="hero-div-icon-{{ $idx + 1 }} relative shrink-0">
-                                <img src="{{ $icon }}" alt="" class="w-full h-full object-contain">
+        {{-- Exactly 2 equal halves + trailing pad = gap → seamless -50% loop (40s). --}}
+        <div class="animate-marquee flex items-center">
+            @for ($dup = 0; $dup < 2; $dup++)
+                <div
+                    class="marquee-group gap-4 sm:gap-6 md:gap-8 pr-4 sm:pr-6 md:pr-8"
+                    @if ($dup === 1) aria-hidden="true" @endif
+                >
+                    @for ($i = 0; $i < 2; $i++)
+                        @foreach ($dividerIcons as $idx => $icon)
+                            <div class="flex items-center gap-4 sm:gap-6 md:gap-8">
+                                <span class="hero-marquee-text whitespace-nowrap text-white font-medium">{{ $marqueeText }}</span>
+                                <div class="hero-div-icon-{{ $idx + 1 }} relative shrink-0">
+                                    <img src="{{ $icon }}" alt="" class="w-full h-full object-contain">
+                                </div>
                             </div>
-                        </div>
-                    @endforeach
+                        @endforeach
+                    @endfor
                 </div>
             @endfor
         </div>

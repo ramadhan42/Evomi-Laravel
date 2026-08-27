@@ -29,6 +29,44 @@
     $addCartLabel = $lbl('add_cart', '+ Keranjang', '+ Cart');
     $stockLabel = $lbl('stock', 'Stok:', 'Stock:');
     $outOfStockLabel = evomi_l('Stok habis', 'Out of stock');
+
+    // Disclaimer bilingual — model `disclaimers` is ID-only; CMS has EN items.
+    $detailCmsId = \App\Support\CmsStorefront::forPage('belanja_details', 'id');
+    $disclaimerEnRows = \App\Models\SiteContent::query()
+        ->where('page', 'belanja_details')
+        ->where('section', 'disclaimer')
+        ->where('locale', 'en')
+        ->pluck('value', 'key');
+    $discTitleId = $detailCmsId->get('disclaimer', 'title', 'Disclaimer untuk Ketentuan COMPLAIN');
+    $discTitleEn = trim((string) ($disclaimerEnRows['title'] ?? ''));
+    if ($discTitleEn === '') {
+        $discTitleEn = 'Disclaimer for Complaint Terms';
+    }
+    $discItemsId = [];
+    for ($n = 1; $n <= 6; $n++) {
+        $v = trim($detailCmsId->get('disclaimer', 'item_'.$n, ''));
+        if ($v !== '') {
+            $discItemsId[] = $v;
+        }
+    }
+    if ($discItemsId === [] && is_array($disclaimers ?? null)) {
+        $discItemsId = array_values(array_filter(array_map('strval', $disclaimers)));
+    }
+    $discItemsEn = [];
+    for ($n = 1; $n <= 6; $n++) {
+        $v = trim((string) ($disclaimerEnRows['item_'.$n] ?? ''));
+        if ($v !== '') {
+            $discItemsEn[] = $v;
+        }
+    }
+    if ($discItemsEn === []) {
+        $discItemsEn = [
+            'Actual color and scent may vary slightly depending on the production batch.',
+            'Store in a cool place, away from direct sunlight.',
+            'Complaints are only accepted within 2x24 hours after delivery, with an unboxing video.',
+            'Products with broken seals cannot be returned except for manufacturing defects.',
+        ];
+    }
 @endphp
 
 <section
@@ -163,11 +201,18 @@
             </div>
 
             <div class="mb-8">
-                <h4 class="font-nohemi text-[20px] font-semibold mb-3" style="color: {{ $product['accent'] }}">{{ $detailCms->get('disclaimer', 'title', evomi_l('Disclaimer untuk Ketentuan COMPLAIN', 'Disclaimer for Complaint Terms')) }}</h4>
+                <h4
+                    class="font-nohemi text-[20px] font-semibold mb-3"
+                    style="color: {{ $product['accent'] }}"
+                    x-text="$store.i18n.locale === 'en' ? @js($discTitleEn) : @js($discTitleId)"
+                >{{ $discTitleId }}</h4>
                 <div class="text-[14px] font-parkinsans font-normal text-[#4A5565] leading-relaxed flex flex-col gap-1.5">
-                    @foreach ($disclaimers as $i => $text)
-                        <p>{{ $i + 1 }}. {{ $text }}</p>
-                    @endforeach
+                    <template
+                        x-for="(text, i) in ($store.i18n.locale === 'en' ? @js($discItemsEn) : @js($discItemsId))"
+                        :key="'disc-' + i"
+                    >
+                        <p x-text="(Number(i) + 1) + '. ' + text"></p>
+                    </template>
                 </div>
             </div>
 

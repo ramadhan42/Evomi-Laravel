@@ -141,15 +141,21 @@
     </div>
 
     <div class="absolute bottom-[7%] md:bottom-10 left-0 w-full overflow-hidden py-2.5 md:py-4 border-y border-white/10 z-40 bg-[#0071BC]">
-        <div class="animate-marquee flex items-center gap-4 md:gap-8">
-            @for ($i = 0; $i < 4; $i++)
-                <div class="flex items-center gap-4 md:gap-8 shrink-0">
-                    @foreach ($marqueeIcons as $icon)
-                        <span class="cms-fs text-[11px] md:text-[14px] whitespace-nowrap text-white" style="{{ $cms->fontInline('sixth', 'marquee_text', '500') }}">{{ $marqueeText }}</span>
-                        <div class="relative w-[14px] h-[14px] md:w-[25px] md:h-[25px] shrink-0">
-                            <img src="{{ $icon }}" alt="" class="w-full h-full object-contain">
-                        </div>
-                    @endforeach
+        {{-- Exactly 2 equal halves + trailing pad = gap → seamless -50% loop (40s). --}}
+        <div class="animate-marquee flex items-center">
+            @for ($dup = 0; $dup < 2; $dup++)
+                <div
+                    class="marquee-group gap-4 md:gap-8 pr-4 md:pr-8"
+                    @if ($dup === 1) aria-hidden="true" @endif
+                >
+                    @for ($i = 0; $i < 2; $i++)
+                        @foreach ($marqueeIcons as $icon)
+                            <span class="cms-fs text-[11px] md:text-[14px] whitespace-nowrap text-white" style="{{ $cms->fontInline('sixth', 'marquee_text', '500') }}">{{ $marqueeText }}</span>
+                            <div class="relative w-[14px] h-[14px] md:w-[25px] md:h-[25px] shrink-0">
+                                <img src="{{ $icon }}" alt="" class="w-full h-full object-contain">
+                            </div>
+                        @endforeach
+                    @endfor
                 </div>
             @endfor
         </div>

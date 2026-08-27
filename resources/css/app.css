@@ -300,19 +300,31 @@ body *,
     font-family: var(--font-syne), sans-serif;
 }
 
+/* Seamless marquee: parent must have NO gap. Each half uses trailing
+   padding equal to its internal gap so the join matches item spacing.
+   translate3d(-50%) then loops without a visible jump. */
 @keyframes marqueeScroll {
     0% {
-        transform: translateX(0);
+        transform: translate3d(0, 0, 0);
     }
     100% {
-        transform: translateX(-50%);
+        transform: translate3d(-50%, 0, 0);
     }
 }
 
 .animate-marquee {
     display: flex;
     width: max-content;
+    column-gap: 0;
+    row-gap: 0;
     animation: marqueeScroll 40s linear infinite;
+    will-change: transform;
+}
+
+.animate-marquee > .marquee-group {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
 }
 
 @keyframes slideRightSeamless {

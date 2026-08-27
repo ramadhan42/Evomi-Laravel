@@ -1,35 +1,49 @@
 @php
     $current = request()->route()?->getName();
-    $navCms = \App\Support\CmsStorefront::forPage('navbar');
+    // Load ID + EN so navbar can switch live on toggle (soft-nav does not remount header).
+    $navCmsId = \App\Support\CmsStorefront::forPage('navbar', 'id');
+    // EN rows only — forPage('en') merges ID underneath and would hide missing EN translations.
+    $navEnMenu = \App\Models\SiteContent::query()
+        ->where('page', 'navbar')
+        ->where('section', 'menu')
+        ->where('locale', 'en')
+        ->pluck('value', 'key');
+    $navLabel = static function (string $key, string $idDefault, string $enDefault) use ($navCmsId, $navEnMenu): array {
+        $en = trim((string) ($navEnMenu[$key] ?? ''));
+
+        return [
+            'label_id' => $navCmsId->get('menu', $key, $idDefault),
+            'label_en' => $en !== '' ? $en : $enDefault,
+        ];
+    };
     $navLinks = [
-        [
+        array_merge([
             'href' => route('beranda'),
-            'label' => $navCms->get('menu', 'beranda', evomi_l('Beranda', 'Home')),
             'route' => 'beranda',
             'match' => '/',
-        ],
-        [
+        ], $navLabel('beranda', 'Beranda', 'Home')),
+        array_merge([
             'href' => route('beranda') . '#about',
-            'label' => $navCms->get('menu', 'tentang', evomi_l('Tentang', 'About')),
             'route' => null,
             'match' => '#about',
-        ],
-        [
+        ], $navLabel('tentang', 'Tentang', 'About')),
+        array_merge([
             'href' => route('belanja'),
-            'label' => $navCms->get('menu', 'belanja', evomi_l('Belanja', 'Shop')),
             'route' => 'belanja',
             'match' => '/belanja',
-        ],
-        [
+        ], $navLabel('belanja', 'Belanja', 'Shop')),
+        array_merge([
             'href' => route('kuis'),
-            'label' => evomi_l('Temukan Aromamu', 'Find Your Scent'),
             'route' => 'kuis',
             'match' => '/kuis',
-        ],
+        ], $navLabel('kuis', 'Temukan Aromamu', 'Find Your Scent')),
     ];
-    $navLogin = $navCms->get('menu', 'login', 'Login');
-    $navRegister = $navCms->get('menu', 'register', evomi_l('Daftar', 'Sign Up'));
-    $navLogout = $navCms->get('menu', 'logout', 'Logout');
+    $navLoginPair = $navLabel('login', 'Login', 'Login');
+    $navLogoutPair = $navLabel('logout', 'Logout', 'Logout');
+    $navLoginId = $navLoginPair['label_id'];
+    $navLoginEn = $navLoginPair['label_en'];
+    $navLogoutId = $navLogoutPair['label_id'];
+    $navLogoutEn = $navLogoutPair['label_en'];
 
     $isNavLinkActive = static function (?string $routeName, ?string $currentRoute): bool {
         if (! $routeName || ! $currentRoute) {
@@ -103,7 +117,10 @@
                         data-nav-index="{{ $i }}"
                         data-nav-match="{{ $link['match'] }}"
                     >
-                        <span class="relative z-[1] flex items-center leading-none">{{ $link['label'] }}</span>
+                        <span
+                            class="relative z-[1] flex items-center leading-none"
+                            x-text="locale === 'en' ? @js($link['label_en']) : @js($link['label_id'])"
+                        >{{ $link['label_id'] }}</span>
                     </a>
                 @endforeach
             </div>
@@ -120,7 +137,7 @@
                             <button
                                 type="button"
                                 class="nav-avatar relative flex items-center justify-center w-10 h-10 rounded-full bg-white text-[var(--nav-color)] font-bold text-[15px] border-2 border-white/90 shadow-sm overflow-hidden"
-                                aria-label="{{ evomi_l('Menu akun', 'Account menu') }}"
+                                :aria-label="locale === 'en' ? 'Account menu' : 'Menu akun'"
                                 :aria-expanded="accountMenuOpen.toString()"
                                 aria-haspopup="menu"
                                 @click="toggleAccountMenu()"
@@ -147,7 +164,7 @@
                             <div
                                 class="nav-avatar-tooltip"
                                 role="menu"
-                                aria-label="{{ evomi_l('Menu akun', 'Account menu') }}"
+                                :aria-label="locale === 'en' ? 'Account menu' : 'Menu akun'"
                             >
                                 <div class="relative z-[1] space-y-2.5 text-left">
                                     <div class="flex items-center gap-2.5 px-1">
@@ -164,7 +181,7 @@
                                             <span x-show="!userAvatar" x-text="userInitial"></span>
                                         </span>
                                         <div class="min-w-0">
-                                            <p class="text-[12px] font-bold text-gray-900 leading-tight">{{ evomi_l('Akun Saya', 'My Account') }}</p>
+                                            <p class="text-[12px] font-bold text-gray-900 leading-tight" x-text="locale === 'en' ? 'My Account' : 'Akun Saya'">Akun Saya</p>
                                             <p class="text-[11px] text-gray-500 truncate mt-0.5" x-text="userEmail"></p>
                                         </div>
                                     </div>
@@ -183,8 +200,8 @@
                                                     @include('partials.icons.dashboard', ['class' => 'w-[15px] h-[15px]'])
                                                 </span>
                                                 <div class="min-w-0">
-                                                    <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Dashboard Admin', 'Admin Dashboard') }}</p>
-                                                    <p class="text-[10px] text-gray-500 mt-0.5">{{ evomi_l('Kelola toko & CMS Evomi', 'Manage Evomi store & CMS') }}</p>
+                                                    <p class="text-[11px] font-semibold text-gray-800" x-text="locale === 'en' ? 'Admin Dashboard' : 'Dashboard Admin'">Dashboard Admin</p>
+                                                    <p class="text-[10px] text-gray-500 mt-0.5" x-text="locale === 'en' ? 'Manage Evomi store & CMS' : 'Kelola toko & CMS Evomi'">Kelola toko & CMS Evomi</p>
                                                 </div>
                                             </div>
                                         </a>
@@ -196,8 +213,8 @@
                                                 @include('partials.icons.user', ['class' => 'w-[15px] h-[15px]'])
                                             </span>
                                             <div class="min-w-0">
-                                                <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Pengaturan Profil', 'Profile Settings') }}</p>
-                                                <p class="text-[10px] text-gray-500 mt-0.5">{{ evomi_l('Data akun & pengaturan', 'Account data & settings') }}</p>
+                                                <p class="text-[11px] font-semibold text-gray-800" x-text="locale === 'en' ? 'Profile Settings' : 'Pengaturan Profil'">Pengaturan Profil</p>
+                                                <p class="text-[10px] text-gray-500 mt-0.5" x-text="locale === 'en' ? 'Account data & settings' : 'Data akun & pengaturan'">Data akun & pengaturan</p>
                                             </div>
                                         </div>
                                     </a>
@@ -213,8 +230,8 @@
                                                 @include('partials.icons.cart', ['class' => 'w-[15px] h-[15px]'])
                                             </span>
                                             <div class="min-w-0 text-left">
-                                                <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Keranjang Saya', 'My Cart') }}</p>
-                                                <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('cart', $L('Lihat item di keranjang', 'View items in cart'), $L('Keranjang kosong', 'Cart is empty'))"></p>
+                                                <p class="text-[11px] font-semibold text-gray-800" x-text="locale === 'en' ? 'My Cart' : 'Keranjang Saya'">Keranjang Saya</p>
+                                                <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('cart', locale === 'en' ? 'View items in cart' : 'Lihat item di keranjang', locale === 'en' ? 'Cart is empty' : 'Keranjang kosong')"></p>
                                             </div>
                                         </div>
                                         <span
@@ -235,8 +252,8 @@
                                                 @include('partials.icons.truck', ['class' => 'w-[15px] h-[15px]'])
                                             </span>
                                             <div class="min-w-0 text-left">
-                                                <p class="text-[11px] font-semibold text-gray-800">{{ evomi_l('Lacak Pesanan', 'Track Order') }}</p>
-                                                <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('history', $L('Pantau status pengiriman', 'Monitor shipping status'), $L('Belum ada pesanan', 'No orders yet'))"></p>
+                                                <p class="text-[11px] font-semibold text-gray-800" x-text="locale === 'en' ? 'Track Order' : 'Lacak Pesanan'">Lacak Pesanan</p>
+                                                <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('history', locale === 'en' ? 'Monitor shipping status' : 'Pantau status pengiriman', locale === 'en' ? 'No orders yet' : 'Belum ada pesanan')"></p>
                                             </div>
                                         </div>
                                         <span
@@ -270,8 +287,8 @@
                                                 @include('partials.icons.logout', ['class' => 'w-[15px] h-[15px]'])
                                             </span>
                                             <div class="min-w-0 text-left">
-                                                <p class="text-[11px] font-semibold text-rose-600" x-text="logoutLoading ? $L('Keluar...', 'Logging out...') : @js($navLogout)"></p>
-                                                <p class="text-[10px] text-rose-400/90 mt-0.5">{{ evomi_l('Keluar dari akun Evomi', 'Sign out of Evomi') }}</p>
+                                                <p class="text-[11px] font-semibold text-rose-600" x-text="logoutLoading ? (locale === 'en' ? 'Logging out...' : 'Keluar...') : (locale === 'en' ? @js($navLogoutEn) : @js($navLogoutId))"></p>
+                                                <p class="text-[10px] text-rose-400/90 mt-0.5" x-text="locale === 'en' ? 'Sign out of Evomi' : 'Keluar dari akun Evomi'">Keluar dari akun Evomi</p>
                                             </div>
                                         </div>
                                     </button>
@@ -282,7 +299,7 @@
                         <button
                             type="button"
                             class="nav-cart-btn relative z-[1] inline-flex items-center justify-center size-10 rounded-full text-white"
-                            :aria-label="$L('Keranjang', 'Cart')"
+                            :aria-label="locale === 'en' ? 'Cart' : 'Keranjang'"
                             @click="closeAccountMenu(); openAccountDrawer()"
                         >
                             @include('partials.icons.cart', ['class' => 'w-[18px] h-[18px]'])
@@ -304,12 +321,15 @@
                             class="nav-pill nav-login-link relative z-[1] inline-flex justify-center items-center h-10 px-4 text-[14px] font-normal leading-none rounded-full text-white nav-soft"
                             data-soft-nav
                         >
-                            <span class="relative z-[1] flex items-center leading-none">{{ $navLogin }}</span>
+                            <span
+                                class="relative z-[1] flex items-center leading-none"
+                                x-text="locale === 'en' ? @js($navLoginEn) : @js($navLoginId)"
+                            >{{ $navLoginId }}</span>
                         </a>
                         <button
                             type="button"
                             class="nav-cart-btn relative z-[1] inline-flex items-center justify-center size-10 rounded-full text-white"
-                            :aria-label="$L('Keranjang', 'Cart')"
+                            :aria-label="locale === 'en' ? 'Cart' : 'Keranjang'"
                             @click="openAccountDrawer()"
                         >
                             @include('partials.icons.cart', ['class' => 'w-[18px] h-[18px]'])
@@ -328,7 +348,7 @@
                 <button
                     type="button"
                     class="nav-cart-btn relative z-[1] inline-flex items-center justify-center w-10 h-10 rounded-full text-white"
-                    :aria-label="$L('Keranjang', 'Cart')"
+                    :aria-label="locale === 'en' ? 'Cart' : 'Keranjang'"
                     @click="openAccountDrawer()"
                 >
                     @include('partials.icons.cart')
@@ -344,7 +364,9 @@
                     class="inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/15 transition-colors"
                     @click="open = !open"
                     :aria-expanded="open.toString()"
-                    :aria-label="open ? $L('Tutup menu', 'Close menu') : $L('Buka menu', 'Open menu')"
+                    :aria-label="open
+                        ? (locale === 'en' ? 'Close menu' : 'Tutup menu')
+                        : (locale === 'en' ? 'Open menu' : 'Buka menu')"
                 >
                     <svg x-show="!open" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -386,7 +408,10 @@
                         x-cloak
                         aria-hidden="true"
                     ></span>
-                    <span class="relative z-[1]">{{ $link['label'] }}</span>
+                    <span
+                        class="relative z-[1]"
+                        x-text="locale === 'en' ? @js($link['label_en']) : @js($link['label_id'])"
+                    >{{ $link['label_id'] }}</span>
                 </a>
             @endforeach
 
@@ -406,7 +431,7 @@
                             <span x-show="!userAvatar" x-text="userInitial"></span>
                         </span>
                         <div class="min-w-0">
-                            <p class="text-[11px] font-bold text-white/90">{{ evomi_l('Akun Saya', 'My Account') }}</p>
+                            <p class="text-[11px] font-bold text-white/90" x-text="locale === 'en' ? 'My Account' : 'Akun Saya'">Akun Saya</p>
                             <p class="text-[11px] text-white/60 truncate" x-text="userEmail"></p>
                         </div>
                     </div>
@@ -417,24 +442,24 @@
                             @click="open = false"
                         >
                             <span class="relative z-[1] inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.dashboard', ['class' => 'w-3.5 h-3.5'])</span>
-                            <span class="relative z-[1]">{{ evomi_l('Dashboard Admin', 'Admin Dashboard') }}</span>
+                            <span class="relative z-[1]" x-text="locale === 'en' ? 'Admin Dashboard' : 'Dashboard Admin'">Dashboard Admin</span>
                         </a>
                     </template>
                     <a href="{{ route('profile.index') }}" data-soft-nav class="nav-pill relative z-[1] flex items-center gap-2.5 w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false">
                         <span class="relative z-[1] inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.user', ['class' => 'w-3.5 h-3.5'])</span>
-                        <span class="relative z-[1]">{{ evomi_l('Pengaturan Profil', 'Profile Settings') }}</span>
+                        <span class="relative z-[1]" x-text="locale === 'en' ? 'Profile Settings' : 'Pengaturan Profil'">Pengaturan Profil</span>
                     </a>
                     <button type="button" class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false; openAccountDrawer('cart')">
                         <span class="relative z-[1] inline-flex items-center gap-2.5">
                             <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.cart', ['class' => 'w-3.5 h-3.5'])</span>
-                            <span>{{ evomi_l('Keranjang Saya', 'My Cart') }}</span>
+                            <span x-text="locale === 'en' ? 'My Cart' : 'Keranjang Saya'">Keranjang Saya</span>
                         </span>
                         <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('cart') || '0'"></span>
                     </button>
                     <button type="button" class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false; openAccountDrawer('track')">
                         <span class="relative z-[1] inline-flex items-center gap-2.5">
                             <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.truck', ['class' => 'w-3.5 h-3.5'])</span>
-                            <span>{{ evomi_l('Lacak Pesanan', 'Track Order') }}</span>
+                            <span x-text="locale === 'en' ? 'Track Order' : 'Lacak Pesanan'">Lacak Pesanan</span>
                         </span>
                         <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('history') || '0'"></span>
                     </button>
@@ -454,7 +479,7 @@
                         <span class="relative z-[1] inline-flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/25 text-rose-100">
                             @include('partials.icons.logout', ['class' => 'w-3.5 h-3.5'])
                         </span>
-                        <span class="relative z-[1]" x-text="logoutLoading ? $L('Keluar...', 'Logging out...') : @js($navLogout)"></span>
+                        <span class="relative z-[1]" x-text="logoutLoading ? (locale === 'en' ? 'Logging out...' : 'Keluar...') : (locale === 'en' ? @js($navLogoutEn) : @js($navLogoutId))"></span>
                     </button>
                 </div>
             </template>
@@ -467,14 +492,14 @@
                         data-soft-nav
                         @click="open = false"
                     >
-                        <span class="relative z-[1]">{{ $navLogin }}</span>
+                        <span class="relative z-[1]" x-text="locale === 'en' ? @js($navLoginEn) : @js($navLoginId)">{{ $navLoginId }}</span>
                     </a>
                     <button
                         type="button"
                         class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white"
                         @click="open = false; openAccountDrawer()"
                     >
-                        <span class="relative z-[1]">{{ evomi_l('Keranjang', 'Cart') }}</span>
+                        <span class="relative z-[1]" x-text="locale === 'en' ? 'Cart' : 'Keranjang'">Keranjang</span>
                         <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('cart') || '0'"></span>
                     </button>
                 </div>
@@ -540,17 +565,17 @@
                 <div class="space-y-1.5 md:space-y-3">
                     <h3 id="evomi-logout-title" class="text-[16px] md:text-[20px] font-bold text-gray-800 tracking-wide" x-text="
                         logoutModal.type === 'loading'
-                            ? $L('Memproses...', 'Processing...')
+                            ? (locale === 'en' ? 'Processing...' : 'Memproses...')
                             : logoutModal.type === 'success'
-                                ? $L('Berhasil Keluar', 'Logged Out Successfully')
-                                : $L('Konfirmasi Keluar', 'Confirm Logout')
+                                ? (locale === 'en' ? 'Logged Out Successfully' : 'Berhasil Keluar')
+                                : (locale === 'en' ? 'Confirm Logout' : 'Konfirmasi Keluar')
                     "></h3>
                     <p class="text-[11px] md:text-[12px] text-gray-500 leading-relaxed px-1" x-text="
                         logoutModal.type === 'loading'
-                            ? $L('Sedang mengeluarkan akun Anda...', 'Logging you out...')
+                            ? (locale === 'en' ? 'Logging you out...' : 'Sedang mengeluarkan akun Anda...')
                             : logoutModal.type === 'success'
-                                ? $L('Sampai jumpa kembali di Evomi!', 'See you again at Evomi!')
-                                : $L('Apakah Anda yakin ingin keluar dari akun Evomi?', 'Are you sure you want to log out of your Evomi account?')
+                                ? (locale === 'en' ? 'See you again at Evomi!' : 'Sampai jumpa kembali di Evomi!')
+                                : (locale === 'en' ? 'Are you sure you want to log out of your Evomi account?' : 'Apakah Anda yakin ingin keluar dari akun Evomi?')
                     "></p>
                 </div>
 
@@ -559,12 +584,12 @@
                         type="button"
                         class="w-full font-bold py-2 md:py-3 rounded-xl text-[11px] md:text-[12px] bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
                         @click="cancelLogout()"
-                    >{{ evomi_l('Batal', 'Cancel') }}</button>
+                    ><span x-text="locale === 'en' ? 'Cancel' : 'Batal'">Batal</span></button>
                     <button
                         type="button"
                         class="w-full font-bold py-2 md:py-3 rounded-xl text-[11px] md:text-[12px] bg-red-500 text-white hover:bg-red-600 transition-colors"
                         @click="confirmLogout()"
-                    >{{ evomi_l('Ya, Keluar', 'Yes, Log Out') }}</button>
+                    ><span x-text="locale === 'en' ? 'Yes, Log Out' : 'Ya, Keluar'">Ya, Keluar</span></button>
                 </div>
 
                 <div
