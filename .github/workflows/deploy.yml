@@ -224,9 +224,18 @@ jobs:
 
           # grep -c menghitung BARIS, sedangkan HTML di sini praktis satu baris
           # panjang - jadi kemunculan dihitung lewat grep -o | wc -l.
-          count() { printf '%s' "$1" | grep -o "$2" | wc -l | tr -d ' '; }
+          #
+          # `|| true` bukan hiasan: grep keluar dengan status 1 kalau tidak
+          # menemukan apa pun, dan pipefail meneruskan status itu. Padahal di
+          # sini NOL kemunculan justru hasil yang benar - ikon keranjang memang
+          # sudah dihapus. Karena runner menjalankan skrip ini dengan `bash -e`,
+          # tanpa penetral itu langkah verifikasi berhenti gagal tepat ketika
+          # situsnya sudah sesuai harapan.
+          count() { printf '%s' "$1" | grep -o "$2" | wc -l | tr -d ' ' || true; }
 
-          js=$(printf '%s' "$home" | grep -oE '/build/assets/app-[A-Za-z0-9_-]+\.js' | head -1)
+          # head menutup pipa setelah baris pertama, jadi grep bisa kena SIGPIPE
+          # dan statusnya ikut menggagalkan langkah ini. Dinetralkan juga.
+          js=$(printf '%s' "$home" | grep -oE '/build/assets/app-[A-Za-z0-9_-]+\.js' | head -1 || true)
           webp=$(count "$home" '\.webp')
           png=$(count "$home" '\.png')
           mp=$(count "$detail" 'evomi-mp__btn')
