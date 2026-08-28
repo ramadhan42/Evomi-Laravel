@@ -85,6 +85,24 @@ return [
             ],
         ],
     ],
+    /*
+    |--------------------------------------------------------------------------
+    | Harga tampilan
+    |--------------------------------------------------------------------------
+    |
+    | Harga coret dan harga jual yang tampil di beranda serta halaman detail.
+    | Ditaruh di sini - bukan di tabel produk - supaya perubahan harga promo ikut
+    | ter-deploy bersama kode dan tidak perlu disunting ulang di tiap lingkungan.
+    |
+    | compare_at : harga sebelum diskon, ditampilkan tercoret. null -> tanpa coretan.
+    | display    : harga jual yang ditampilkan. null -> pakai harga dari tabel produk.
+    |
+    */
+    'pricing' => [
+        'compare_at' => 250000,
+        'display' => 190000,
+    ],
+
 
     /*
     |--------------------------------------------------------------------------

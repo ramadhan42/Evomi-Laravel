@@ -7579,3 +7579,85 @@ select.admin-field-input {
         transform: none;
     }
 }
+
+/* Varian modal beranda.
+
+   Panel kanan modal jauh lebih sempit daripada kolom di halaman detail belanja,
+   dan tingginya dibatasi (md:h-[560px]). Tiga tombol berukuran penuh akan
+   mendorong harga serta spesifikasi keluar area pandang, jadi di sini tombolnya
+   dirapatkan - bentuk, warna, dan animasinya tetap sama persis. */
+.evomi-mp--modal {
+    margin-top: 0.15rem;
+    gap: 0.45rem;
+}
+
+.evomi-mp--modal .evomi-mp__lead {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.evomi-mp--modal .evomi-mp__list {
+    gap: 0.45rem;
+}
+
+.evomi-mp--modal .evomi-mp__btn {
+    padding: 0.5rem 0.9rem;
+    border-width: 1.6px;
+    font-size: 13.5px;
+}
+
+.evomi-mp--modal .evomi-mp__icon {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.evomi-mp--modal .evomi-mp__icon svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+.evomi-mp--modal .evomi-mp__arrow {
+    width: 0.95rem;
+    height: 0.95rem;
+}
+
+/* Varian tanpa tautan marketplace - tetap beri keterangan, bukan ruang kosong */
+.evomi-mp__empty {
+    margin-top: 0.4rem;
+    font-family: Parkinsans, ui-sans-serif, system-ui, sans-serif;
+    font-size: 12.5px;
+    text-align: center;
+    color: #94a3b8;
+}
+
+/* Harga coret.
+
+   Ditaruh di atas harga jual, bukan di sampingnya: di kotak belanja dan di
+   modal lebarnya sempit, dan menaruhnya sebaris membuat angka jualnya - yang
+   justru harus paling menonjol - ikut mengecil. */
+.evomi-price {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.evomi-price__compare {
+    display: block;
+    margin-bottom: 0.1rem;
+    font-family: Parkinsans, ui-sans-serif, system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: #9ca3af;
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    text-decoration-color: #cbd5e1;
+}
+
+.evomi-product-modal .evomi-price__compare {
+    margin-bottom: 0;
+    font-size: 12px;
+}

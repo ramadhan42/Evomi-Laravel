@@ -2069,6 +2069,56 @@ function productGenderLabel(product) {
     return product?.gender || 'Unisex';
 }
 
+// Konfigurasi marketplace disuntik server-side sebagai <script type="application/json">
+// supaya config/evomi.php tetap satu-satunya sumber tautan.
+let marketplaceConfigCache = null;
+
+function marketplaceConfig() {
+    if (marketplaceConfigCache) return marketplaceConfigCache;
+
+    const el = document.getElementById('evomi-marketplace-config');
+
+    try {
+        marketplaceConfigCache = el ? JSON.parse(el.textContent || '{}') : {};
+    } catch {
+        marketplaceConfigCache = {};
+    }
+
+    return marketplaceConfigCache;
+}
+
+// Harga promo (harga coret + harga jual pengganti) juga disuntik server-side,
+// sumbernya config/evomi.php yang sama dengan halaman detail belanja.
+let pricingConfigCache = null;
+
+function pricingConfig() {
+    if (pricingConfigCache) return pricingConfigCache;
+
+    const el = document.getElementById('evomi-pricing-config');
+
+    try {
+        pricingConfigCache = el ? JSON.parse(el.textContent || '{}') : {};
+    } catch {
+        pricingConfigCache = {};
+    }
+
+    return pricingConfigCache;
+}
+
+// Varian tanpa tautan -> tombolnya tidak dirender, sama seperti di halaman detail.
+function productMarketplaceButtons(product) {
+    const personality = String(product?.personality_type || '').toLowerCase();
+
+    if (!personality) return [];
+
+    const cfg = marketplaceConfig();
+    const links = cfg.links?.[personality] || {};
+
+    return (cfg.channels || [])
+        .map((channel) => ({ ...channel, url: String(links[channel.key] || '').trim() }))
+        .filter((channel) => channel.url !== '');
+}
+
 function productAccent(product) {
     if (product?.color) return String(product.color);
     if (product?.accent) return String(product.accent);
@@ -2577,7 +2627,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         get unitPrice() {
-            return productPrice(this.product);
+            // Harga jual pengganti dari config; kosong -> harga produk apa adanya.
+            const override = Number(pricingConfig().display) || 0;
+
+            return override > 0 ? override : productPrice(this.product);
         },
 
         get priceLabel() {
@@ -2624,6 +2677,19 @@ document.addEventListener('alpine:init', () => {
         get scentNotes() {
             const p = this.product || {};
             return [p.top_note, p.middle_note, p.base_note].filter(Boolean);
+        },
+
+        get marketplaceButtons() {
+            return productMarketplaceButtons(this.product);
+        },
+
+        get hasMarketplaces() {
+            return this.marketplaceButtons.length > 0;
+        },
+
+        // Tombol dirender statis per kanal; yang tanpa tautan disembunyikan.
+        marketplaceUrl(key) {
+            return this.marketplaceButtons.find((mp) => mp.key === key)?.url || '';
         },
 
         async openProduct(productId) {

@@ -1,3 +1,35 @@
+@php
+    // Tombol marketplace menggantikan alur keranjang, sama seperti di halaman
+    // detail belanja. Tautan per varian tetap bersumber dari config/evomi.php,
+    // dikunci oleh personality_type produk.
+    $marketplaceChannels = config('evomi.marketplaces.channels', []);
+    $marketplaceLabel = evomi_l('Beli di', 'Buy on');
+
+    // Modal memuat produk lewat AJAX, jadi tautannya dikirim sekali sebagai data
+    // dan dipilih di sisi klien - bukan inline script, supaya tetap aman di CSP.
+    $marketplacePayload = [
+        'channels' => collect($marketplaceChannels)
+            ->map(fn ($meta, $key) => [
+                'key' => $key,
+                'label' => $meta['label'] ?? ucfirst($key),
+                'color' => $meta['color'] ?? '#111111',
+            ])
+            ->values(),
+        'links' => config('evomi.marketplaces.links', []),
+    ];
+
+    // Harga promo dari config/evomi.php - sama sumbernya dengan halaman detail
+    // belanja, jadi angka di modal dan di halaman tidak akan berbeda.
+    $comparePrice = (float) (config('evomi.pricing.compare_at') ?? 0);
+    $comparePriceLabel = $comparePrice > 0 ? 'Rp' . number_format($comparePrice, 0, ',', '.') : '';
+
+    // Produk dimuat lewat AJAX, jadi harga jual pengganti dikirim sebagai data.
+    $pricingPayload = ['display' => config('evomi.pricing.display')];
+@endphp
+
+<script type="application/json" id="evomi-marketplace-config">@json($marketplacePayload)</script>
+<script type="application/json" id="evomi-pricing-config">@json($pricingPayload)</script>
+
 {{-- Product detail modal — Figma-style split panel --}}
 <div
     class="evomi-product-modal fixed inset-0 z-[220] flex items-center justify-center p-3 sm:p-5"
@@ -105,7 +137,7 @@
                         <div class="evomi-skel evomi-skel--block"></div>
                         <div class="evomi-skel evomi-skel--block"></div>
                     </div>
-                    <div class="mt-auto flex items-end justify-between gap-4 mb-4">
+                    <div class="mt-auto mb-3">
                         <div class="space-y-2">
                             <div class="evomi-skel evomi-skel--xs w-14"></div>
                             <div class="evomi-skel evomi-skel--md w-28"></div>
@@ -159,42 +191,57 @@
                         </div>
                     </div>
 
-                    <div class="mt-auto flex items-end justify-between gap-4 mb-4">
+                    <div class="mt-auto mb-3">
                         <div>
                             <p class="text-[10px] font-semibold tracking-[1.5px] text-slate-400 mb-1">{{ evomi_l('HARGA', 'PRICE') }}</p>
+                            @if ($comparePriceLabel !== '')
+                                <span class="evomi-price__compare">{{ $comparePriceLabel }}</span>
+                            @endif
                             <p
                                 class="text-[24px] sm:text-[26px] font-bold leading-none tabular-nums"
                                 :style="{ color: $store.evomiProductModal.accent }"
                                 x-text="$store.evomiProductModal.priceLabel"
                             ></p>
                         </div>
-                        <div class="evomi-product-modal__qty shrink-0">
-                            <button
-                                type="button"
-                                :disabled="$store.evomiProductModal.qty <= 1 || $store.evomiProductModal.actionBusy"
-                                @click="$store.evomiProductModal.changeQty(-1)"
-                                aria-label="-"
-                            >−</button>
-                            <span x-text="$store.evomiProductModal.qty"></span>
-                            <button
-                                type="button"
-                                :disabled="$store.evomiProductModal.qty >= $store.evomiProductModal.stock || $store.evomiProductModal.actionBusy"
-                                @click="$store.evomiProductModal.changeQty(1)"
-                                aria-label="+"
-                            >+</button>
+                    </div>
+
+                    {{-- Pembelian diarahkan ke marketplace, sama seperti halaman detail belanja --}}
+                    <div class="evomi-mp evomi-mp--modal" x-show="$store.evomiProductModal.hasMarketplaces" x-cloak>
+                        <p class="evomi-mp__lead">{{ $marketplaceLabel }}</p>
+
+                        <div class="evomi-mp__list">
+                            @foreach ($marketplaceChannels as $mpKey => $mpMeta)
+                                <a
+                                    x-show="$store.evomiProductModal.marketplaceUrl('{{ $mpKey }}')"
+                                    x-cloak
+                                    :href="$store.evomiProductModal.marketplaceUrl('{{ $mpKey }}')"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="evomi-mp__btn evomi-mp__btn--{{ $mpKey }}"
+                                    style="--mp-color: {{ $mpMeta['color'] ?? '#111111' }}"
+                                    aria-label="{{ $marketplaceLabel }} {{ $mpMeta['label'] ?? ucfirst($mpKey) }}"
+                                >
+                                    <span class="evomi-mp__icon" aria-hidden="true">
+                                        @include('partials.icons.marketplace-' . $mpKey)
+                                    </span>
+
+                                    <span class="evomi-mp__text">{{ $mpMeta['label'] ?? ucfirst($mpKey) }}</span>
+
+                                    <svg class="evomi-mp__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M5 12h13" />
+                                        <path d="m12 5 7 7-7 7" />
+                                    </svg>
+                                </a>
+                            @endforeach
                         </div>
                     </div>
 
-                    <button
-                        type="button"
-                        class="evomi-product-modal__cta w-full inline-flex items-center justify-center gap-2 rounded-2xl py-3.5 text-[13px] sm:text-[14px] font-bold text-white disabled:opacity-50"
-                        :style="{ backgroundColor: $store.evomiProductModal.accent }"
-                        :disabled="$store.evomiProductModal.isOutOfStock || $store.evomiProductModal.actionBusy"
-                        @click="$store.evomiProductModal.addToCart()"
-                    >
-                        @include('partials.icons.cart', ['class' => 'w-4 h-4'])
-                        <span x-text="$store.evomiProductModal.ctaLabel"></span>
-                    </button>
+                    {{-- Varian tanpa tautan: beri keterangan, jangan sisakan ruang kosong --}}
+                    <p
+                        class="evomi-mp__empty"
+                        x-show="!$store.evomiProductModal.hasMarketplaces"
+                        x-cloak
+                    >{{ evomi_l('Belum tersedia di marketplace.', 'Not available on marketplaces yet.') }}</p>
 
                     <p
                         class="mt-3 text-xs font-medium min-h-[1rem] text-center"

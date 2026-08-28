@@ -1,10 +1,18 @@
 @php
+    // Harga promo diatur di config/evomi.php: harga coret + harga jual yang
+    // ditampilkan. Dipakai bersama oleh halaman ini dan modal produk di beranda
+    // supaya angkanya tidak pernah berbeda antar halaman.
+    $comparePrice = (float) (config('evomi.pricing.compare_at') ?? 0);
+    $displayPrice = (float) (config('evomi.pricing.display') ?? ($product['price'] ?? 0));
+    $comparePriceLabel = $comparePrice > 0 ? 'Rp' . number_format($comparePrice, 0, ',', '.') : '';
+    $displayPriceLabel = 'Rp' . number_format($displayPrice, 0, ',', '.');
+
     $detailPayload = [
         'id' => $product['id'],
         'title' => $product['title'],
         'description' => $product['description'] ?? '',
         'accent' => $product['accent'],
-        'price' => $product['price'],
+        'price' => $displayPrice,
         'stock' => $product['stock'],
         'gallery' => $gallery,
         'characterUrl' => $characterUrl,
@@ -19,16 +27,11 @@
     ];
     $detailCms = \App\Support\CmsStorefront::forPage('belanja_details');
     $lbl = fn (string $key, string $id, string $en = '') => $detailCms->get('labels', $key, $en !== '' ? evomi_l($id, $en) : evomi_l($id, $id));
-    $shipsFromLabel = $detailCms->get('shipping', 'ships_from_label', evomi_l('Dikirim dari', 'Ships from'));
-    $shippingOriginAddress = $detailCms->get('shipping', 'origin_address', 'Cisauk');
-    $freeShippingLabel = $detailCms->get('shipping', 'free_shipping_label', evomi_l('Gratis Ongkir', 'Free Shipping'));
-    $isFreeShipping = (bool) ($freeShipping ?? false);
-    $freeShippingLabel = $detailCms->get('shipping', 'free_shipping_label', evomi_l('Gratis Ongkir', 'Free Shipping'));
-    $isFreeShipping = (bool) ($freeShipping ?? false);
     // Tombol marketplace menggantikan alur keranjang/checkout internal.
     // Tautan per varian ada di config/evomi.php, dikunci personality_type.
     $marketplaceLabel = $lbl('marketplace', 'Beli di', 'Buy on');
     $marketplaceLinks = config('evomi.marketplaces.links.' . ($product['personality_type'] ?? ''), []);
+
     $marketplaceButtons = [];
 
     foreach (config('evomi.marketplaces.channels', []) as $mpKey => $mpMeta) {
@@ -46,8 +49,6 @@
             'url' => $mpUrl,
         ];
     }
-    $stockLabel = $lbl('stock', 'Stok:', 'Stock:');
-    $outOfStockLabel = evomi_l('Stok habis', 'Out of stock');
 
     // Disclaimer bilingual — model `disclaimers` is ID-only; CMS has EN items.
     $detailCmsId = \App\Support\CmsStorefront::forPage('belanja_details', 'id');
@@ -204,7 +205,12 @@
 
             <div class="mb-6">
                 <h4 class="font-nohemi text-[18px] md:text-[20px] font-bold mb-1" style="color: {{ $product['accent'] }}">{{ $lbl('price', 'Harga', 'Price') }}</h4>
-                <span class="font-nohemi text-[26px] md:text-[32px] font-semibold text-[#1A1A1A]">{{ $product['price_label'] }}</span>
+                <div class="evomi-price">
+                    @if ($comparePriceLabel !== '')
+                        <span class="evomi-price__compare">{{ $comparePriceLabel }}</span>
+                    @endif
+                    <span class="font-nohemi text-[26px] md:text-[32px] font-semibold text-[#1A1A1A]">{{ $displayPriceLabel }}</span>
+                </div>
             </div>
 
             <div class="mb-8">
@@ -234,44 +240,6 @@
                     </template>
                 </div>
             </div>
-
-            <div class="bg-white border border-gray-100 rounded-[16px] p-6 shadow-sm flex flex-col gap-5">
-                <h4 class="font-nohemi text-[20px] font-semibold text-[#1E2939]">{{ evomi_l('Pengiriman', 'Shipping') }}</h4>
-
-                <div class="flex gap-4 items-start">
-                    <svg class="text-gray-400 mt-0.5 shrink-0 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
-                    <div>
-                        <p class="text-[15px] text-[#6A7282] font-parkinsans">{{ $shipsFromLabel }}</p>
-                        <p class="text-[16px] font-semibold text-[#364153] font-parkinsans">{{ $shippingOriginAddress }}</p>
-                    </div>
-                </div>
-
-                <div class="flex gap-4 items-start" x-show="!freeShipping">
-                    <svg class="text-gray-400 mt-0.5 shrink-0 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m9.75 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h.375c.621 0 1.125-.504 1.125-1.125V14.25m-9.75 0h9.75"/></svg>
-                    <div class="w-full">
-                        <p class="text-[15px] text-[#6A7282] font-parkinsans" x-text="selectedKurir ? `${selectedKurir.nama} - ${selectedKurir.jenis}` : $L('Ongkir mulai', 'Shipping from')"></p>
-                        <p class="text-[16px] font-semibold text-[#364153] font-parkinsans" x-text="selectedKurir ? formatPrice(selectedKurir.harga) : '-'"></p>
-                        <p class="text-[15px] text-[#99A1AF] font-parkinsans mt-0.5">
-                            {{ evomi_l('Estimasi tiba', 'Estimated arrival') }} <span x-text="selectedKurir ? estimasiTiba(selectedKurir) : '-'"></span>
-                        </p>
-                        <p class="text-[13px] text-[#99A1AF] font-parkinsans mt-0.5" x-show="selectedKurir?.destinasi" x-text="selectedKurir?.destinasi" x-cloak></p>
-                        <button
-                            type="button"
-                            @click="showKurirList = true"
-                            class="mt-3 text-left font-parkinsans text-[15px] font-semibold underline-offset-4 hover:underline"
-                            :style="accentTextStyle"
-                        >{{ $lbl('other_couriers', 'Lihat Kurir Lainnya', 'See Other Couriers') }}</button>
-                    </div>
-                </div>
-
-                <div class="flex gap-4 items-start" x-show="freeShipping" x-cloak>
-                    <svg class="text-emerald-500 mt-0.5 shrink-0 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                    <div>
-                        <p class="text-[15px] text-[#6A7282] font-parkinsans">{{ $lbl('shipping', 'Ongkir', 'Shipping') }}</p>
-                        <p class="text-[16px] font-semibold text-emerald-700 font-parkinsans">{{ $freeShippingLabel }}</p>
-                    </div>
-                </div>
-            </div>
         </div>
 
         {{-- KANAN: Cart box --}}
@@ -288,46 +256,13 @@
 
                     <div class="p-5 flex flex-col gap-5">
                         <div>
+                            @if ($comparePriceLabel !== '')
+                                <span class="evomi-price__compare">{{ $comparePriceLabel }}</span>
+                            @endif
                             <div class="font-nohemi text-[28px] font-bold text-[#101828] leading-none" x-text="formatPrice(price)"></div>
                             <p class="mt-1 text-[12px] font-parkinsans text-[#CA3500]" x-show="hasCheckoutPromo" x-cloak>
-                                {{ evomi_l('Promo diterapkan saat checkout', 'Promo applied at checkout') }}
+                                {{ evomi_l('Promo tersedia di marketplace', 'Promo available on marketplaces') }}
                             </p>
-                        </div>
-
-                        <div>
-                            <p class="font-parkinsans text-[14px] text-[#6A7282] mb-2">{{ $lbl('qty_hint', 'Atur jumlah dan catatan', 'Set quantity and notes') }}</p>
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center border border-gray-300 rounded-[8px] h-[38px]">
-                                    <button type="button" @click="changeQty('dec')" :disabled="quantity <= 1 || isOutOfStock" class="px-3 text-gray-500 hover:text-black transition flex h-full items-center justify-center disabled:opacity-40">−</button>
-                                    <input type="text" readonly :value="isOutOfStock ? 0 : quantity" class="w-12 text-center text-[15px] font-bold border-x border-gray-300 h-full focus:outline-none text-[#1A1A1A]">
-                                    <button type="button" @click="changeQty('inc')" :disabled="isOutOfStock || quantity >= stock" class="px-3 text-gray-500 hover:text-black transition flex h-full items-center justify-center disabled:opacity-40">+</button>
-                                </div>
-                                <span class="font-parkinsans text-[14px] text-[#6A7282]">
-                                    {{ $stockLabel }} <span x-text="isOutOfStock ? @js($outOfStockLabel) : stock"></span>
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="flex flex-col gap-1.5 mt-1">
-                            <div class="flex justify-between items-center">
-                                <span class="text-[14px] font-parkinsans text-[#6A7282]">{{ $lbl('subtotal', 'Subtotal', 'Subtotal') }}</span>
-                                <span class="text-[14px] font-nohemi font-semibold text-[#101828]" x-text="formatPrice(productSubtotal)"></span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-[14px] font-parkinsans text-[#6A7282]">
-                                    {{ $lbl('shipping', 'Ongkir', 'Shipping') }}
-                                    <span class="text-[#99A1AF]" x-show="!freeShipping && selectedKurir?.nama" x-text="'(' + selectedKurir.nama + ')'" x-cloak></span>
-                                </span>
-                                <span
-                                    class="text-[14px] font-nohemi font-semibold"
-                                    :class="freeShipping ? 'text-emerald-700' : 'text-[#101828]'"
-                                    x-text="freeShipping ? @js($freeShippingLabel) : formatPrice(shippingCost)"
-                                ></span>
-                            </div>
-                            <div class="flex justify-between items-center pt-1 border-t border-gray-100 mt-0.5">
-                                <span class="text-[17px] font-parkinsans text-[#6A7282]">{{ $lbl('total', 'Total', 'Total') }}</span>
-                                <span class="text-[17px] font-nohemi font-bold" :style="accentTextStyle" x-text="formatPrice(totalWithShipping)"></span>
-                            </div>
                         </div>
 
                         @if (count($marketplaceButtons))
@@ -364,29 +299,6 @@
                             <button type="button" @click="openChat()" class="flex flex-col items-center gap-1.5 hover:text-[var(--hover-color)] transition">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>
                                 {{ $lbl('chat', 'Chat', 'Chat') }}
-                            </button>
-                            <button
-                                type="button"
-                                data-wishlist-btn
-                                @click="toggleWishlist($event)"
-                                :disabled="wishlistBusy"
-                                class="evomi-wishlist-btn flex flex-col items-center gap-1.5 transition disabled:opacity-60"
-                                :class="isWishlisted ? 'is-wishlisted' : 'hover:text-[var(--hover-color)]'"
-                                :style="isWishlisted
-                                    ? { color: accent, '--wishlist-color': accent }
-                                    : { '--hover-color': accent, '--wishlist-color': accent }"
-                            >
-                                <span class="evomi-wishlist-btn__icon relative inline-flex items-center justify-center">
-                                    <svg
-                                        class="w-5 h-5 relative z-[1] transition-colors duration-200"
-                                        :class="isWishlisted ? 'evomi-wishlist-btn__heart-filled' : ''"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                        stroke-width="1.5"
-                                    ><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/></svg>
-                                </span>
-                                {{ $lbl('wishlist', 'Wishlist', 'Wishlist') }}
                             </button>
                             <button type="button" @click="showShareModal = true" class="flex flex-col items-center gap-1.5 hover:text-[var(--hover-color)] transition">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"/></svg>
