@@ -30,4 +30,4 @@ Thumbs.db
 /_backup_images_original
 
 # Paket deploy WebP (dibuat lokal, jangan di-commit)
-/_deploy_webp
+/_deploy_webp*
