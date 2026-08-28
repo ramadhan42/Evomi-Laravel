@@ -33,6 +33,11 @@
             'match' => '/belanja',
         ], $navLabel('belanja', 'Belanja', 'Shop')),
         array_merge([
+            'href' => route('artikel'),
+            'route' => 'artikel',
+            'match' => '/artikel',
+        ], $navLabel('artikel', 'Artikel', 'Articles')),
+        array_merge([
             'href' => route('kuis'),
             'route' => 'kuis',
             'match' => '/kuis',

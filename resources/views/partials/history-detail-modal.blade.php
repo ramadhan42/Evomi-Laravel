@@ -98,7 +98,14 @@
                         <button type="button" @click="closeHistoryDetailModal({ backToList: true })" class="mt-2 px-6 py-2.5 bg-[#1172BA] text-white rounded-xl font-medium text-sm">{{ evomi_l('Kembali ke Riwayat', 'Back to History') }}</button>
                     </div>
 
-                    <div x-show="group" x-cloak class="space-y-3.5">
+                    {{-- x-if, bukan x-show: x-show hanya menyembunyikan elemennya,
+                         sedangkan isinya tetap dibuat dan dievaluasi Alpine. Selama
+                         modal belum dibuka, `group` masih null - dan setiap ekspresi
+                         group.* di dalam sini melempar TypeError di SETIAP halaman,
+                         karena modal ini disertakan lewat navbar. Dengan x-if,
+                         isinya baru dibuat setelah `group` benar-benar ada. --}}
+                    <template x-if="group">
+                    <div class="space-y-3.5">
                         <div class="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex items-center gap-3 min-w-0">
@@ -220,6 +227,7 @@
                             </div>
                         </div>
                     </div>
+                    </template>
                 </div>
 
                 <div
