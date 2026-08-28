@@ -219,29 +219,6 @@
                                         </div>
                                     </a>
 
-
-                                    <button
-                                        type="button"
-                                        role="menuitem"
-                                        class="nav-account-item w-full"
-                                        @click="closeAccountMenu(); openAccountDrawer('track')"
-                                    >
-                                        <div class="nav-account-item__main">
-                                            <span class="nav-account-item__icon is-track">
-                                                @include('partials.icons.truck', ['class' => 'w-[15px] h-[15px]'])
-                                            </span>
-                                            <div class="min-w-0 text-left">
-                                                <p class="text-[11px] font-semibold text-gray-800" x-text="locale === 'en' ? 'Track Order' : 'Lacak Pesanan'">Lacak Pesanan</p>
-                                                <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('history', locale === 'en' ? 'Monitor shipping status' : 'Pantau status pengiriman', locale === 'en' ? 'No orders yet' : 'Belum ada pesanan')"></p>
-                                            </div>
-                                        </div>
-                                        <span
-                                            class="shrink-0 flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full text-[11px] font-bold"
-                                            :class="badges.history > 0 ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'"
-                                            x-text="badgeLabel('history') || '0'"
-                                        ></span>
-                                    </button>
-
                                     <div class="nav-account-lang" data-no-locale-fx>
                                         <div class="nav-account-lang__label">
                                             <span class="nav-account-item__icon">
@@ -386,13 +363,6 @@
                         <span class="relative z-[1] inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.user', ['class' => 'w-3.5 h-3.5'])</span>
                         <span class="relative z-[1]" x-text="locale === 'en' ? 'Profile Settings' : 'Pengaturan Profil'">Pengaturan Profil</span>
                     </a>
-                    <button type="button" class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false; openAccountDrawer('track')">
-                        <span class="relative z-[1] inline-flex items-center gap-2.5">
-                            <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.truck', ['class' => 'w-3.5 h-3.5'])</span>
-                            <span x-text="locale === 'en' ? 'Track Order' : 'Lacak Pesanan'">Lacak Pesanan</span>
-                        </span>
-                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('history') || '0'"></span>
-                    </button>
                     <div class="flex items-center justify-between gap-3 px-3 py-2" data-no-locale-fx>
                         <span class="relative z-[1] inline-flex items-center gap-2.5 text-[12px] font-bold text-white">
                             <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.globe', ['class' => 'w-3.5 h-3.5'])</span>

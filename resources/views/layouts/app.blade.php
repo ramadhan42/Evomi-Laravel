@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="@yield('meta_description', 'Temukan keharuman eksklusif Evomi yang mencerminkan kepribadian Anda.')">
-    <title>@yield('title', 'Evomi | Premium Fragrance & Perfume')</title>
+    <title>@yield('title', 'Evomi Perfume')</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('favicon.png') }}">
     @stack('head')

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Evomi | Premium Fragrance & Perfume')
+@section('title', 'Evomi Perfume')
 
 @section('content')
     <div class="bg-[#1172ba] w-full min-h-screen flex flex-col">
