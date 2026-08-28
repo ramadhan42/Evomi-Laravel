@@ -1,14 +1,60 @@
 <?php
 header('Content-Type: text/plain; charset=utf-8');
 header('Cache-Control: no-store');
-if (($_GET['key'] ?? '') !== 'evomi-nav-sync-2026') {
+$docRoot = __DIR__;
+$laravel = dirname($docRoot) . '/laravel';
+
+/*
+ * Kunci dibaca langsung dari laravel/.env, bukan lewat config().
+ *
+ * Pemeriksaan sengaja berjalan sebelum Laravel di-boot supaya permintaan tanpa
+ * kunci tidak sempat menyentuh framework maupun database. Kuncinya juga TIDAK
+ * boleh ditulis di berkas ini: repo bersifat publik, jadi apa pun yang
+ * ter-commit di sini otomatis bisa dibaca siapa saja.
+ */
+function evomiEnvValue(string $envFile, string $name): string
+{
+    if (! is_readable($envFile)) {
+        return '';
+    }
+
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+        $line = trim($line);
+
+        if ($line === '' || $line[0] === '#' || ! str_starts_with($line, $name . '=')) {
+            continue;
+        }
+
+        $value = trim(substr($line, strlen($name) + 1));
+
+        // Buang tanda kutip pembungkus bila ada
+        if (strlen($value) >= 2
+            && ($value[0] === '"' || $value[0] === "'")
+            && $value[strlen($value) - 1] === $value[0]) {
+            $value = substr($value, 1, -1);
+        }
+
+        return $value;
+    }
+
+    return '';
+}
+
+$expectedKey = evomiEnvValue($laravel . '/.env', 'EVOMI_SYNC_KEY');
+
+if ($expectedKey === '') {
+    // Fail closed: tanpa kunci terkonfigurasi, endpoint ini mati total.
+    http_response_code(503);
+    echo "EVOMI_SYNC_KEY belum diset di laravel/.env\n";
+    exit;
+}
+
+if (! hash_equals($expectedKey, (string) ($_GET['key'] ?? ''))) {
     http_response_code(403);
     echo "forbidden\n";
     exit;
 }
 
-$docRoot = __DIR__;
-$laravel = dirname($docRoot) . '/laravel';
 $codeSrc = $docRoot . '/code-sync';
 $buildSrc = $docRoot . '/build-sync';
 
