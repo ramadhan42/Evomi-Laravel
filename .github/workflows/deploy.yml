@@ -95,29 +95,33 @@ jobs:
 
           echo "aset build diperbarui dan didorong ke repo"
 
-      # DIAGNOSTIK SEMENTARA - hapus setelah secret terkonfirmasi terbaca.
+      # Memastikan keempat secret terbaca SEBELUM apa pun dikirim ke server.
       #
-      # Hanya melaporkan tiap secret terisi atau kosong; nilainya tidak pernah
-      # dicetak. Dikirim sebagai ::warning:: supaya terbaca lewat API anotasi,
-      # karena log run hanya bisa diambil dengan token.
-      - name: Diagnostik ketersediaan secret
+      # Sebelumnya hanya FTP_HOST dan FTP_PASSWORD yang dicek, dan pesannya
+      # menyebut tiga nama sekaligus tanpa menunjuk mana yang kurang - dua run
+      # gagal berturut-turut tanpa petunjuk. EVOMI_SYNC_KEY tidak dicek sama
+      # sekali, sehingga bila hanya kunci itu yang kosong, alurnya baru gagal
+      # jauh di belakang dengan balasan 403 yang membingungkan.
+      #
+      # Nilainya tidak pernah dicetak; yang dilaporkan hanya namanya.
+      - name: Pastikan secret deploy tersedia
         env:
-          S_FTP_HOST: ${{ secrets.FTP_HOST }}
-          S_FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          S_FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          S_EVOMI_SYNC_KEY: ${{ secrets.EVOMI_SYNC_KEY }}
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          EVOMI_SYNC_KEY: ${{ secrets.EVOMI_SYNC_KEY }}
         run: |
-          ringkasan=""
+          kurang=""
           for nama in FTP_HOST FTP_USERNAME FTP_PASSWORD EVOMI_SYNC_KEY; do
-            var="S_${nama}"
-            if [ -n "${!var:-}" ]; then
-              ringkasan="${ringkasan}${nama}=terisi "
-            else
-              ringkasan="${ringkasan}${nama}=KOSONG "
-            fi
+            [ -z "${!nama:-}" ] && kurang="${kurang}${nama} "
           done
-          echo "::warning::SECRET $ringkasan| repo=${GITHUB_REPOSITORY}"
 
+          if [ -n "$kurang" ]; then
+            echo "::error::Secret belum terbaca di ${GITHUB_REPOSITORY}: ${kurang}- isi di Settings > Secrets and variables > Actions, bagian Repository secrets (bukan tab Variables, bukan Environment secrets)"
+            exit 1
+          fi
+
+          echo "keempat secret terbaca"
 
       - name: Kirim script deploy lewat FTP
         env:
@@ -126,11 +130,6 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           set -euo pipefail
-
-          if [ -z "${FTP_HOST:-}" ] || [ -z "${FTP_PASSWORD:-}" ]; then
-            echo "::error::Secret FTP_HOST / FTP_USERNAME / FTP_PASSWORD belum diisi"
-            exit 1
-          fi
 
           if [ ! -f "$SCRIPT" ]; then
             echo "::error::$SCRIPT tidak ada di repo"
