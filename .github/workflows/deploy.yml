@@ -43,7 +43,10 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-evomi-shop
+  # Menyerialkan deploy untuk KEDUA domain, bukan evomi.shop saja: satu run
+  # mengunggah satu berkas ke docroot evomi.shop lalu memakainya untuk keduanya.
+  # Dua run bersamaan akan saling menghapus berkas itu di tengah jalan.
+  group: deploy-evomi
   cancel-in-progress: false
 
 permissions:
