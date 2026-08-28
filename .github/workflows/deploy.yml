@@ -22,6 +22,18 @@ name: Deploy ke evomi.shop
 #   FTP_REMOTE_DIR   default: public_html
 #   SITE_URL         default: https://evomi.shop
 
+# Dua hal yang menentukan kapan workflow ini benar-benar jalan:
+#
+#   1. paths-ignore membuat push yang tidak mengubah berkas apa pun ikut
+#      dilewati - termasuk commit kosong. Jadi `git commit --allow-empty`
+#      TIDAK bisa dipakai untuk memicu deploy ulang.
+#
+#   2. workflow_dispatch (tombol "Run workflow" di tab Actions) hanya muncul
+#      bila berkas workflow ada di branch default. Selama deploy.yml cuma ada
+#      di branch ini dan belum di main, tombol itu tidak akan tampil.
+#
+# Konsekuensinya: satu-satunya cara memicu deploy adalah push yang mengubah
+# minimal satu berkas non-.md ke branch di bawah.
 on:
   push:
     branches:
