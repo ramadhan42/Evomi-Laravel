@@ -21,6 +21,35 @@ header('Cache-Control: no-store');
 $docRoot = __DIR__;
 $laravel = dirname($docRoot) . '/laravel';
 
+/*
+ * Satu berkas ini melayani lebih dari satu domain di akun yang sama.
+ *
+ * Tanpa ?site=, ia men-deploy domain tempat ia diunggah. Dengan ?site=<domain>,
+ * ia men-deploy domain tetangga di ~/domains/<domain>. Itu dipakai untuk
+ * evomi.id, yang tidak punya akun FTP sendiri - akun FTP yang ada terkunci di
+ * docroot evomi.shop, jadi berkas ini tidak bisa diunggah langsung ke sana.
+ *
+ * Keduanya milik satu pengguna Unix yang sama, jadi tidak ada batas hak akses
+ * yang dilewati. Kuncinya tetap diperiksa setelah ini, dan dibaca dari .env
+ * milik domain yang dituju.
+ */
+$site = trim((string) ($_GET['site'] ?? ''));
+
+if ($site !== '') {
+    // Hanya nama domain sederhana - menutup upaya menaiki direktori.
+    if (! preg_match('/^[a-z0-9][a-z0-9.-]*$/i', $site) || str_contains($site, '..')) {
+        fail('nama site tidak valid');
+    }
+
+    $base = dirname(dirname($docRoot)) . '/' . $site;
+    $docRoot = $base . '/public_html';
+    $laravel = $base . '/laravel';
+
+    if (! is_dir($docRoot) || ! is_dir($laravel)) {
+        fail("site tidak ditemukan di akun ini: $site");
+    }
+}
+
 function out(string $line): void
 {
     echo $line, "\n";

@@ -61,6 +61,11 @@ jobs:
       # Setel variabel repo FTP_REMOTE_DIR bila suatu saat akunnya mendarat di home.
       REMOTE_DIR: ${{ vars.FTP_REMOTE_DIR || '.' }}
       SITE_URL: ${{ vars.SITE_URL || 'https://evomi.shop' }}
+      # Domain kedua di akun yang sama, di-deploy lewat endpoint domain pertama
+      # (lihat langkah "domain kedua"). Kosongkan variabel repo SECOND_SITE
+      # untuk mematikannya.
+      SECOND_SITE: ${{ vars.SECOND_SITE || 'evomi.id' }}
+      SECOND_SITE_URL: ${{ vars.SECOND_SITE_URL || 'https://evomi.id' }}
       SCRIPT: evomi-deploy.php
 
     steps:
@@ -191,6 +196,47 @@ jobs:
 
           echo "deploy selesai"
 
+      # Deploy domain kedua lewat endpoint yang SAMA, dengan parameter ?site=.
+      #
+      # evomi.id tidak punya akun FTP sendiri - akun yang ada terkunci di docroot
+      # evomi.shop - jadi berkas deploy tidak bisa diunggah ke sana. Karena kedua
+      # domain ada di satu akun Unix, satu berkas di evomi.shop bisa melayani
+      # keduanya. Berkasnya sudah terunggah dari langkah sebelumnya dan baru
+      # dihapus setelah langkah ini.
+      - name: Jalankan deploy di server (domain kedua)
+        id: run_second
+        if: steps.run.outcome == 'success' && env.SECOND_SITE != ''
+        env:
+          EVOMI_SYNC_KEY: ${{ secrets.EVOMI_SYNC_KEY }}
+        run: |
+          set -uo pipefail
+
+          http=$(curl --silent --show-error \
+                      --max-time 900 \
+                      --get \
+                      --data-urlencode "key=$EVOMI_SYNC_KEY" \
+                      --data-urlencode "site=$SECOND_SITE" \
+                      --write-out '%{http_code}' \
+                      --output deploy-second.txt \
+                      "$SITE_URL/$SCRIPT" || echo 000)
+
+          echo "HTTP $http"
+          echo "--- keluaran server ($SECOND_SITE) ---"
+          cat deploy-second.txt || true
+          echo "-----------------------"
+
+          if [ "$http" != "200" ]; then
+            echo "::error::endpoint deploy $SECOND_SITE membalas HTTP $http"
+            exit 1
+          fi
+
+          if ! grep -q 'cache_built=yes' deploy-second.txt; then
+            echo "::error::deploy $SECOND_SITE tidak selesai bersih - lihat keluaran di atas"
+            exit 1
+          fi
+
+          echo "deploy $SECOND_SITE selesai"
+
       - name: Hapus script dari server
         # Dijalankan walau tahap sebelumnya gagal: endpoint deploy tidak boleh
         # tertinggal menganggur di docroot.
@@ -219,9 +265,6 @@ jobs:
         run: |
           set -uo pipefail
 
-          home=$(curl --silent --max-time 30 "$SITE_URL/")
-          detail=$(curl --silent --max-time 30 "$SITE_URL/belanja/1")
-
           # grep -c menghitung BARIS, sedangkan HTML di sini praktis satu baris
           # panjang - jadi kemunculan dihitung lewat grep -o | wc -l.
           #
@@ -233,26 +276,42 @@ jobs:
           # situsnya sudah sesuai harapan.
           count() { printf '%s' "$1" | grep -o "$2" | wc -l | tr -d ' ' || true; }
 
-          # head menutup pipa setelah baris pertama, jadi grep bisa kena SIGPIPE
-          # dan statusnya ikut menggagalkan langkah ini. Dinetralkan juga.
-          js=$(printf '%s' "$home" | grep -oE '/build/assets/app-[A-Za-z0-9_-]+\.js' | head -1 || true)
-          webp=$(count "$home" '\.webp')
-          png=$(count "$home" '\.png')
-          mp=$(count "$detail" 'evomi-mp__btn')
-          cart=$(count "$home" 'nav-cart-btn')
+          periksa() {
+            nama="$1"
+            url="$2"
 
-          {
-            echo "### Hasil di $SITE_URL"
-            echo ""
-            echo "| Indikator | Nilai |"
-            echo "| --- | --- |"
-            echo "| Bundle JS | \`${js:-tidak terbaca}\` |"
-            echo "| Rujukan .webp di beranda | $webp |"
-            echo "| Rujukan .png di beranda | $png |"
-            echo "| Tombol marketplace di /belanja/1 | $mp |"
-            echo "| Ikon keranjang di navbar | $cart |"
-          } >> "$GITHUB_STEP_SUMMARY"
+            home=$(curl --silent --max-time 30 "$url/")
+            detail=$(curl --silent --max-time 30 "$url/belanja/1")
 
-          if [ "$mp" -lt 1 ] || [ "$cart" -ne 0 ]; then
-            echo "::warning::situs belum menampilkan perubahan yang diharapkan"
+            # head menutup pipa setelah baris pertama, jadi grep bisa kena
+            # SIGPIPE dan statusnya ikut menggagalkan langkah ini.
+            js=$(printf '%s' "$home" | grep -oE '/build/assets/app-[A-Za-z0-9_-]+\.js' | head -1 || true)
+            webp=$(count "$home" '\.webp')
+            png=$(count "$home" '\.png')
+            mp=$(count "$detail" 'evomi-mp__btn')
+            cart=$(count "$home" 'nav-cart-btn')
+
+            {
+              echo "### Hasil di $nama"
+              echo ""
+              echo "| Indikator | Nilai |"
+              echo "| --- | --- |"
+              echo "| Bundle JS | \`${js:-tidak terbaca}\` |"
+              echo "| Rujukan .webp di beranda | $webp |"
+              echo "| Rujukan .png di beranda | $png |"
+              echo "| Tombol marketplace di /belanja/1 | $mp |"
+              echo "| Ikon keranjang di navbar | $cart |"
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            if [ "$mp" -lt 1 ] || [ "$cart" -ne 0 ]; then
+              echo "::warning::$nama belum menampilkan perubahan yang diharapkan"
+            fi
+          }
+
+          periksa "$SITE_URL" "$SITE_URL"
+
+          # Domain kedua hanya diperiksa bila langkah deploy-nya benar-benar jalan.
+          if [ "${{ steps.run_second.outcome }}" = "success" ]; then
+            periksa "$SECOND_SITE_URL" "$SECOND_SITE_URL"
           fi
