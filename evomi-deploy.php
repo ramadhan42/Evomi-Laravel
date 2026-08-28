@@ -209,6 +209,18 @@ foreach (glob($laravel . '/storage/framework/views/*.php') ?: [] as $file) {
     @unlink($file);
 }
 
+// Unggahan di storage/app/public tidak ikut repo, jadi tiap server mengonversi
+// berkasnya sendiri. Wajib sebelum migrate: migrasi hanya mengubah path di
+// database bila berkas .webp-nya sudah benar-benar ada di disk.
+out('--- konversi gambar unggahan ---');
+
+try {
+    Illuminate\Support\Facades\Artisan::call('evomi:images-to-webp');
+    out(trim(Illuminate\Support\Facades\Artisan::output()));
+} catch (Throwable $e) {
+    out('konversi error: ' . $e->getMessage());
+}
+
 out('--- migrate ---');
 
 try {
