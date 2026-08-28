@@ -115,6 +115,7 @@ const PRODUCTS = {
     field_perfume_type: ['Tipe Parfum', 'Perfume Type'],
     field_gender: ['Gender', 'Gender'],
     field_bottle_size: ['Ukuran Botol (ml)', 'Bottle Size (ml)'],
+    field_berat_satuan: ['Berat Satuan (g)', 'Unit Weight (g)'],
     field_color: ['Warna Tema', 'Theme Colour'],
     fragrance_notes: ['Fragrance Notes', 'Fragrance Notes'],
     field_top_note: ['Top Note', 'Top Note'],

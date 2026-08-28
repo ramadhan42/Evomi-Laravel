@@ -135,9 +135,6 @@
                         <a href="{{ route('faq') }}" class="text-[14px] md:text-[16px] inline-block w-fit hover:scale-110 hover:font-bold transition-all origin-left" data-soft-nav data-open-faq>{{ $footerCms->get('help', 'faq', 'FAQ') }}</a>
                     </li>
                     <li>
-                        <a href="{{ route('pengiriman') }}" class="text-[14px] md:text-[16px] inline-block w-fit hover:scale-110 hover:font-bold transition-all origin-left" data-soft-nav data-open-track>{{ $footerCms->get('help', 'pengiriman', evomi_l('Pengiriman', 'Shipping Status')) }}</a>
-                    </li>
-                    <li>
                         <a href="{{ route('kontak') }}" class="text-[14px] md:text-[16px] inline-block w-fit hover:scale-110 hover:font-bold transition-all origin-left" data-soft-nav data-open-kontak>{{ $footerCms->get('help', 'kontak', evomi_l('Kontak', 'Contact')) }}</a>
                     </li>
                 </ul>

@@ -332,6 +332,11 @@
                             </div>
 
                             <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5" x-text="t('products','field_berat_satuan')"></label>
+                                <input type="number" x-model="form.berat_satuan" min="0" step="1" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-gray-900 outline-none transition-all">
+                            </div>
+
+                            <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5" x-text="t('products','field_color')"></label>
                                 <div class="flex items-center gap-3">
                                     <input type="color" x-model="form.color" class="h-11 w-14 rounded-xl border border-gray-200 bg-white p-1 cursor-pointer">

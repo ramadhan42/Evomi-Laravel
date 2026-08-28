@@ -284,6 +284,78 @@ function isBlueSurfacePath(pathname) {
 
 const DEFAULT_THEME_BLUE = '#1172BA';
 
+/**
+ * Menyelaraskan warna scrollbar dengan latar halaman yang sedang tampil.
+ *
+ * Latar body berganti-ganti: biru penuh di beranda dan artikel, abu terang di
+ * daftar belanja, putih di halaman detail produk. Kalau ibu jari scrollbar
+ * dipatok satu warna, di salah satu halaman ia pasti menyatu dengan latarnya
+ * dan seolah hilang - itu yang terjadi di beranda, karena warna temanya sama
+ * persis dengan warna latarnya.
+ *
+ * Jadi warnanya dipilih dari kecerahan latar: latar gelap -> ibu jari putih,
+ * latar terang -> warna tema halaman (yang di halaman produk berarti warna
+ * varian produknya).
+ */
+function syncScrollbarTint() {
+    const body = document.body;
+
+    if (!body) return;
+
+    // Setiap cabang di bawah menulis ulang variabelnya; yang opsional dibersihkan
+    // dulu supaya nilai dari halaman sebelumnya tidak ikut terbawa saat berpindah
+    // halaman lewat soft-navigation (elemen body-nya sama, tidak dimuat ulang).
+    body.style.removeProperty('--evomi-scrollbar-hover');
+
+    // Dashboard admin memakai palet monokrom - permukaan putih/abu muda dengan
+    // teks dan tombol #111827. Scrollbar-nya ikut warna gelap itu, bukan biru
+    // merek, supaya menyatu dengan tampilan dashboard.
+    if (body.classList.contains('evomi-admin-mode')) {
+        body.style.setProperty('--evomi-scrollbar', '#111827');
+        body.style.setProperty('--evomi-scrollbar-track', 'rgba(17, 24, 39, 0.08)');
+
+        return;
+    }
+
+    // Halaman ber-chrome biru - beranda, artikel, daftar belanja, dan auth -
+    // memakai satu tampilan scrollbar yang sama: jalur biru merek dengan ibu
+    // jari putih.
+    //
+    // Jalurnya diberi warna eksplisit, bukan dibiarkan mengambil latar halaman,
+    // karena latar ketiganya tidak seragam: beranda dan artikel biru penuh,
+    // sedangkan daftar belanja abu terang. Tanpa jalur eksplisit, ibu jari putih
+    // akan lenyap di halaman daftar belanja.
+    if (body.classList.contains('evomi-surface-blue')) {
+        body.style.setProperty('--evomi-scrollbar', 'rgba(255, 255, 255, 0.9)');
+        body.style.setProperty('--evomi-scrollbar-track', DEFAULT_THEME_BLUE);
+        body.style.setProperty('--evomi-scrollbar-hover', '#ffffff');
+
+        return;
+    }
+
+    const cs = getComputedStyle(body);
+    const parts = cs.backgroundColor.match(/\d+(\.\d+)?/g);
+
+    if (!parts || parts.length < 3) return;
+
+    const [r, g, b] = parts.map(Number);
+    // Luminansi persepsi (BT.601) - cukup untuk sekadar memilih terang vs gelap.
+    const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    if (luma < 0.62) {
+        body.style.setProperty('--evomi-scrollbar', 'rgba(255, 255, 255, 0.82)');
+        body.style.setProperty('--evomi-scrollbar-track', 'rgba(255, 255, 255, 0.18)');
+
+        return;
+    }
+
+    const theme = cs.getPropertyValue('--evomi-theme').trim() || DEFAULT_THEME_BLUE;
+    body.style.setProperty('--evomi-scrollbar', theme);
+    // Jalur memakai warna tema yang sama tapi sangat samar, supaya batangnya
+    // tetap satu keluarga warna dengan halamannya.
+    body.style.setProperty('--evomi-scrollbar-track', `color-mix(in srgb, ${theme} 14%, transparent)`);
+}
+
 function applyProductTheme(color) {
     const c = color || DEFAULT_THEME_BLUE;
     const header = document.getElementById('evomi-header');
@@ -305,6 +377,11 @@ function applyProductTheme(color) {
         footer.style.backgroundColor = c;
         footer.style.setProperty('--footer-accent', c);
     }
+
+    // Latar body bisa ikut berubah bersama tema; selaraskan scrollbar sekarang
+    // dan sekali lagi setelah transisi latar selesai.
+    syncScrollbarTint();
+    window.setTimeout(syncScrollbarTint, 400);
 }
 
 function restoreProductTheme() {
@@ -348,6 +425,11 @@ function setSurfaceForPath(pathname) {
     document.body.style.backgroundColor = '';
     const site = document.querySelector('.evomi-site');
     if (site) site.style.backgroundColor = '';
+
+    // Kelas di atas yang menentukan latar halaman, jadi warna scrollbar
+    // diselaraskan setelah kelasnya dipasang.
+    syncScrollbarTint();
+    window.setTimeout(syncScrollbarTint, 400);
 }
 
 function wait(ms) {

@@ -466,8 +466,6 @@
         </div>
     </template>
 
-    @include('partials.kurir-modal', ['brandExpr' => 'accent'])
-
     {{-- Share modal --}}
     <template x-teleport="body">
         <div
