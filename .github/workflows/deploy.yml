@@ -95,6 +95,30 @@ jobs:
 
           echo "aset build diperbarui dan didorong ke repo"
 
+      # DIAGNOSTIK SEMENTARA - hapus setelah secret terkonfirmasi terbaca.
+      #
+      # Hanya melaporkan tiap secret terisi atau kosong; nilainya tidak pernah
+      # dicetak. Dikirim sebagai ::warning:: supaya terbaca lewat API anotasi,
+      # karena log run hanya bisa diambil dengan token.
+      - name: Diagnostik ketersediaan secret
+        env:
+          S_FTP_HOST: ${{ secrets.FTP_HOST }}
+          S_FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          S_FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          S_EVOMI_SYNC_KEY: ${{ secrets.EVOMI_SYNC_KEY }}
+        run: |
+          ringkasan=""
+          for nama in FTP_HOST FTP_USERNAME FTP_PASSWORD EVOMI_SYNC_KEY; do
+            var="S_${nama}"
+            if [ -n "${!var:-}" ]; then
+              ringkasan="${ringkasan}${nama}=terisi "
+            else
+              ringkasan="${ringkasan}${nama}=KOSONG "
+            fi
+          done
+          echo "::warning::SECRET $ringkasan| repo=${GITHUB_REPOSITORY}"
+
+
       - name: Kirim script deploy lewat FTP
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
