@@ -1,0 +1,211 @@
+name: Deploy ke evomi.shop
+
+# Alur deploy:
+#   1. Build aset di CI, commit balik bila berubah - server tidak menjalankan
+#      Node, jadi hasil build harus sudah ada di repo saat server menariknya.
+#   2. Kirim satu berkas evomi-deploy.php (9,6 KB) ke public_html lewat FTP.
+#   3. Panggil berkas itu. Server menarik sendiri rilisnya dari GitHub, menyalin
+#      kode/gambar/aset, mengonversi unggahan ke WebP, migrasi, lalu cache.
+#   4. Hapus lagi berkas itu supaya tidak ada endpoint deploy yang menganggur.
+#
+# FTP hanya dipakai untuk memindahkan satu berkas kecil, bukan seluruh rilis.
+# Perintah curl dipakai langsung, tanpa action pihak ketiga, supaya kredensial
+# tidak pernah melewati kode orang lain.
+#
+# Secret yang harus diisi di Settings > Secrets and variables > Actions:
+#   FTP_HOST         145.79.14.242
+#   FTP_USERNAME     u160994497.evomi.shop
+#   FTP_PASSWORD     (password FTP)
+#   EVOMI_SYNC_KEY   nilai yang sama persis dengan di laravel/.env
+#
+# Variabel opsional (Settings > Secrets and variables > Actions > Variables):
+#   FTP_REMOTE_DIR   default: public_html
+#   SITE_URL         default: https://evomi.shop
+
+on:
+  push:
+    branches:
+      - perf/webp-and-bundle-split
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-evomi-shop
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      # Kalau akun FTP mendarat langsung DI DALAM public_html (bukan di home),
+      # setel variabel repo FTP_REMOTE_DIR menjadi tanda titik: .
+      REMOTE_DIR: ${{ vars.FTP_REMOTE_DIR || 'public_html' }}
+      SITE_URL: ${{ vars.SITE_URL || 'https://evomi.shop' }}
+      SCRIPT: evomi-deploy.php
+
+    steps:
+      - name: Ambil kode
+        uses: actions/checkout@v4
+        with:
+          # Perlu token yang bisa push, karena hasil build di-commit balik.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Siapkan Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Build aset
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+
+      - name: Commit hasil build bila berubah
+        run: |
+          if git diff --quiet -- public/build; then
+            echo "aset build tidak berubah"
+            exit 0
+          fi
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/build
+
+          # [skip ci] mencegah commit ini memicu workflow lagi.
+          git commit -m "Build assets for deploy [skip ci]"
+          git push
+
+          echo "aset build diperbarui dan didorong ke repo"
+
+      - name: Kirim script deploy lewat FTP
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${FTP_HOST:-}" ] || [ -z "${FTP_PASSWORD:-}" ]; then
+            echo "::error::Secret FTP_HOST / FTP_USERNAME / FTP_PASSWORD belum diisi"
+            exit 1
+          fi
+
+          if [ ! -f "$SCRIPT" ]; then
+            echo "::error::$SCRIPT tidak ada di repo"
+            exit 1
+          fi
+
+          # REMOTE_DIR "." berarti akun FTP sudah mendarat di public_html.
+          if [ "$REMOTE_DIR" = "." ] || [ -z "$REMOTE_DIR" ]; then
+            remote_path="$SCRIPT"
+          else
+            remote_path="$REMOTE_DIR/$SCRIPT"
+          fi
+          echo "REMOTE_PATH=$remote_path" >> "$GITHUB_ENV"
+
+          # --ftp-create-dirs supaya tidak gagal kalau folder tujuan belum ada.
+          curl --fail --silent --show-error \
+               --ftp-create-dirs \
+               --user "$FTP_USERNAME:$FTP_PASSWORD" \
+               --upload-file "$SCRIPT" \
+               "ftp://$FTP_HOST/$remote_path"
+
+          echo "$SCRIPT terkirim ke $remote_path"
+
+      - name: Jalankan deploy di server
+        id: run
+        env:
+          EVOMI_SYNC_KEY: ${{ secrets.EVOMI_SYNC_KEY }}
+        run: |
+          set -uo pipefail
+
+          # --max-time longgar: server menarik ~32 MB lalu menjalankan migrasi.
+          http=$(curl --silent --show-error \
+                      --max-time 900 \
+                      --get \
+                      --data-urlencode "key=$EVOMI_SYNC_KEY" \
+                      --write-out '%{http_code}' \
+                      --output deploy-output.txt \
+                      "$SITE_URL/$SCRIPT" || echo 000)
+
+          echo "HTTP $http"
+          echo "--- keluaran server ---"
+          cat deploy-output.txt || true
+          echo "-----------------------"
+
+          if [ "$http" != "200" ]; then
+            echo "::error::endpoint deploy membalas HTTP $http"
+            exit 1
+          fi
+
+          # Endpoint tetap balas 200 walau salah satu tahap gagal, jadi
+          # keberhasilannya dinilai dari penanda di keluarannya.
+          if ! grep -q 'cache_built=yes' deploy-output.txt; then
+            echo "::error::deploy tidak selesai bersih - lihat keluaran di atas"
+            exit 1
+          fi
+
+          echo "deploy selesai"
+
+      - name: Hapus script dari server
+        # Dijalankan walau tahap sebelumnya gagal: endpoint deploy tidak boleh
+        # tertinggal menganggur di docroot.
+        if: always()
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          if [ -z "${REMOTE_PATH:-}" ]; then
+            echo "script belum sempat terkirim - tidak ada yang perlu dihapus"
+            exit 0
+          fi
+
+          if curl --fail --silent --show-error \
+                  --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                  --quote "DELE $REMOTE_PATH" \
+                  "ftp://$FTP_HOST/"; then
+            echo "$REMOTE_PATH dihapus dari server"
+          else
+            echo "::warning::gagal menghapus $SCRIPT - hapus manual lewat File Manager"
+          fi
+
+      - name: Periksa hasil di situs
+        if: steps.run.outcome == 'success'
+        run: |
+          set -uo pipefail
+
+          home=$(curl --silent --max-time 30 "$SITE_URL/")
+          detail=$(curl --silent --max-time 30 "$SITE_URL/belanja/1")
+
+          # grep -c menghitung BARIS, sedangkan HTML di sini praktis satu baris
+          # panjang - jadi kemunculan dihitung lewat grep -o | wc -l.
+          count() { printf '%s' "$1" | grep -o "$2" | wc -l | tr -d ' '; }
+
+          js=$(printf '%s' "$home" | grep -oE '/build/assets/app-[A-Za-z0-9_-]+\.js' | head -1)
+          webp=$(count "$home" '\.webp')
+          png=$(count "$home" '\.png')
+          mp=$(count "$detail" 'evomi-mp__btn')
+          cart=$(count "$home" 'nav-cart-btn')
+
+          {
+            echo "### Hasil di $SITE_URL"
+            echo ""
+            echo "| Indikator | Nilai |"
+            echo "| --- | --- |"
+            echo "| Bundle JS | \`${js:-tidak terbaca}\` |"
+            echo "| Rujukan .webp di beranda | $webp |"
+            echo "| Rujukan .png di beranda | $png |"
+            echo "| Tombol marketplace di /belanja/1 | $mp |"
+            echo "| Ikon keranjang di navbar | $cart |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$mp" -lt 1 ] || [ "$cart" -ne 0 ]; then
+            echo "::warning::situs belum menampilkan perubahan yang diharapkan"
+          fi
