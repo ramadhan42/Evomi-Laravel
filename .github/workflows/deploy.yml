@@ -54,9 +54,12 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # Kalau akun FTP mendarat langsung DI DALAM public_html (bukan di home),
-      # setel variabel repo FTP_REMOTE_DIR menjadi tanda titik: .
-      REMOTE_DIR: ${{ vars.FTP_REMOTE_DIR || 'public_html' }}
+      # Akun FTP evomi.shop mendarat LANGSUNG di dalam public_html - login-nya
+      # sudah berisi index.php, .htaccess, dan symlink storage. Jadi default-nya
+      # titik, bukan "public_html": menambahkan nama folder itu sekali lagi akan
+      # membuat public_html/public_html/ dan endpoint-nya membalas 404.
+      # Setel variabel repo FTP_REMOTE_DIR bila suatu saat akunnya mendarat di home.
+      REMOTE_DIR: ${{ vars.FTP_REMOTE_DIR || '.' }}
       SITE_URL: ${{ vars.SITE_URL || 'https://evomi.shop' }}
       SCRIPT: evomi-deploy.php
 
