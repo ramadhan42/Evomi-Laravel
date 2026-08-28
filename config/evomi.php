@@ -44,6 +44,50 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Tautan marketplace per varian
+    |--------------------------------------------------------------------------
+    |
+    | Dipakai tombol di halaman detail belanja. Kuncinya adalah personality_type
+    | produk: prestige, peaceful_calm, rebel_brave, sweet_shy.
+    |
+    | Urutan pada 'channels' menentukan urutan tombol tampil. Tautan yang
+    | dikosongkan membuat tombolnya tidak dirender sama sekali, jadi varian baru
+    | aman ditambahkan bertahap.
+    |
+    */
+    'marketplaces' => [
+        'channels' => [
+            'shopee' => ['label' => 'Shopee', 'color' => '#EE4D2D'],
+            'tokopedia' => ['label' => 'Tokopedia', 'color' => '#42B549'],
+            'tiktok' => ['label' => 'TikTok Shop', 'color' => '#111111'],
+        ],
+
+        'links' => [
+            'prestige' => [
+                'shopee' => 'https://shopee.co.id/EVOMI-Purpose-Prestige-Eau-De-Parfum-50ml-i.1790723799.58065852279',
+                'tokopedia' => 'https://tk.tokopedia.com/ZSVseguCc/',
+                'tiktok' => 'https://vt.tokopedia.com/t/ZS9BUrjBYtPBW-aBoCQ/',
+            ],
+            'peaceful_calm' => [
+                'shopee' => 'https://shopee.co.id/EVOMI-Peaceful-Calm-Eau-De-Parfum-50ml-i.1790723799.45215872382',
+                'tokopedia' => 'https://tk.tokopedia.com/ZSVsewhpV/',
+                'tiktok' => 'https://vt.tokopedia.com/t/ZS9BUMoWvTsry-HdLE0/',
+            ],
+            'rebel_brave' => [
+                'shopee' => 'https://shopee.co.id/EVOMI-Rebel-Brave-Eau-De-Parfum-50ml-i.1790723799.56215852499',
+                'tokopedia' => 'https://tk.tokopedia.com/ZSVsec9Vh/',
+                'tiktok' => 'https://vt.tokopedia.com/t/ZS9BUryS3eUM3-vWB96/',
+            ],
+            'sweet_shy' => [
+                'shopee' => 'https://shopee.co.id/EVOMI-Sweet-Shy-Eau-De-Parfum-50ml-i.1790723799.51465860719',
+                'tokopedia' => 'https://tk.tokopedia.com/ZSVsengge/',
+                'tiktok' => 'https://vt.tokopedia.com/t/ZS9BUrhHoU9Fd-wbAPY/',
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Storefront custom cursor
     |--------------------------------------------------------------------------
     |

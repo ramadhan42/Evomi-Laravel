@@ -219,27 +219,6 @@
                                         </div>
                                     </a>
 
-                                    <button
-                                        type="button"
-                                        role="menuitem"
-                                        class="nav-account-item w-full"
-                                        @click="closeAccountMenu(); openAccountDrawer('cart')"
-                                    >
-                                        <div class="nav-account-item__main">
-                                            <span class="nav-account-item__icon is-cart">
-                                                @include('partials.icons.cart', ['class' => 'w-[15px] h-[15px]'])
-                                            </span>
-                                            <div class="min-w-0 text-left">
-                                                <p class="text-[11px] font-semibold text-gray-800" x-text="locale === 'en' ? 'My Cart' : 'Keranjang Saya'">Keranjang Saya</p>
-                                                <p class="text-[10px] text-gray-500 mt-0.5" x-text="badgeDesc('cart', locale === 'en' ? 'View items in cart' : 'Lihat item di keranjang', locale === 'en' ? 'Cart is empty' : 'Keranjang kosong')"></p>
-                                            </div>
-                                        </div>
-                                        <span
-                                            class="shrink-0 flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full text-[11px] font-bold"
-                                            :class="badges.cart > 0 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'"
-                                            x-text="badgeLabel('cart') || '0'"
-                                        ></span>
-                                    </button>
 
                                     <button
                                         type="button"
@@ -296,20 +275,6 @@
                             </div>
                         </div>
 
-                        <button
-                            type="button"
-                            class="nav-cart-btn relative z-[1] inline-flex items-center justify-center size-10 rounded-full text-white"
-                            :aria-label="locale === 'en' ? 'Cart' : 'Keranjang'"
-                            @click="closeAccountMenu(); openAccountDrawer()"
-                        >
-                            @include('partials.icons.cart', ['class' => 'w-[18px] h-[18px]'])
-                            <span
-                                class="nav-cart-badge"
-                                x-show="badges.cart > 0"
-                                x-cloak
-                                x-text="badgeLabel('cart')"
-                            ></span>
-                        </button>
                     </div>
                 </template>
 
@@ -326,39 +291,11 @@
                                 x-text="locale === 'en' ? @js($navLoginEn) : @js($navLoginId)"
                             >{{ $navLoginId }}</span>
                         </a>
-                        <button
-                            type="button"
-                            class="nav-cart-btn relative z-[1] inline-flex items-center justify-center size-10 rounded-full text-white"
-                            :aria-label="locale === 'en' ? 'Cart' : 'Keranjang'"
-                            @click="openAccountDrawer()"
-                        >
-                            @include('partials.icons.cart', ['class' => 'w-[18px] h-[18px]'])
-                            <span
-                                class="nav-cart-badge"
-                                x-show="badges.cart > 0"
-                                x-cloak
-                                x-text="badgeLabel('cart')"
-                            ></span>
-                        </button>
                     </div>
                 </template>
             </div>
 
             <div class="md:hidden flex items-center gap-1.5 shrink-0">
-                <button
-                    type="button"
-                    class="nav-cart-btn relative z-[1] inline-flex items-center justify-center w-10 h-10 rounded-full text-white"
-                    :aria-label="locale === 'en' ? 'Cart' : 'Keranjang'"
-                    @click="openAccountDrawer()"
-                >
-                    @include('partials.icons.cart')
-                    <span
-                        class="nav-cart-badge"
-                        x-show="badges.cart > 0"
-                        x-cloak
-                        x-text="badgeLabel('cart')"
-                    ></span>
-                </button>
                 <button
                     type="button"
                     class="inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/15 transition-colors"
@@ -449,13 +386,6 @@
                         <span class="relative z-[1] inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.user', ['class' => 'w-3.5 h-3.5'])</span>
                         <span class="relative z-[1]" x-text="locale === 'en' ? 'Profile Settings' : 'Pengaturan Profil'">Pengaturan Profil</span>
                     </a>
-                    <button type="button" class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false; openAccountDrawer('cart')">
-                        <span class="relative z-[1] inline-flex items-center gap-2.5">
-                            <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.cart', ['class' => 'w-3.5 h-3.5'])</span>
-                            <span x-text="locale === 'en' ? 'My Cart' : 'Keranjang Saya'">Keranjang Saya</span>
-                        </span>
-                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('cart') || '0'"></span>
-                    </button>
                     <button type="button" class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white" @click="open = false; openAccountDrawer('track')">
                         <span class="relative z-[1] inline-flex items-center gap-2.5">
                             <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15">@include('partials.icons.truck', ['class' => 'w-3.5 h-3.5'])</span>
@@ -494,14 +424,6 @@
                     >
                         <span class="relative z-[1]" x-text="locale === 'en' ? @js($navLoginEn) : @js($navLoginId)">{{ $navLoginId }}</span>
                     </a>
-                    <button
-                        type="button"
-                        class="nav-pill relative z-[1] flex items-center justify-between w-full px-3 py-2.5 text-[12px] font-bold rounded-full text-white"
-                        @click="open = false; openAccountDrawer()"
-                    >
-                        <span class="relative z-[1]" x-text="locale === 'en' ? 'Cart' : 'Keranjang'">Keranjang</span>
-                        <span class="text-[10px] bg-white/20 rounded-full px-2 py-0.5" x-text="badgeLabel('cart') || '0'"></span>
-                    </button>
                 </div>
             </template>
         </div>

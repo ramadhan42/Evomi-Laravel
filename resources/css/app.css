@@ -7439,3 +7439,143 @@ select.admin-field-input {
   display: flex;
   justify-content: center;
 }
+
+/* ——— Tombol marketplace di halaman detail belanja ——— */
+/* Warna merek dikirim per tombol lewat --mp-color dari Blade. */
+
+.evomi-mp {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.evomi-mp__lead {
+    font-family: Parkinsans, ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #6a7282;
+}
+
+.evomi-mp__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.evomi-mp__btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.7rem 1.1rem;
+    border: 2px solid var(--mp-color);
+    border-radius: 9999px;
+    background: #fff;
+    color: var(--mp-color);
+    font-family: Nohemi, ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    overflow: hidden;
+    isolation: isolate;
+    transition:
+        color 0.28s ease,
+        border-color 0.28s ease,
+        transform 0.18s ease,
+        box-shadow 0.28s ease;
+}
+
+/* Lapisan warna yang menyapu dari kiri saat hover, bukan sekadar ganti bg */
+.evomi-mp__btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--mp-color);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.evomi-mp__btn:hover,
+.evomi-mp__btn:focus-visible {
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px -10px var(--mp-color);
+}
+
+.evomi-mp__btn:hover::before,
+.evomi-mp__btn:focus-visible::before {
+    transform: scaleX(1);
+}
+
+.evomi-mp__btn:focus-visible {
+    outline: 2px solid var(--mp-color);
+    outline-offset: 3px;
+}
+
+.evomi-mp__btn:active {
+    transform: translateY(0) scale(0.975);
+    box-shadow: none;
+}
+
+.evomi-mp__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.85rem;
+    height: 1.85rem;
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.evomi-mp__icon svg {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
+.evomi-mp__btn:hover .evomi-mp__icon {
+    transform: scale(1.12) rotate(-4deg);
+}
+
+.evomi-mp__text {
+    flex: 1 1 auto;
+    text-align: left;
+}
+
+.evomi-mp__arrow {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition:
+        opacity 0.28s ease,
+        transform 0.28s ease;
+}
+
+.evomi-mp__btn:hover .evomi-mp__arrow,
+.evomi-mp__btn:focus-visible .evomi-mp__arrow {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Hormati preferensi pengguna yang mengurangi animasi */
+@media (prefers-reduced-motion: reduce) {
+    .evomi-mp__btn,
+    .evomi-mp__btn::before,
+    .evomi-mp__icon,
+    .evomi-mp__arrow {
+        transition-duration: 0.01ms;
+    }
+
+    .evomi-mp__btn:hover {
+        transform: none;
+    }
+
+    .evomi-mp__btn:hover .evomi-mp__icon {
+        transform: none;
+    }
+}

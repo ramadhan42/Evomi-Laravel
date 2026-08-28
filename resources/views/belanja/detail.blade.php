@@ -25,8 +25,27 @@
     $isFreeShipping = (bool) ($freeShipping ?? false);
     $freeShippingLabel = $detailCms->get('shipping', 'free_shipping_label', evomi_l('Gratis Ongkir', 'Free Shipping'));
     $isFreeShipping = (bool) ($freeShipping ?? false);
-    $buyNowLabel = $lbl('buy_now', 'Beli Langsung', 'Buy Now');
-    $addCartLabel = $lbl('add_cart', '+ Keranjang', '+ Cart');
+    // Tombol marketplace menggantikan alur keranjang/checkout internal.
+    // Tautan per varian ada di config/evomi.php, dikunci personality_type.
+    $marketplaceLabel = $lbl('marketplace', 'Beli di', 'Buy on');
+    $marketplaceLinks = config('evomi.marketplaces.links.' . ($product['personality_type'] ?? ''), []);
+    $marketplaceButtons = [];
+
+    foreach (config('evomi.marketplaces.channels', []) as $mpKey => $mpMeta) {
+        $mpUrl = trim((string) ($marketplaceLinks[$mpKey] ?? ''));
+
+        // Tautan kosong -> tombol tidak dirender, supaya varian tanpa toko aman.
+        if ($mpUrl === '') {
+            continue;
+        }
+
+        $marketplaceButtons[] = [
+            'key' => $mpKey,
+            'label' => $mpMeta['label'] ?? ucfirst($mpKey),
+            'color' => $mpMeta['color'] ?? '#111111',
+            'url' => $mpUrl,
+        ];
+    }
     $stockLabel = $lbl('stock', 'Stok:', 'Stock:');
     $outOfStockLabel = evomi_l('Stok habis', 'Out of stock');
 
@@ -311,25 +330,35 @@
                             </div>
                         </div>
 
-                        <div class="flex flex-col gap-3 mt-1">
-                            <button
-                                type="button"
-                                @click="buyNow()"
-                                :disabled="isOutOfStock || actionBusy"
-                                class="w-full text-white font-nohemi text-[16px] font-semibold py-3 rounded-full shadow-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                :style="accentSurfaceStyle"
-                                x-text="isOutOfStock ? @js($outOfStockLabel) : @js($buyNowLabel)"
-                            ></button>
-                            <button
-                                type="button"
-                                data-belanja-add-cart
-                                @click="addToCart($event)"
-                                :disabled="isOutOfStock || actionBusy"
-                                class="w-full bg-white font-nohemi text-[16px] font-semibold py-3 rounded-full border shadow-sm hover:bg-gray-50 active:scale-95 transition-all disabled:opacity-50"
-                                :style="{ ...accentTextStyle, borderColor: accent }"
-                                x-text="isOutOfStock ? @js($outOfStockLabel) : (statusMessage || @js($addCartLabel))"
-                            ></button>
-                        </div>
+                        @if (count($marketplaceButtons))
+                            <div class="evomi-mp mt-1">
+                                <p class="evomi-mp__lead">{{ $marketplaceLabel }}</p>
+
+                                <div class="evomi-mp__list">
+                                    @foreach ($marketplaceButtons as $mp)
+                                        <a
+                                            href="{{ $mp['url'] }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="evomi-mp__btn evomi-mp__btn--{{ $mp['key'] }}"
+                                            style="--mp-color: {{ $mp['color'] }}"
+                                            aria-label="{{ $marketplaceLabel }} {{ $mp['label'] }}"
+                                        >
+                                            <span class="evomi-mp__icon" aria-hidden="true">
+                                                @include('partials.icons.marketplace-' . $mp['key'])
+                                            </span>
+
+                                            <span class="evomi-mp__text">{{ $mp['label'] }}</span>
+
+                                            <svg class="evomi-mp__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M5 12h13" />
+                                                <path d="m12 5 7 7-7 7" />
+                                            </svg>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
 
                         <div class="flex justify-center gap-12 mt-2 font-parkinsans font-medium text-[14px] text-[#6A7282]" :style="{ '--hover-color': accent }">
                             <button type="button" @click="openChat()" class="flex flex-col items-center gap-1.5 hover:text-[var(--hover-color)] transition">
@@ -367,7 +396,7 @@
 
                         <div class="bg-[#FFF4E5] border border-[#FFE8CC] text-[#CA3500] rounded-[8px] p-3 flex gap-2.5 items-center mt-2 font-parkinsans" x-show="hasCheckoutPromo" x-cloak>
                             <svg class="w-[18px] h-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                            <p class="text-[14px] leading-snug">{{ evomi_l('Promo aktif! Potongan dihitung sekali dari total keranjang saat checkout.', 'Promo active! Discount is applied once from the cart total at checkout.') }}</p>
+                            <p class="text-[14px] leading-snug">{{ evomi_l('Promo aktif! Potongan berlaku saat belanja lewat marketplace di atas.', 'Promo active! The discount applies when you shop through the marketplaces above.') }}</p>
                         </div>
 
                         <div

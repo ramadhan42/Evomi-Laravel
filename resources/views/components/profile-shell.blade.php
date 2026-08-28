@@ -9,13 +9,12 @@
         ?? (request()->routeIs('profile.wishlist') ? 'wishlist' : null)
         ?? 'settings';
 
+    // Menu keranjang, pembayaran, riwayat, dan wishlist disembunyikan sementara
+    // seiring pembelian dialihkan ke marketplace. Route, controller, dan view-nya
+    // sengaja dibiarkan utuh supaya tinggal didaftarkan ulang di sini bila dipakai lagi.
     $menuItems = [
         ['key' => 'settings', 'href' => route('profile.index'), 'label' => evomi_l('Pengaturan Profil', 'Profile Settings'), 'badge' => null, 'color' => '#1172BA'],
         ['key' => 'chat', 'href' => route('profile.chat'), 'label' => evomi_l('Pesan Anda', 'Your Messages'), 'badge' => 'unread', 'color' => '#1172BA'],
-        ['key' => 'cart', 'href' => route('profile.cart'), 'label' => evomi_l('Keranjang Belanja', 'Shopping Cart'), 'badge' => 'cart', 'color' => '#1172BA'],
-        ['key' => 'payments', 'href' => route('profile.payments'), 'label' => evomi_l('Pembayaran', 'Payments'), 'badge' => 'payments', 'color' => '#1172BA'],
-        ['key' => 'history', 'href' => route('profile.history'), 'label' => evomi_l('Riwayat Belanja', 'Order History'), 'badge' => 'history', 'color' => '#1172BA'],
-        ['key' => 'wishlist', 'href' => route('profile.wishlist'), 'label' => evomi_l('Wishlist', 'Wishlist'), 'badge' => 'wishlist', 'color' => '#1172BA'],
     ];
 @endphp
 
