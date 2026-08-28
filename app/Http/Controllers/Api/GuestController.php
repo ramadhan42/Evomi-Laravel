@@ -240,7 +240,7 @@ class GuestController extends Controller
      */
     private function buildOrderSummaries($orders, string $locale): array
     {
-        $frontend = rtrim((string) (env('FRONTEND_URL') ?: env('APP_URL') ?: 'https://evomi.shop'), '/');
+        $frontend = (string) config('evomi.frontend_url');
         $summaries = [];
 
         foreach ($orders as $order) {

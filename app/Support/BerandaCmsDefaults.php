@@ -186,24 +186,24 @@ final class BerandaCmsDefaults
             ['hero', 'badge_left', 'string', 'Eau de Parfum'],
             ['hero', 'badge_left_icon', 'image', '/src/images/section 1/badge-left-star.svg'],
             ['hero', 'badge_right', 'string', 'Recycle Bottle Cap'],
-            ['hero', 'badge_right_icon', 'image', '/src/images/section 1/recycle.png'],
-            ['hero', 'product1_image', 'image', '/src/images/section 1/botol-purpose-prestige.png'],
+            ['hero', 'badge_right_icon', 'image', '/src/images/section 1/recycle.webp'],
+            ['hero', 'product1_image', 'image', '/src/images/section 1/botol-purpose-prestige.webp'],
             ['hero', 'product1_badge_label', 'string', 'Purpose Prestige'],
-            ['hero', 'product1_badge_icon', 'image', '/src/images/section 1/purpose-prestige.png'],
-            ['hero', 'product2_image', 'image', '/src/images/section 1/botol-rabel-brave.png'],
+            ['hero', 'product1_badge_icon', 'image', '/src/images/section 1/purpose-prestige.webp'],
+            ['hero', 'product2_image', 'image', '/src/images/section 1/botol-rabel-brave.webp'],
             ['hero', 'product2_badge_label', 'string', 'Rebel Brave'],
-            ['hero', 'product2_badge_icon', 'image', '/src/images/section 1/rabel-brave.png'],
-            ['hero', 'product3_image', 'image', '/src/images/section 1/botol-peaceful-calm.png'],
+            ['hero', 'product2_badge_icon', 'image', '/src/images/section 1/rabel-brave.webp'],
+            ['hero', 'product3_image', 'image', '/src/images/section 1/botol-peaceful-calm.webp'],
             ['hero', 'product3_badge_label', 'string', 'Peaceful Calm'],
-            ['hero', 'product3_badge_icon', 'image', '/src/images/section 1/peaceful-calm.png'],
-            ['hero', 'product4_image', 'image', '/src/images/section 1/botol-sweet-shy.png'],
+            ['hero', 'product3_badge_icon', 'image', '/src/images/section 1/peaceful-calm.webp'],
+            ['hero', 'product4_image', 'image', '/src/images/section 1/botol-sweet-shy.webp'],
             ['hero', 'product4_badge_label', 'string', 'Sweet Shy'],
-            ['hero', 'product4_badge_icon', 'image', '/src/images/section 1/sweet-shy.png'],
+            ['hero', 'product4_badge_icon', 'image', '/src/images/section 1/sweet-shy.webp'],
             ['hero', 'marquee_text', 'string', 'Every Version of Me'],
-            ['hero', 'divider_icon_1', 'image', '/src/images/section 1/purpose.png'],
-            ['hero', 'divider_icon_2', 'image', '/src/images/section 1/peaceful.png'],
-            ['hero', 'divider_icon_3', 'image', '/src/images/section 1/rab.png'],
-            ['hero', 'divider_icon_4', 'image', '/src/images/section 1/sweetshy.png'],
+            ['hero', 'divider_icon_1', 'image', '/src/images/section 1/purpose.webp'],
+            ['hero', 'divider_icon_2', 'image', '/src/images/section 1/peaceful.webp'],
+            ['hero', 'divider_icon_3', 'image', '/src/images/section 1/rab.webp'],
+            ['hero', 'divider_icon_4', 'image', '/src/images/section 1/sweetshy.webp'],
             ['hero', 'wave_left_icon', 'image', '/src/images/section 1/sayap-kiri.svg'],
             ['hero', 'wave_right_icon', 'image', '/src/images/section 1/sayap-kanan.svg'],
 
@@ -327,16 +327,16 @@ final class BerandaCmsDefaults
             ['second', 'card_gap_horizontal_desktop', 'string', '32px'],
             ['second', 'card1_name', 'string', "Purpose\nPrestige"],
             ['second', 'card1_title', 'string', 'Purpose Prestige'],
-            ['second', 'card1_image', 'image', '/src/images/section 2/purpose-prestige.png'],
+            ['second', 'card1_image', 'image', '/src/images/section 2/purpose-prestige.webp'],
             ['second', 'card2_name', 'string', "Peaceful\nCalm"],
             ['second', 'card2_title', 'string', 'Peaceful Calm'],
-            ['second', 'card2_image', 'image', '/src/images/section 2/peaceful-calm.png'],
+            ['second', 'card2_image', 'image', '/src/images/section 2/peaceful-calm.webp'],
             ['second', 'card3_name', 'string', "Rebel\nBrave"],
             ['second', 'card3_title', 'string', 'Rebel Brave'],
-            ['second', 'card3_image', 'image', '/src/images/section 2/rabel-brave.png'],
+            ['second', 'card3_image', 'image', '/src/images/section 2/rabel-brave.webp'],
             ['second', 'card4_name', 'string', "Sweet\nShy"],
             ['second', 'card4_title', 'string', 'Sweet Shy'],
-            ['second', 'card4_image', 'image', '/src/images/section 2/sweet-shy.png'],
+            ['second', 'card4_image', 'image', '/src/images/section 2/sweet-shy.webp'],
         ];
 
         $rows = array_merge(
@@ -364,13 +364,13 @@ final class BerandaCmsDefaults
             ['third', 'tagline', 'text', 'Every Version of Me'],
             ['third', 'card1_title', 'string', "Self\nAwareness"],
             ['third', 'card1_desc', 'text', 'Setiap aroma dirancang untuk merepresentasikan versi diri, emosi, dan karakter manusia yang berbeda, sehingga parfum menjadi medium ekspresi personal, bukan sekadar wewangian.'],
-            ['third', 'card1_icon', 'image', '/src/images/section 3/star-medium.png'],
+            ['third', 'card1_icon', 'image', '/src/images/section 3/star-medium.webp'],
             ['third', 'card2_title', 'string', "Environment\nFriendly"],
             ['third', 'card2_desc', 'text', 'Mengusung kepedulian terhadap lingkungan melalui pemanfaatan daur ulang tutup botol plastik menjadi bagian dari identitas produk, sebagai bentuk kontribusi kecil dalam mengurangi limbah plastik sekaligus menghadirkan nilai sustainability.'],
-            ['third', 'card2_icon', 'image', '/src/images/section 3/peaceful-calm.png'],
+            ['third', 'card2_icon', 'image', '/src/images/section 3/peaceful-calm.webp'],
             ['third', 'card3_title', 'string', "Playful Design\nConcept"],
             ['third', 'card3_desc', 'text', 'Dikemas dengan pendekatan visual yang playful, ekspresif, dan dekat dengan generasi muda agar pengalaman menggunakan parfum terasa lebih personal dan menyenangkan.'],
-            ['third', 'card3_icon', 'image', '/src/images/section 3/triangle.png'],
+            ['third', 'card3_icon', 'image', '/src/images/section 3/triangle.webp'],
         ];
 
         return array_merge(
@@ -393,10 +393,10 @@ final class BerandaCmsDefaults
     private static function fifth(): array
     {
         $cards = [
-            1 => ['Optimis', 'Purpose Prestige', 'Aroma yang merefleksikan ketenangan dan kejelasan tujuan.', 'Rp189.000', '/src/images/section 5/purpose-prestige.png'],
-            2 => ['Damai', 'Peaceful Calm', 'Aroma menenangkan yang menyatu dengan diri.', 'Rp199.000', '/src/images/section 5/peaceful-calm.png'],
-            3 => ['Berani', 'Rebel Brave', 'Keberanian dan semangat untuk mengekspresikan diri.', 'Rp179.000', '/src/images/section 5/rabel-brave.png'],
-            4 => ['Manis', 'Sweet Shy', 'Aroma menenangkan yang menyatu dengan diri.', 'Rp189.000', '/src/images/section 5/sweet-shy.png'],
+            1 => ['Optimis', 'Purpose Prestige', 'Aroma yang merefleksikan ketenangan dan kejelasan tujuan.', 'Rp189.000', '/src/images/section 5/purpose-prestige.webp'],
+            2 => ['Damai', 'Peaceful Calm', 'Aroma menenangkan yang menyatu dengan diri.', 'Rp199.000', '/src/images/section 5/peaceful-calm.webp'],
+            3 => ['Berani', 'Rebel Brave', 'Keberanian dan semangat untuk mengekspresikan diri.', 'Rp179.000', '/src/images/section 5/rabel-brave.webp'],
+            4 => ['Manis', 'Sweet Shy', 'Aroma menenangkan yang menyatu dengan diri.', 'Rp189.000', '/src/images/section 5/sweet-shy.webp'],
         ];
 
         $rows = [
@@ -442,7 +442,7 @@ final class BerandaCmsDefaults
             [
                 ['sixth', 'title_1', 'string', 'Packaging'],
                 ['sixth', 'title_2', 'string', 'Reveal'],
-                ['sixth', 'image', 'image', '/src/images/section 6/packaging.png'],
+                ['sixth', 'image', 'image', '/src/images/section 6/packaging.webp'],
                 ['sixth', 'marquee_text', 'string', 'Every Version of Me'],
                 ['sixth', 'label1', 'string', "Purpose\nPrestige"],
                 ['sixth', 'label2', 'string', "Rebel\nBrave"],
@@ -478,7 +478,7 @@ final class BerandaCmsDefaults
             ['seventh', 'headline_4', 'string', 'bermain'],
             ['seventh', 'headline_5', 'string', 'kuis'],
             ['seventh', 'cta_label', 'string', 'Temukan Aromamu'],
-            ['seventh', 'product_image', 'image', '/src/images/section 7/produk.png'],
+            ['seventh', 'product_image', 'image', '/src/images/section 7/produk.webp'],
         ];
 
         foreach ($labels as $n => [$text, $title, $color, $left, $top]) {

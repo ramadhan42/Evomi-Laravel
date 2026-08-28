@@ -39,10 +39,10 @@
         $characters[] = [
             'lines' => $lines,
             'img' => $cms->image('second', "card{$i}_image", match ($i) {
-                1 => '/src/images/section 2/purpose-prestige.png',
-                2 => '/src/images/section 2/peaceful-calm.png',
-                3 => '/src/images/section 2/rabel-brave.png',
-                default => '/src/images/section 2/sweet-shy.png',
+                1 => '/src/images/section 2/purpose-prestige.webp',
+                2 => '/src/images/section 2/peaceful-calm.webp',
+                3 => '/src/images/section 2/rabel-brave.webp',
+                default => '/src/images/section 2/sweet-shy.webp',
             }),
             'title' => $cms->get('second', "card{$i}_title", trim(implode(' ', $lines))),
             'color' => $colors[$i - 1],

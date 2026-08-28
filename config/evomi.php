@@ -18,6 +18,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | URL publik (frontend & aset)
+    |--------------------------------------------------------------------------
+    |
+    | WAJIB dibaca lewat config('evomi.frontend_url'), BUKAN env() langsung di
+    | controller/mailable. Setelah `php artisan config:cache`, Laravel berhenti
+    | memuat .env, sehingga env() di luar folder config/ mengembalikan null dan
+    | tautan email diam-diam jatuh ke localhost.
+    |
+    | frontend_url : basis tautan yang dikirim ke pengguna (email, redirect)
+    | asset_url    : basis URL gambar /storage yang disematkan di email
+    |
+    | Nilai sudah di-rtrim, jadi pemanggil cukup menyambung '/path'.
+    |
+    */
+    'frontend_url' => rtrim(
+        (string) (env('FRONTEND_URL') ?: env('APP_FRONTEND_URL') ?: env('APP_URL') ?: 'https://evomi.shop'),
+        '/'
+    ),
+
+    'asset_url' => rtrim(
+        (string) (env('APP_URL') ?: 'https://evomi.shop'),
+        '/'
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
     | Storefront custom cursor
     |--------------------------------------------------------------------------
     |

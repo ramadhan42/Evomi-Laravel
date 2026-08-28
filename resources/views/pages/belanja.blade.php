@@ -21,9 +21,9 @@
             return $fallback.(str_contains($fallback, '?') ? '&' : '?').'v='.$v;
         };
         $charPurpose = $decoSrc('deco_purpose', 'char-purpose.png');
-        $charPeaceful = $decoSrc('deco_peaceful', 'char-peaceful.png');
+        $charPeaceful = $decoSrc('deco_peaceful', 'char-peaceful.webp');
         $charRebel = $decoSrc('deco_rebel', 'char-rebel.png');
-        $charSweet = $decoSrc('deco_sweet', 'char-sweet.png');
+        $charSweet = $decoSrc('deco_sweet', 'char-sweet.webp');
         $decoStyle = \App\Support\BelanjaCmsDefaults::decoStyleAttr($cms);
     @endphp
 

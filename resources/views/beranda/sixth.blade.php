@@ -3,36 +3,36 @@
     $cms = $cms ?? \App\Support\CmsStorefront::forPage('beranda');
     $title1 = $cms->textLines('sixth', 'title_1', 'Packaging', 2);
     $title2 = $cms->textLines('sixth', 'title_2', 'Reveal', 2);
-    $packagingImg = $cms->image('sixth', 'image', '/src/images/section 6/packaging.png');
+    $packagingImg = $cms->image('sixth', 'image', '/src/images/section 6/packaging.webp');
     $marqueeText = $cms->textLines('sixth', 'marquee_text', 'Every Version of Me', 1);
     $labelBase = 'flex items-center gap-1 whitespace-pre-line text-left text-white pointer-events-none';
     $labels = [
         'purpose' => [
             'text' => $cms->textLines('sixth', 'label1', "Purpose\nPrestige", 2),
-            'icon' => asset('src/images/section 6/purpose.png'),
+            'icon' => asset('src/images/section 6/purpose.webp'),
             'style' => $cms->fontInline('sixth', 'label1', '500'),
         ],
         'rebel' => [
             'text' => $cms->textLines('sixth', 'label2', "Rebel\nBrave", 2),
-            'icon' => asset('src/images/section 6/rabel.png'),
+            'icon' => asset('src/images/section 6/rabel.webp'),
             'style' => $cms->fontInline('sixth', 'label2', '500'),
         ],
         'peaceful' => [
             'text' => $cms->textLines('sixth', 'label3', "Peaceful\nCalm", 2),
-            'icon' => asset('src/images/section 6/peaceful.png'),
+            'icon' => asset('src/images/section 6/peaceful.webp'),
             'style' => $cms->fontInline('sixth', 'label3', '500'),
         ],
         'sweet' => [
             'text' => $cms->textLines('sixth', 'label4', "Sweet\nShy", 2),
-            'icon' => asset('src/images/section 6/sweetshy.png'),
+            'icon' => asset('src/images/section 6/sweetshy.webp'),
             'style' => $cms->fontInline('sixth', 'label4', '500'),
         ],
     ];
     $marqueeIcons = [
-        asset('src/images/section 1/purpose.png'),
-        asset('src/images/section 1/peaceful.png'),
-        asset('src/images/section 1/rab.png'),
-        asset('src/images/section 1/sweetshy.png'),
+        asset('src/images/section 1/purpose.webp'),
+        asset('src/images/section 1/peaceful.webp'),
+        asset('src/images/section 1/rab.webp'),
+        asset('src/images/section 1/sweetshy.webp'),
     ];
 @endphp
 <section class="relative z-0 bg-[#1172BA] flex flex-col items-center justify-center pt-10 pb-24 md:pt-8 md:pb-28 overflow-hidden select-none w-full" style="{{ $cms->sectionGapStyleAttr('sixth', ['hx_m' => '16px', 'hx_d' => '24px', 'vy_m' => '12px', 'vy_d' => '20px']) }}">
@@ -42,7 +42,7 @@
             <span class="cms-fs cms-lines text-[#A5E194]" style="{{ $cms->fontInline('sixth', 'title_2', '700') }}"> {{ $title2 }}</span>
         </h2>
         <img
-            src="{{ asset('src/images/section 6/star-medium.png') }}"
+            src="{{ asset('src/images/section 6/star-medium.webp') }}"
             alt=""
             class="w-[14px] h-[14px] md:w-[24px] md:h-[24px] object-contain brightness-0 invert shrink-0"
         >
@@ -51,7 +51,7 @@
     <div class="relative w-full max-w-[100vw] flex flex-col items-center justify-center px-2 sm:px-3 md:px-2 py-1 md:py-2 translate-y-[3%] md:translate-y-0">
         <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[12%] max-w-[48px] sm:max-w-[72px] md:w-auto md:max-w-[200px] lg:max-w-none z-0 pointer-events-none opacity-70 md:opacity-100">
             <img
-                src="{{ asset('src/images/section 6/frame-kiri.png') }}"
+                src="{{ asset('src/images/section 6/frame-kiri.webp') }}"
                 alt=""
                 class="parallax-self w-full h-auto object-contain"
                 data-reveal="left"
@@ -60,7 +60,7 @@
         </div>
         <div class="absolute right-0 top-1/2 -translate-y-1/2 w-[12%] max-w-[48px] sm:max-w-[72px] md:w-auto md:max-w-[200px] lg:max-w-none z-0 pointer-events-none opacity-70 md:opacity-100">
             <img
-                src="{{ asset('src/images/section 6/frame-kanan.png') }}"
+                src="{{ asset('src/images/section 6/frame-kanan.webp') }}"
                 alt=""
                 class="parallax-self w-full h-auto object-contain"
                 data-reveal="right"

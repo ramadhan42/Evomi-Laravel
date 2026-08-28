@@ -24,6 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'evomi_locale',
         ]);
 
+        // env() di sini tidak bisa diganti config(): berkas ini dieksekusi sebelum
+        // config ter-load. Konsekuensinya, setelah `php artisan config:cache` nilai
+        // di .env diabaikan dan default di bawah yang dipakai. Aman selama default
+        // ini sama dengan .env — kalau nilainya perlu diubah per-environment,
+        // pindahkan dulu ke config/ dan baca dari sana lewat middleware terpisah.
         if (filter_var(env('SECURITY_API_THROTTLE', true), FILTER_VALIDATE_BOOL)) {
             $middleware->throttleApi(env('SECURITY_API_THROTTLE_LIMIT', '120,1'));
         }

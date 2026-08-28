@@ -15,7 +15,7 @@
         $hl5 = $cms->textLines('seventh', 'headline_5', 'kuis', 2);
     }
     $cta = $cms->textLines('seventh', 'cta_label', evomi_l('Temukan Aromamu', 'Find Your Scent'), 1);
-    $productImg = $cms->image('seventh', 'product_image', '/src/images/section 7/produk.png');
+    $productImg = $cms->image('seventh', 'product_image', '/src/images/section 7/produk.webp');
     $badges = [];
     for ($i = 1; $i <= 4; $i++) {
         $defaults = [

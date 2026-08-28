@@ -94,5 +94,45 @@ foreach ($views as $file) {
     @unlink($file);
 }
 echo 'cleared_views=' . count($views) . "\n";
+
+/*
+ * Bangun cache SETELAH kode tersalin, migrasi jalan, dan view lama dibuang.
+ *
+ * config:cache aman sejak URL frontend/aset dipindah ke config/evomi.php.
+ * Jangan kembalikan env() ke controller atau mailable: begitu config di-cache
+ * Laravel berhenti memuat .env, env() jadi null, dan tautan email diam-diam
+ * jatuh ke localhost.
+ */
+$cacheOk = true;
+foreach (['config:cache', 'route:cache', 'view:cache'] as $cmd) {
+    try {
+        Illuminate\Support\Facades\Artisan::call($cmd);
+        echo $cmd . ' ok' . PHP_EOL;
+    } catch (Throwable $e) {
+        $cacheOk = false;
+        echo $cmd . ' error: ' . $e->getMessage() . PHP_EOL;
+        break;
+    }
+}
+
+/*
+ * Jaring pengaman: deploy ini berjalan lewat HTTP tanpa akses SSH. Kalau satu
+ * langkah cache gagal, situs bisa terkunci pada konfigurasi setengah jadi dan
+ * sulit dipulihkan. Buang cache-nya supaya Laravel kembali membaca .env apa
+ * adanya - lebih lambat, tapi hidup.
+ */
+if (! $cacheOk) {
+    foreach (['config:clear', 'route:clear', 'view:clear'] as $cmd) {
+        try {
+            Illuminate\Support\Facades\Artisan::call($cmd);
+            echo 'rollback ' . $cmd . ' ok' . PHP_EOL;
+        } catch (Throwable $e) {
+            echo 'rollback ' . $cmd . ' error: ' . $e->getMessage() . PHP_EOL;
+        }
+    }
+}
+
+echo 'cache_built=' . ($cacheOk ? 'yes' : 'no (rolled back)') . PHP_EOL;
+
 echo "copied_files=$total\n";
 echo "done\n";

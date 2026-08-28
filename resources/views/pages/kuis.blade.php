@@ -31,7 +31,7 @@
                     :style="{ backgroundColor: accent }"
                 >
                     <div class="flex items-center gap-2 mb-1.5">
-                        <img src="{{ asset('src/images/kuis/scent-finder-Icon.png') }}" alt="" class="w-4 h-4 md:w-5 md:h-5 object-contain brightness-0 invert opacity-90">
+                        <img src="{{ asset('src/images/kuis/scent-finder-Icon.webp') }}" alt="" class="w-4 h-4 md:w-5 md:h-5 object-contain brightness-0 invert opacity-90">
                         <p class="text-[12px] md:text-[13px] text-white font-normal uppercase tracking-wide">{{ evomi_l('Kuis Scent Finder', 'Scent Finder Quiz') }}</p>
                     </div>
                     <h1 class="text-[28px] md:text-[32px] font-semibold text-white tracking-tight">{{ evomi_l('Temukan aromamu', 'Discover your scent') }}</h1>

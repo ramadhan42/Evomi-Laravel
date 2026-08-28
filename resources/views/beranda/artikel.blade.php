@@ -20,7 +20,7 @@
                 <a href="{{ route('artikel') }}" class="group block overflow-hidden rounded-[24px] border border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
                     <div class="aspect-[16/10] bg-[#1172BA]/40 flex items-center justify-center">
                         <img
-                            src="{{ asset('src/images/section 1/star-medium.png') }}"
+                            src="{{ asset('src/images/section 1/star-medium.webp') }}"
                             alt=""
                             class="w-12 h-12 opacity-40 brightness-0 invert"
                         >

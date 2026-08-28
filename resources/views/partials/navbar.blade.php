@@ -89,7 +89,7 @@
                 data-nav-index="0"
             >
                 <img
-                    src="{{ asset('src/images/navbar/evomi-logo.png') }}"
+                    src="{{ asset('src/images/navbar/evomi-logo.webp') }}"
                     alt="Evomi"
                     class="nav-logo object-contain brightness-0 invert w-auto h-6 md:h-8 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
                 >

@@ -54,7 +54,7 @@ class PersonalityTheme extends Model
             'accent' => '#1172BA',
             'soft_accent' => '#E6F3FB',
             'character' => 'belanja/detail/purpose-character.svg',
-            'fallback_img' => 'section 5/purpose-prestige.png',
+            'fallback_img' => 'section 5/purpose-prestige.webp',
         ];
     }
 

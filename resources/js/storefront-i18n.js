@@ -1,8 +1,8 @@
 /**
  * Storefront bilingual helper — mirrors Next.js L(locale, id, en).
- * Uses shared `evomi_locale` from admin-i18n / LanguageSwitcher.
+ * Uses shared `evomi_locale` from admin-locale / LanguageSwitcher.
  */
-import { readAdminLocale } from './admin-i18n';
+import { readAdminLocale } from './admin-locale';
 
 export function currentLocale() {
     return readAdminLocale() === 'en' ? 'en' : 'id';

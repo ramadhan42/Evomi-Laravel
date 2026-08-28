@@ -2,25 +2,25 @@
 @php
     $authChars = [
         [
-            'src' => asset('src/images/section 2/purpose-prestige.png'),
+            'src' => asset('src/images/section 2/purpose-prestige.webp'),
             'alt' => 'Evomi Purpose Prestige',
             'wrap' => 'absolute top-[8%] left-[5%] md:top-[12%] md:left-[15%] w-14 h-14 sm:w-24 sm:h-24 md:w-36 md:h-36 opacity-70 sm:opacity-90 z-0 auth-char-float',
             'inner' => '-rotate-12 drop-shadow-2xl hover:rotate-0 transition-transform duration-300 w-full h-full',
         ],
         [
-            'src' => asset('src/images/section 2/peaceful-calm.png'),
+            'src' => asset('src/images/section 2/peaceful-calm.webp'),
             'alt' => 'Evomi Peaceful Calm',
             'wrap' => 'absolute top-[12%] right-[5%] md:top-[15%] md:right-[15%] w-14 h-14 sm:w-24 sm:h-24 md:w-36 md:h-36 opacity-70 sm:opacity-90 z-0 auth-char-float auth-char-float-delay-1',
             'inner' => 'rotate-12 drop-shadow-2xl hover:rotate-0 transition-transform duration-300 w-full h-full',
         ],
         [
-            'src' => asset('src/images/section 2/sweet-shy.png'),
+            'src' => asset('src/images/section 2/sweet-shy.webp'),
             'alt' => 'Evomi Sweet Shy',
             'wrap' => 'absolute bottom-[12%] left-[8%] md:bottom-[15%] md:left-[15%] w-14 h-14 sm:w-24 sm:h-24 md:w-36 md:h-36 opacity-70 sm:opacity-90 z-0 auth-char-float auth-char-float-delay-2',
             'inner' => 'rotate-6 drop-shadow-2xl hover:-rotate-12 transition-transform duration-300 w-full h-full',
         ],
         [
-            'src' => asset('src/images/section 2/rabel-brave.png'),
+            'src' => asset('src/images/section 2/rabel-brave.webp'),
             'alt' => 'Evomi Rebel Brave',
             'wrap' => 'absolute bottom-[12%] right-[8%] md:bottom-[12%] md:right-[15%] w-14 h-14 sm:w-24 sm:h-24 md:w-36 md:h-36 opacity-70 sm:opacity-90 z-0 auth-char-float auth-char-float-delay-3',
             'inner' => '-rotate-[15deg] drop-shadow-2xl hover:rotate-6 transition-transform duration-300 w-full h-full',

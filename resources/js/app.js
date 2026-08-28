@@ -1,10 +1,5 @@
 import Alpine from 'alpinejs';
-import { registerAdminCrud } from './admin-crud';
-import {
-    createAdminI18nApi,
-    readAdminLocale,
-    writeAdminLocale,
-} from './admin-i18n';
+import { readAdminLocale, writeAdminLocale } from './admin-locale';
 import { L as storefrontL, currentLocale, registerStorefrontI18n } from './storefront-i18n';
 import { initSourceGuard } from './source-guard';
 import {
@@ -21,14 +16,33 @@ import {
     turnstileState,
     turnstileToken,
 } from './turnstile';
-import {
-    buildSalesChartModel,
-    salesChartHoverAt,
-    salesChartClearHover,
-} from './admin-sales-chart.js';
 
 window.Alpine = Alpine;
 registerStorefrontI18n(Alpine);
+
+/*
+ * Kode dashboard admin (admin-crud, kamus admin-i18n, grafik penjualan) dimuat
+ * lewat dynamic import supaya tidak ikut terkirim ke pengunjung biasa.
+ * Aman karena masuk/keluar /dashboard selalu hard navigate — lihat softNavigate().
+ */
+let registerAdminCrud = null;
+let createAdminI18nApi = null;
+let buildSalesChartModel = null;
+let salesChartHoverAt = null;
+let salesChartClearHover = null;
+
+async function loadAdminModules() {
+    const [crud, i18n, chart] = await Promise.all([
+        import('./admin-crud'),
+        import('./admin-i18n'),
+        import('./admin-sales-chart.js'),
+    ]);
+    registerAdminCrud = crud.registerAdminCrud;
+    createAdminI18nApi = i18n.createAdminI18nApi;
+    buildSalesChartModel = chart.buildSalesChartModel;
+    salesChartHoverAt = chart.salesChartHoverAt;
+    salesChartClearHover = chart.salesChartClearHover;
+}
 
 let softNavBusy = false;
 let softNavToken = 0;
@@ -2098,13 +2112,13 @@ function shadeHexColor(hex, percent = 0) {
 function productImageFallback(product) {
     const personality = String(product?.personality_type || '').toLowerCase();
     const fallbacks = {
-        prestige: '/src/images/section%205/purpose-prestige.png',
-        purpose_prestige: '/src/images/section%205/purpose-prestige.png',
-        peaceful_calm: '/src/images/section%205/peaceful-calm.png',
-        rebel_brave: '/src/images/section%205/rabel-brave.png',
-        sweet_shy: '/src/images/section%205/sweet-shy.png',
+        prestige: '/src/images/section%205/purpose-prestige.webp',
+        purpose_prestige: '/src/images/section%205/purpose-prestige.webp',
+        peaceful_calm: '/src/images/section%205/peaceful-calm.webp',
+        rebel_brave: '/src/images/section%205/rabel-brave.webp',
+        sweet_shy: '/src/images/section%205/sweet-shy.webp',
     };
-    return fallbacks[personality] || '/src/images/section%205/purpose-prestige.png';
+    return fallbacks[personality] || '/src/images/section%205/purpose-prestige.webp';
 }
 
 function productImage(product, prefer = 'default') {
@@ -2374,12 +2388,17 @@ function scheduleSiteTrafficPing() {
     }, 400);
 }
 
+// Interval harus lebih rapat dari SiteVisit::ONLINE_WINDOW_SECONDS (300 dtk)
+// supaya pengunjung tidak keburu dianggap offline; 90 dtk memberi 3+ ping per
+// jendela, cukup longgar bila satu ping meleset, tapi separuh beban tulis 45 dtk.
+const TRAFFIC_HEARTBEAT_MS = 90000;
+
 function startSiteTrafficHeartbeat() {
     if (trafficHeartbeatTimer) return;
     trafficHeartbeatTimer = setInterval(() => {
         if (document.visibilityState === 'hidden') return;
         pingSiteTraffic({ heartbeat: true });
-    }, 45000);
+    }, TRAFFIC_HEARTBEAT_MS);
 }
 
 function waitFrames(n = 2) {
@@ -2506,7 +2525,7 @@ async function mergeGuestCartIntoAccount() {
 }
 
 document.addEventListener('alpine:init', () => {
-    registerAdminCrud(Alpine, {
+    registerAdminCrud?.(Alpine, {
         authHeaders,
         readApiJson,
         apiErrorMessage,
@@ -10070,7 +10089,13 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
-Alpine.start();
+if (isDashboardPath(window.location.pathname)) {
+    loadAdminModules()
+        .catch((err) => console.error('[evomi] gagal memuat modul admin', err))
+        .finally(() => Alpine.start());
+} else {
+    Alpine.start();
+}
 
 async function softNavigate(href, { push = true, navIndex = null, force = false, chromeHint = '' } = {}) {
     const url = new URL(href, window.location.origin);

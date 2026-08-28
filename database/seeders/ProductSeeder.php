@@ -17,9 +17,9 @@ class ProductSeeder extends Seeder
      * 1 Purpose Prestige, 2 Peaceful Calm, 3 Rebel Brave, 4 Sweet Shy
      *
      * File gambar per produk (wajib):
-     * - belanja.png          → image_produk_belanja (halaman belanja)
-     * - image_1.png … image_3.png → gallery detail (3 slide, sama Next.js)
-     * - image_4.png          → opsional (disimpan, tidak dipakai di detail)
+     * - belanja.webp         → image_produk_belanja (halaman belanja)
+     * - image_1.webp … image_3.webp → gallery detail (3 slide, sama Next.js)
+     * - image_4.webp         → opsional (disimpan, tidak dipakai di detail)
      */
     public function run(): void
     {
@@ -138,10 +138,10 @@ class ProductSeeder extends Seeder
         Storage::disk('public')->makeDirectory($targetDir);
 
         $required = [
-            'belanja' => 'belanja.png',
-            'image_1' => 'image_1.png',
-            'image_2' => 'image_2.png',
-            'image_3' => 'image_3.png',
+            'belanja' => 'belanja.webp',
+            'image_1' => 'image_1.webp',
+            'image_2' => 'image_2.webp',
+            'image_3' => 'image_3.webp',
         ];
 
         $paths = [];
@@ -157,9 +157,9 @@ class ProductSeeder extends Seeder
             $paths[$field] = $relative;
         }
 
-        $image4Source = $sourceDir . DIRECTORY_SEPARATOR . 'image_4.png';
+        $image4Source = $sourceDir . DIRECTORY_SEPARATOR . 'image_4.webp';
         if (File::exists($image4Source)) {
-            $relative = "{$targetDir}/image_4.png";
+            $relative = "{$targetDir}/image_4.webp";
             Storage::disk('public')->put($relative, File::get($image4Source));
             $paths['image_4'] = $relative;
         } else {

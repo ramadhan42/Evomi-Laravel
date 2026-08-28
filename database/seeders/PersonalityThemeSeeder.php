@@ -17,7 +17,7 @@ class PersonalityThemeSeeder extends Seeder
                 'accent' => '#1172BA',
                 'soft_accent' => '#E6F3FB',
                 'character' => 'belanja/detail/purpose-character.svg',
-                'fallback_img' => 'section 5/purpose-prestige.png',
+                'fallback_img' => 'section 5/purpose-prestige.webp',
             ],
             [
                 'personality_key' => 'peaceful_calm',
@@ -26,7 +26,7 @@ class PersonalityThemeSeeder extends Seeder
                 'accent' => '#5EA14A',
                 'soft_accent' => '#D7FFCC',
                 'character' => 'belanja/detail/peaceful-character.svg',
-                'fallback_img' => 'section 5/peaceful-calm.png',
+                'fallback_img' => 'section 5/peaceful-calm.webp',
             ],
             [
                 'personality_key' => 'rebel_brave',
@@ -35,7 +35,7 @@ class PersonalityThemeSeeder extends Seeder
                 'accent' => '#E33D35',
                 'soft_accent' => '#FFCDCA',
                 'character' => 'belanja/detail/rebel-character.svg',
-                'fallback_img' => 'section 5/rabel-brave.png',
+                'fallback_img' => 'section 5/rabel-brave.webp',
             ],
             [
                 'personality_key' => 'sweet_shy',
@@ -44,7 +44,7 @@ class PersonalityThemeSeeder extends Seeder
                 'accent' => '#DD74A5',
                 'soft_accent' => '#FFDDED',
                 'character' => 'belanja/detail/sweet-character.svg',
-                'fallback_img' => 'section 5/sweet-shy.png',
+                'fallback_img' => 'section 5/sweet-shy.webp',
             ],
         ];
 

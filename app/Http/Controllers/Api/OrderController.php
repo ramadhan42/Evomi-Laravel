@@ -469,10 +469,7 @@ class OrderController extends Controller
                 $guestEmail,
             );
 
-            $frontend = rtrim(
-                (string) (env('FRONTEND_URL') ?: env('APP_FRONTEND_URL') ?: env('APP_URL', 'http://localhost:3000')),
-                '/'
-            );
+            $frontend = (string) config('evomi.frontend_url');
 
             return response()->json([
                 'success' => true,
@@ -538,7 +535,7 @@ class OrderController extends Controller
                     } else {
                         $relative = ltrim($imagePath, '/');
                         $local = storage_path('app/public/'.$relative);
-                        $imageUrl = rtrim((string) env('APP_URL', 'http://localhost:8000'), '/')
+                        $imageUrl = config('evomi.asset_url')
                             .'/storage/'
                             .$relative;
 

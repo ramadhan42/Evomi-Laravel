@@ -32,7 +32,7 @@ class GuestOrdersReminderMail extends Mailable
 
     public function content(): Content
     {
-        $frontend = rtrim((string) (env('FRONTEND_URL') ?: env('APP_URL') ?: 'https://evomi.shop'), '/');
+        $frontend = (string) config('evomi.frontend_url');
 
         return new Content(
             html: 'emails.guest-orders-reminder',

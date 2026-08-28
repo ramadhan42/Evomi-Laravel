@@ -36,10 +36,7 @@ class OrderPlacedMail extends Mailable
 
     public function content(): Content
     {
-        $frontend = rtrim(
-            (string) (env('FRONTEND_URL') ?: env('APP_FRONTEND_URL') ?: 'http://localhost:3000'),
-            '/'
-        );
+        $frontend = (string) config('evomi.frontend_url');
 
         $brand = $this->resolveBrandColor();
         $palette = $this->buildPalette($brand);

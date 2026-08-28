@@ -191,20 +191,20 @@ class PageController extends Controller
 
             $fallbackImages = match ($frontendKey) {
                 'peaceful_calm' => [
-                    'bg' => '/src/images/kuis/peaceful-kanan.png',
-                    'product' => '/src/images/kuis/peaceful-produk.png',
+                    'bg' => '/src/images/kuis/peaceful-kanan.webp',
+                    'product' => '/src/images/kuis/peaceful-produk.webp',
                 ],
                 'rebel_brave' => [
-                    'bg' => '/src/images/kuis/rebel-kanan.png',
-                    'product' => '/src/images/kuis/rebel-produk.png',
+                    'bg' => '/src/images/kuis/rebel-kanan.webp',
+                    'product' => '/src/images/kuis/rebel-produk.webp',
                 ],
                 'sweet_shy' => [
-                    'bg' => '/src/images/kuis/sweet-kanan.png',
-                    'product' => '/src/images/kuis/sweet-produk.png',
+                    'bg' => '/src/images/kuis/sweet-kanan.webp',
+                    'product' => '/src/images/kuis/sweet-produk.webp',
                 ],
                 default => [
-                    'bg' => '/src/images/kuis/purpose-kanan.png',
-                    'product' => '/src/images/kuis/purpose-produk.png',
+                    'bg' => '/src/images/kuis/purpose-kanan.webp',
+                    'product' => '/src/images/kuis/purpose-produk.webp',
                 ],
             };
 

@@ -3,7 +3,7 @@
  * Locale stored in localStorage key `evomi_locale` (shared with storefront when present).
  */
 
-const STORAGE_KEY = 'evomi_locale';
+import { STORAGE_KEY, readAdminLocale, writeAdminLocale } from './admin-locale';
 
 const SIDEBAR = {
     dashboard: ['Dashboard', 'Dashboard'],
@@ -802,35 +802,6 @@ const DICT = {
     },
 };
 
-export function readAdminLocale() {
-    try {
-        const v = localStorage.getItem(STORAGE_KEY);
-        if (v === 'en' || v === 'id') return v;
-    } catch {
-        /* ignore */
-    }
-    return 'id';
-}
-
-export function writeAdminLocale(locale) {
-    const next = locale === 'en' ? 'en' : 'id';
-    try {
-        localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-        /* ignore */
-    }
-    try {
-        const secure = typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
-        document.cookie = `${STORAGE_KEY}=${next}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
-    } catch {
-        /* ignore */
-    }
-    if (typeof document !== 'undefined') {
-        document.documentElement.lang = next;
-    }
-    return next;
-}
-
 export function tAdmin(locale, section, key, idFallback = '', enFallback = '') {
     const pair = DICT[section]?.[key];
     const id = pair?.[0] ?? idFallback;
@@ -876,4 +847,5 @@ export function createAdminI18nApi(getLocale) {
     return { t, common };
 }
 
+export { readAdminLocale, writeAdminLocale };
 export { DICT, STORAGE_KEY as ADMIN_LOCALE_KEY };

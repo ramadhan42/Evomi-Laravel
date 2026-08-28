@@ -8,17 +8,17 @@
         1 => [
             'title' => "Self\nAwareness",
             'desc' => 'Setiap aroma dirancang untuk merepresentasikan versi diri, emosi, dan karakter manusia yang berbeda, sehingga parfum menjadi medium ekspresi personal, bukan sekadar wewangian.',
-            'icon' => '/src/images/section 3/star-medium.png',
+            'icon' => '/src/images/section 3/star-medium.webp',
         ],
         2 => [
             'title' => "Environment\nFriendly",
             'desc' => 'Mengusung kepedulian terhadap lingkungan melalui pemanfaatan daur ulang tutup botol plastik menjadi bagian dari identitas produk, sebagai bentuk kontribusi kecil dalam mengurangi limbah plastik sekaligus menghadirkan nilai sustainability.',
-            'icon' => '/src/images/section 3/peaceful-calm.png',
+            'icon' => '/src/images/section 3/peaceful-calm.webp',
         ],
         3 => [
             'title' => "Playful Design\nConcept",
             'desc' => 'Dikemas dengan pendekatan visual yang playful, ekspresif, dan dekat dengan generasi muda agar pengalaman menggunakan parfum terasa lebih personal dan menyenangkan.',
-            'icon' => '/src/images/section 3/triangle.png',
+            'icon' => '/src/images/section 3/triangle.webp',
         ],
     ];
     $values = [];
@@ -40,7 +40,7 @@
         </h2>
         <div class="w-6 h-6 md:w-7 md:h-8 relative flex justify-center items-center pointer-events-none shrink-0">
             <img
-                src="{{ asset('src/images/section 3/star-medium.png') }}"
+                src="{{ asset('src/images/section 3/star-medium.webp') }}"
                 alt=""
                 class="w-full h-full object-contain brightness-0 invert"
             >

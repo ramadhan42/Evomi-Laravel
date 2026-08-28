@@ -12,36 +12,36 @@
     $badgeLeft = $cms->textLines('hero', 'badge_left', 'Eau de Parfum', 2);
     $badgeRight = $cms->textLines('hero', 'badge_right', 'Recycle Bottle Cap', 2);
     $badgeLeftIcon = $cms->image('hero', 'badge_left_icon', '/src/images/section 1/badge-left-star.svg');
-    $badgeRightIcon = $cms->image('hero', 'badge_right_icon', '/src/images/section 1/recycle.png');
+    $badgeRightIcon = $cms->image('hero', 'badge_right_icon', '/src/images/section 1/recycle.webp');
     $marqueeText = $cms->textLines('hero', 'marquee_text', 'Every Version of Me', 1);
     $products = [
         [
-            'img' => $cms->image('hero', 'product1_image', '/src/images/section 1/botol-purpose-prestige.png'),
-            'label' => $cms->image('hero', 'product1_badge_icon', '/src/images/section 1/purpose-prestige.png'),
+            'img' => $cms->image('hero', 'product1_image', '/src/images/section 1/botol-purpose-prestige.webp'),
+            'label' => $cms->image('hero', 'product1_badge_icon', '/src/images/section 1/purpose-prestige.webp'),
             'labelClass' => 'left-[30%] md:left-[31%] top-[2%] md:top-[4%] w-[9.3%] h-[9.3%] md:w-[8.2%] md:h-[8.2%]',
             'title' => $cms->get('hero', 'product1_badge_label', 'Purpose Prestige'),
             'personality' => 'prestige',
             'n' => 1, 'z' => 'z-20', 'delay' => '1.1s',
         ],
         [
-            'img' => $cms->image('hero', 'product2_image', '/src/images/section 1/botol-rabel-brave.png'),
-            'label' => $cms->image('hero', 'product2_badge_icon', '/src/images/section 1/rabel-brave.png'),
+            'img' => $cms->image('hero', 'product2_image', '/src/images/section 1/botol-rabel-brave.webp'),
+            'label' => $cms->image('hero', 'product2_badge_icon', '/src/images/section 1/rabel-brave.webp'),
             'labelClass' => 'left-[43%] top-[10.8%] md:top-[12.8%] w-[7.2%] h-[7.2%] md:w-[6.2%] md:h-[6.2%]',
             'title' => $cms->get('hero', 'product2_badge_label', 'Rebel Brave'),
             'personality' => 'rebel_brave',
             'n' => 2, 'z' => 'z-30', 'delay' => '1.4s',
         ],
         [
-            'img' => $cms->image('hero', 'product3_image', '/src/images/section 1/botol-peaceful-calm.png'),
-            'label' => $cms->image('hero', 'product3_badge_icon', '/src/images/section 1/peaceful-calm.png'),
+            'img' => $cms->image('hero', 'product3_image', '/src/images/section 1/botol-peaceful-calm.webp'),
+            'label' => $cms->image('hero', 'product3_badge_icon', '/src/images/section 1/peaceful-calm.webp'),
             'labelClass' => 'right-[38%] top-[10%] md:top-[6.8%] w-[8.2%] h-[8.2%] md:w-[7.2%] md:h-[7.2%]',
             'title' => $cms->get('hero', 'product3_badge_label', 'Peaceful Calm'),
             'personality' => 'peaceful_calm',
             'n' => 3, 'z' => '', 'delay' => '1.7s',
         ],
         [
-            'img' => $cms->image('hero', 'product4_image', '/src/images/section 1/botol-sweet-shy.png'),
-            'label' => $cms->image('hero', 'product4_badge_icon', '/src/images/section 1/sweet-shy.png'),
+            'img' => $cms->image('hero', 'product4_image', '/src/images/section 1/botol-sweet-shy.webp'),
+            'label' => $cms->image('hero', 'product4_badge_icon', '/src/images/section 1/sweet-shy.webp'),
             'labelClass' => 'right-[27%] md:right-[28%] top-[10.4%] md:top-[10.8%] w-[7.2%] h-[7.2%] md:w-[6.2%] md:h-[6.2%]',
             'title' => $cms->get('hero', 'product4_badge_label', 'Sweet Shy'),
             'personality' => 'sweet_shy',
@@ -64,10 +64,10 @@
     }
     unset($heroProduct);
     $dividerIcons = [
-        $cms->image('hero', 'divider_icon_1', '/src/images/section 1/purpose.png'),
-        $cms->image('hero', 'divider_icon_2', '/src/images/section 1/peaceful.png'),
-        $cms->image('hero', 'divider_icon_3', '/src/images/section 1/rab.png'),
-        $cms->image('hero', 'divider_icon_4', '/src/images/section 1/sweetshy.png'),
+        $cms->image('hero', 'divider_icon_1', '/src/images/section 1/purpose.webp'),
+        $cms->image('hero', 'divider_icon_2', '/src/images/section 1/peaceful.webp'),
+        $cms->image('hero', 'divider_icon_3', '/src/images/section 1/rab.webp'),
+        $cms->image('hero', 'divider_icon_4', '/src/images/section 1/sweetshy.webp'),
     ];
     $waveLeftCms = $cms->image('hero', 'wave_left_icon', '');
     $waveRightCms = $cms->image('hero', 'wave_right_icon', '');

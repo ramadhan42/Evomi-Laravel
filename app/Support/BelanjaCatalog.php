@@ -69,7 +69,7 @@ class BelanjaCatalog
     public static function fallbackAssetUrl(string $personality): string
     {
         $theme = PersonalityTheme::forKey($personality);
-        $img = $theme['fallback_img'] ?? 'section 5/purpose-prestige.png';
+        $img = $theme['fallback_img'] ?? 'section 5/purpose-prestige.webp';
 
         return asset('src/images/'.$img);
     }
@@ -209,10 +209,10 @@ class BelanjaCatalog
     public static function legacyBelanjaCardImage(string $badgeKey): string
     {
         $file = match ($badgeKey) {
-            'peaceful' => 'peaceful.png',
-            'rebel' => 'rebel.png',
-            'sweet' => 'sweet.png',
-            default => 'purpose.png',
+            'peaceful' => 'peaceful.webp',
+            'rebel' => 'rebel.webp',
+            'sweet' => 'sweet.webp',
+            default => 'purpose.webp',
         };
 
         foreach (["belanja/cards/{$file}", "belanja/{$file}"] as $rel) {

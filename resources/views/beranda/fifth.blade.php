@@ -17,7 +17,7 @@
             'title' => 'Purpose Prestige',
             'desc' => 'Aroma yang merefleksikan ketenangan dan kejelasan tujuan.',
             'price' => 'Rp189.000',
-            'image' => '/src/images/section 5/purpose-prestige.png',
+            'image' => '/src/images/section 5/purpose-prestige.webp',
         ],
         2 => [
             'imgBg' => '#5EA14A',
@@ -28,7 +28,7 @@
             'title' => 'Peaceful Calm',
             'desc' => 'Aroma menenangkan yang menyatu dengan diri.',
             'price' => 'Rp199.000',
-            'image' => '/src/images/section 5/peaceful-calm.png',
+            'image' => '/src/images/section 5/peaceful-calm.webp',
         ],
         3 => [
             'imgBg' => '#E33D35',
@@ -39,7 +39,7 @@
             'title' => 'Rebel Brave',
             'desc' => 'Keberanian dan semangat untuk mengekspresikan diri.',
             'price' => 'Rp179.000',
-            'image' => '/src/images/section 5/rabel-brave.png',
+            'image' => '/src/images/section 5/rabel-brave.webp',
         ],
         4 => [
             'imgBg' => '#DD74A5',
@@ -50,7 +50,7 @@
             'title' => 'Sweet Shy',
             'desc' => 'Aroma menenangkan yang menyatu dengan diri.',
             'price' => 'Rp189.000',
-            'image' => '/src/images/section 5/sweet-shy.png',
+            'image' => '/src/images/section 5/sweet-shy.webp',
         ],
     ];
 
@@ -77,16 +77,16 @@
 <section class="relative z-10 bg-[#FAFAFA] md:bg-white flex flex-col items-center text-center w-full pt-10 sm:pt-12 md:pt-14 pb-14 md:pb-16 px-4 sm:px-6 md:px-8 overflow-hidden">
     {{-- Dekorasi sudut --}}
     <div class="absolute top-[12%] left-0 z-0 pointer-events-none w-[40px] sm:w-[70px] md:w-[100px] -translate-x-[20%] md:-translate-x-[15%]">
-        <img src="{{ asset('src/images/section 5/purpose.png') }}" alt="" class="object-contain opacity-90 w-full h-auto" width="100" height="100">
+        <img src="{{ asset('src/images/section 5/purpose.webp') }}" alt="" class="object-contain opacity-90 w-full h-auto" width="100" height="100">
     </div>
     <div class="absolute top-[12%] right-0 z-0 pointer-events-none w-[40px] sm:w-[70px] md:w-[100px] translate-x-[20%] md:translate-x-[15%]">
-        <img src="{{ asset('src/images/section 5/sweet.png') }}" alt="" class="object-contain opacity-90 w-full h-auto" width="100" height="100">
+        <img src="{{ asset('src/images/section 5/sweet.webp') }}" alt="" class="object-contain opacity-90 w-full h-auto" width="100" height="100">
     </div>
     <div class="absolute bottom-[22%] left-0 z-0 pointer-events-none w-[40px] sm:w-[70px] md:w-[100px] -translate-x-[20%] md:-translate-x-[15%]">
-        <img src="{{ asset('src/images/section 5/rebel.png') }}" alt="" class="object-contain opacity-90 w-full h-auto" width="100" height="100">
+        <img src="{{ asset('src/images/section 5/rebel.webp') }}" alt="" class="object-contain opacity-90 w-full h-auto" width="100" height="100">
     </div>
     <div class="absolute bottom-[22%] right-0 z-0 pointer-events-none w-[40px] sm:w-[70px] md:w-[100px] translate-x-[20%] md:translate-x-[15%]">
-        <img src="{{ asset('src/images/section 5/peaceful.png') }}" alt="" class="object-contain opacity-90 w-full h-auto" width="100" height="100">
+        <img src="{{ asset('src/images/section 5/peaceful.webp') }}" alt="" class="object-contain opacity-90 w-full h-auto" width="100" height="100">
     </div>
 
     {{-- Judul --}}
@@ -182,7 +182,7 @@
                 aria-hidden="true"
             ></span>
             <span class="relative w-4 h-4 md:w-[19px] md:h-[19px] transition-transform duration-300 ease-out group-hover:-rotate-12 group-hover:scale-110 shrink-0">
-                <img src="{{ asset('src/images/section 5/star-medium.png') }}" alt="" class="w-full h-full object-contain brightness-0 invert pointer-events-none">
+                <img src="{{ asset('src/images/section 5/star-medium.webp') }}" alt="" class="w-full h-full object-contain brightness-0 invert pointer-events-none">
             </span>
             <span class="relative cms-lines">{{ $cta }}</span>
         </a>

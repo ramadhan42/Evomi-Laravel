@@ -196,8 +196,8 @@ class QuizSeeder extends Seeder
                 'description' => 'Menghadirkan aroma yang merefleksikan ketenangan, kepercayaan diri, dan kejelasan tujuan.',
                 'description_en' => 'Presenting a scent that reflects calmness, confidence, and clarity of purpose.',
                 'color' => '#1172BA',
-                'bg_image' => '/src/images/kuis/purpose-kanan.png',
-                'product_image' => '/src/images/kuis/purpose-produk.png',
+                'bg_image' => '/src/images/kuis/purpose-kanan.webp',
+                'product_image' => '/src/images/kuis/purpose-produk.webp',
                 'forced_product_id' => '1',
             ],
             [
@@ -207,8 +207,8 @@ class QuizSeeder extends Seeder
                 'description' => 'Menghadirkan aroma yang menenangkan, seimbang, dan menyatu dengan diri.',
                 'description_en' => 'Presenting a soothing, balanced scent that feels at one with yourself.',
                 'color' => '#5EA14A',
-                'bg_image' => '/src/images/kuis/peaceful-kanan.png',
-                'product_image' => '/src/images/kuis/peaceful-produk.png',
+                'bg_image' => '/src/images/kuis/peaceful-kanan.webp',
+                'product_image' => '/src/images/kuis/peaceful-produk.webp',
                 'forced_product_id' => '2',
             ],
             [
@@ -218,8 +218,8 @@ class QuizSeeder extends Seeder
                 'description' => 'Merepresentasikan keberanian, energi, dan semangat untuk mengekspresikan diri.',
                 'description_en' => 'Representing courage, energy, and the spirit of self-expression.',
                 'color' => '#E33D35',
-                'bg_image' => '/src/images/kuis/rebel-kanan.png',
-                'product_image' => '/src/images/kuis/rebel-produk.png',
+                'bg_image' => '/src/images/kuis/rebel-kanan.webp',
+                'product_image' => '/src/images/kuis/rebel-produk.webp',
                 'forced_product_id' => '3',
             ],
             [
@@ -229,8 +229,8 @@ class QuizSeeder extends Seeder
                 'description' => 'Menghadirkan aroma lembut yang merefleksikan sisi manis, hangat, dan penuh empati.',
                 'description_en' => 'Presenting a soft scent that reflects a sweet, warm, and empathetic side.',
                 'color' => '#DD74A5',
-                'bg_image' => '/src/images/kuis/sweet-kanan.png',
-                'product_image' => '/src/images/kuis/sweet-produk.png',
+                'bg_image' => '/src/images/kuis/sweet-kanan.webp',
+                'product_image' => '/src/images/kuis/sweet-produk.webp',
                 'forced_product_id' => '4',
             ],
         ];
