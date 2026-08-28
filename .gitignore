@@ -14,7 +14,8 @@
 /.zed
 /auth.json
 /node_modules
-/public/build
+# /public/build sengaja TIDAK diabaikan: server produksi tidak menjalankan
+# Node, jadi hasil build ikut di-commit agar bisa ditarik langsung saat deploy.
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
