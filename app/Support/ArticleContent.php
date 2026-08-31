@@ -172,7 +172,7 @@ final class ArticleContent
         'p', 'br', 'hr', 'div',
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'del', 'ins', 'mark', 'sub', 'sup',
-        'blockquote', 'ul', 'ol', 'li', 'a', 'span', 'code', 'pre',
+        'blockquote', 'ul', 'ol', 'li', 'a', 'span', 'code', 'pre', 'img', 'figure', 'figcaption',
     ];
 
     /** Tags removed together with everything inside them. */
@@ -181,11 +181,17 @@ final class ArticleContent
         'textarea', 'button', 'link', 'meta', 'base', 'svg', 'math', 'template',
     ];
 
+    /** Kelas yang boleh bertahan: pembungkus gambar berdeskripsi. */
+    private const ALLOWED_CLASSES = ['evomi-figure', 'evomi-caption'];
+
     /** Inline CSS the editor is allowed to leave behind. */
     private const ALLOWED_STYLE_PROPS = [
         'font-family', 'font-size', 'font-weight', 'font-style',
         'text-decoration', 'text-decoration-line', 'text-align',
         'color', 'background-color', 'line-height', 'margin-left', 'padding-left',
+        // Gambar sisipan: ukuran, perataan, dan jaraknya diatur dari editor.
+        'width', 'height', 'max-width', 'float', 'display', 'vertical-align',
+        'margin', 'margin-right', 'margin-top', 'margin-bottom', 'border-radius',
     ];
 
     /**
@@ -283,11 +289,46 @@ final class ArticleContent
                 continue;
             }
 
+            if ($name === 'class') {
+                $keep = array_values(array_intersect(
+                    preg_split('/\s+/', $value) ?: [],
+                    self::ALLOWED_CLASSES,
+                ));
+
+                if ($keep === []) {
+                    $el->removeAttribute('class');
+                } else {
+                    $el->setAttribute('class', implode(' ', $keep));
+                }
+
+                continue;
+            }
+
             if ($tag === 'a' && in_array($name, ['href', 'target', 'rel'], true)) {
                 continue;
             }
 
+            if ($tag === 'img' && in_array($name, ['src', 'alt', 'title', 'width', 'height', 'loading'], true)) {
+                continue;
+            }
+
             $el->removeAttribute($attr->nodeName);
+        }
+
+        if ($tag === 'img') {
+            $src = trim($el->getAttribute('src'));
+
+            // Only same-site paths and plain https URLs; no data: payloads.
+            if ($src === '' || ! preg_match('#^(https?://|/)#i', $src)) {
+                $el->parentNode?->removeChild($el);
+
+                return;
+            }
+
+            $el->setAttribute('alt', trim($el->getAttribute('alt')));
+            $el->setAttribute('loading', 'lazy');
+
+            return;
         }
 
         if ($tag !== 'a') {
@@ -343,7 +384,7 @@ final class ArticleContent
     /** Tags the excerpt may keep: styling only, never structure. */
     private const INLINE_TAGS = [
         'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'del', 'ins',
-        'mark', 'sub', 'sup', 'span', 'a', 'br', 'code',
+        'mark', 'sub', 'sup', 'span', 'a', 'br', 'code', 'img',
     ];
 
     /**
@@ -417,8 +458,11 @@ final class ArticleContent
     {
         $text = preg_replace('/<(br|\/p|\/h[1-6]|\/li|\/div|\/blockquote)\s*\/?>/i', ' ', (string) $content);
         $text = strip_tags((string) $text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
-        return trim(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        // Tag yang dibuang meninggalkan spasi ganda - rapikan supaya meta
+        // description dan hitungan kata tidak ikut kotor.
+        return trim(preg_replace('/\s+/u', ' ', $text) ?? $text);
     }
 
     /**

@@ -155,6 +155,38 @@ class ArticleController extends Controller
         ]);
     }
 
+    /**
+     * Image dropped into the middle of an article by the editor. Kept apart
+     * from the cover upload so inline art is easy to spot in storage.
+     */
+    public function uploadInlineImage(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'image' => 'required|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
+            'alt' => 'nullable|string|max:200',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $path = $request->file('image')->store('articles/inline', 'public');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Gambar berhasil diunggah.',
+            'data' => [
+                'path' => $path,
+                'url' => Storage::disk('public')->url($path),
+                'alt' => trim((string) $request->input('alt', '')),
+            ],
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), array_merge([

@@ -181,6 +181,7 @@ Route::middleware(['auth:sanctum', 'last.seen'])->group(function () {
 
         Route::get('/articles', [ArticleController::class, 'adminIndex']);
         Route::get('/articles/{id}', [ArticleController::class, 'adminShow']);
+        Route::post('/articles/inline-image', [ArticleController::class, 'uploadInlineImage']);
         Route::post('/articles', [ArticleController::class, 'store']);
         Route::post('/articles/{id}', [ArticleController::class, 'update']);
         Route::put('/articles/{id}', [ArticleController::class, 'update']);

@@ -194,6 +194,20 @@
             </div>
         </div>
 
+        {{-- Sisipkan gambar --}}
+        <button
+            type="button"
+            class="doc-btn"
+            :disabled="!canInsertImage() || imageBusy"
+            :title="t('articles','insert_image')"
+            @mousedown.prevent="rememberRange()"
+            @click="pickImage()"
+        >
+            <svg x-show="!imageBusy" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1Zm-1 12H5v-1.6l3.4-3.4 3 3 3.6-3.6L19 14.4V17ZM9 11a1.6 1.6 0 1 1 0-3.2A1.6 1.6 0 0 1 9 11Z"/></svg>
+            <svg x-show="imageBusy" x-cloak class="doc-spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V3Z"/></svg>
+        </button>
+        <input type="file" x-ref="imageFile" class="hidden" accept="image/jpeg,image/png,image/webp,image/gif" @change="onImageFile($event)">
+
         <span class="doc-sep"></span>
 
         {{-- Alignment --}}
@@ -249,6 +263,73 @@
         </button>
     </div>
 
+    {{-- Baris kontekstual: muncul saat sebuah gambar dipilih di dalam teks --}}
+    <div class="doc-imagebar" x-show="activeImage" x-cloak x-transition.opacity.duration.100ms>
+        <span class="doc-imagebar-title" x-text="t('articles','image_selected')"></span>
+
+        <label class="doc-imagebar-field">
+            <span x-text="t('articles','image_alt')"></span>
+            <input
+                type="text"
+                class="doc-imagebar-input"
+                :value="imageAlt"
+                :placeholder="t('articles','image_alt_ph')"
+                @input="imageAlt = $event.target.value; setImageAlt($event.target.value)"
+            >
+        </label>
+
+        <button
+            type="button"
+            class="doc-chip"
+            :class="imageHasCaption && 'is-on'"
+            @mousedown.prevent
+            @click="toggleCaption()"
+            x-text="imageHasCaption ? t('articles','image_caption_off') : t('articles','image_caption_on')"
+        ></button>
+
+        <div class="doc-imagebar-group">
+            <span x-text="t('articles','image_width')"></span>
+            <button type="button" class="doc-chip" @mousedown.prevent @click="stepImageWidth(-5)">−</button>
+            <template x-for="w in imageWidths" :key="w">
+                <button
+                    type="button"
+                    class="doc-chip"
+                    :class="String(imageWidth) === String(w) && 'is-on'"
+                    @mousedown.prevent
+                    @click="setImageWidth(w)"
+                    x-text="w + '%'"
+                ></button>
+            </template>
+            <button type="button" class="doc-chip" @mousedown.prevent @click="stepImageWidth(5)">+</button>
+            <button
+                type="button"
+                class="doc-chip"
+                :class="imageWidth === '' && 'is-on'"
+                @mousedown.prevent
+                @click="setImageWidth(0)"
+                x-text="t('articles','image_width_auto')"
+            ></button>
+        </div>
+
+        <div class="doc-imagebar-group">
+            <span x-text="t('articles','image_align')"></span>
+            <template x-for="mode in ['inline', 'left', 'center', 'right']" :key="mode">
+                <button
+                    type="button"
+                    class="doc-chip"
+                    :class="imageAlign === mode && 'is-on'"
+                    @mousedown.prevent
+                    @click="setImageAlign(mode)"
+                    x-text="t('articles', 'image_align_' + mode)"
+                ></button>
+            </template>
+        </div>
+
+        <button type="button" class="doc-chip is-danger" @mousedown.prevent @click="removeImage()" x-text="t('articles','image_remove')"></button>
+    </div>
+
+    <p class="doc-imagebar-error" x-show="imageError" x-cloak x-text="imageError"></p>
+
     <div class="doc-canvas">
         <div class="doc-page" :style="pageStyle()">
             {{-- Title --}}
@@ -287,6 +368,7 @@
                     @blur="syncSurface('excerpt')"
                     @paste.prevent="onPaste('excerpt', $event)"
                     @keydown="onKeydown('excerpt', $event)"
+                    @click="onSurfaceClick('excerpt', $event)"
                 ></div>
                 <p class="doc-ph" x-show="empty.excerpt" x-cloak x-text="t('articles','doc_ph_excerpt')"></p>
             </div>
@@ -312,6 +394,7 @@
                     @keydown="onKeydown('content', $event)"
                     @keyup="refreshState()"
                     @mouseup="refreshState()"
+                    @click="onSurfaceClick('content', $event)"
                 ></div>
                 <p class="doc-ph" x-show="empty.content" x-cloak x-text="t('articles','doc_ph_content')"></p>
             </div>

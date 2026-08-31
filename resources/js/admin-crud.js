@@ -65,7 +65,6 @@ function todayInputDate() {
 }
 
 export function registerAdminCrud(Alpine, deps) {
-    registerDocEditor(Alpine);
 
     const {
         authHeaders,
@@ -1207,6 +1206,17 @@ export function registerAdminCrud(Alpine, deps) {
     function isHeadingFormKey(key) {
         return /^h[1-6]_font_(family|weight|style|size)$/.test(key || '');
     }
+
+    /** Gambar sisipan artikel diunggah lewat endpoint admin khusus. */
+    async function uploadInlineArticleImage(file) {
+        const fd = new FormData();
+        fd.append('image', file);
+        const data = await adminJson('/api/admin/articles/inline-image', { method: 'POST', body: fd });
+
+        return data?.data?.url || '';
+    }
+
+    registerDocEditor(Alpine, { uploadImage: uploadInlineArticleImage });
 
     /* ---------- ARTICLES ---------- */
     Alpine.data('evomiAdminArticles', () => ({

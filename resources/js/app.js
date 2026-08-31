@@ -686,6 +686,76 @@ function initEvomiLoader() {
 }
 
 // Module scripts run after parse — loader markup is already in the DOM
+/**
+ * Tooltip teks alt untuk gambar di dalam artikel. Satu elemen dipakai ulang dan
+ * dipasang lewat event delegation, jadi gambar yang baru muncul (ganti bahasa,
+ * navigasi lunak) ikut terlayani tanpa pemasangan ulang.
+ */
+function initEvomiAltTooltips() {
+    const SELECTOR = '.artikel-detail-body img[alt], .artikel-detail-text img[alt]';
+    let tip = null;
+
+    const ensureTip = () => {
+        if (tip && tip.isConnected) return tip;
+        tip = document.createElement('div');
+        tip.className = 'evomi-alt-tip';
+        tip.setAttribute('role', 'tooltip');
+        document.body.appendChild(tip);
+
+        return tip;
+    };
+
+    const place = (img) => {
+        const box = img.getBoundingClientRect();
+        const node = ensureTip();
+        const size = node.getBoundingClientRect();
+        const margin = 10;
+
+        let left = box.left + box.width / 2 - size.width / 2;
+        left = Math.max(margin, Math.min(left, window.innerWidth - size.width - margin));
+
+        // Di atas gambar bila muat, kalau tidak di bawahnya.
+        let top = box.top - size.height - 10;
+        if (top < margin) top = Math.min(box.bottom + 10, window.innerHeight - size.height - margin);
+
+        node.style.left = `${Math.round(left)}px`;
+        node.style.top = `${Math.round(top)}px`;
+    };
+
+    const show = (img) => {
+        const text = (img.getAttribute('alt') || '').trim();
+        if (text === '') return;
+
+        const node = ensureTip();
+        node.textContent = text;
+        node.classList.add('is-on');
+        place(img);
+    };
+
+    const hide = () => {
+        if (tip) tip.classList.remove('is-on');
+    };
+
+    document.addEventListener('mouseover', (e) => {
+        const img = e.target instanceof Element ? e.target.closest(SELECTOR) : null;
+        if (img) show(img);
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const img = e.target instanceof Element ? e.target.closest(SELECTOR) : null;
+        if (img) hide();
+    });
+
+    // Keyboard dan sentuh: fokus memunculkan, gulir menyembunyikan.
+    document.addEventListener('focusin', (e) => {
+        const img = e.target instanceof Element ? e.target.closest(SELECTOR) : null;
+        if (img) show(img);
+    });
+    document.addEventListener('focusout', hide);
+    window.addEventListener('scroll', hide, { passive: true });
+}
+
+initEvomiAltTooltips();
 initEvomiLoader();
 
 function isProfilePath(pathname) {

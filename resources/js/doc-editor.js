@@ -150,7 +150,11 @@ export function cleanPastedHtml(html) {
     return doc.body.innerHTML;
 }
 
-export function registerDocEditor(Alpine) {
+export const DOC_IMAGE_WIDTHS = [25, 50, 75, 100];
+
+export function registerDocEditor(Alpine, deps = {}) {
+    const uploadImage = deps.uploadImage || null;
+
     Alpine.data('docWorkspace', () => ({
         articleForm: null,
         locale: 'id',
@@ -163,6 +167,15 @@ export function registerDocEditor(Alpine) {
         empty: { title: true, excerpt: true, content: true },
         words: 0,
         chars: 0,
+        activeImage: null,
+        imageAlt: '',
+        imageCaption: '',
+        imageHasCaption: false,
+        imageWidth: '',
+        imageAlign: 'inline',
+        imageBusy: false,
+        imageError: '',
+        imageWidths: DOC_IMAGE_WIDTHS,
         fontFamilyOptions: FONT_FAMILY_OPTIONS,
         fontFamilyGroups: DOC_FONT_GROUPS,
         customColor: '#1172ba',
@@ -274,12 +287,14 @@ export function registerDocEditor(Alpine) {
             const el = this.surface(name);
             if (!el || !this.articleForm) return;
 
+            if (name !== 'title') this.tidyFigures(el);
+
             let value;
             if (name === 'content') {
-                value = el.innerHTML.trim();
+                value = this.cleanMarkup(el.innerHTML).trim();
                 if (value === '<br>' || value === '<p><br></p>' || value === '<p></p>') value = '';
             } else if (name === 'excerpt') {
-                value = el.innerHTML.replace(/<br\s*\/?>\s*$/i, '').trim();
+                value = this.cleanMarkup(el.innerHTML).replace(/<br\s*\/?>\s*$/i, '').trim();
                 if ((el.innerText || '').trim() === '') value = '';
             } else {
                 value = (el.innerText || '').replace(/\s+/g, ' ').trim();
@@ -288,6 +303,15 @@ export function registerDocEditor(Alpine) {
             this.last[name] = value;
             this.articleForm[this.fieldFor(name)] = value;
             this.updateMeta();
+        },
+
+        /** Editor-only decoration (the selected-image outline) never gets saved. */
+        cleanMarkup(html) {
+            return String(html ?? '')
+                .replace(/\s*data-placeholder="[^"]*"/g, '')
+                .replace(/\s*class="is-selected"/g, '')
+                .replace(/(\s*class=")([^"]*)\bis-selected\b\s*([^"]*)(")/g, '$1$2$3$4')
+                .replace(/\s*class=""/g, '');
         },
 
         updateMeta() {
@@ -310,6 +334,10 @@ export function registerDocEditor(Alpine) {
             this.active = name;
             this.menu = null;
             this.refreshState();
+        },
+
+        onSurfaceBlur(name) {
+            this.syncSurface(name);
         },
 
         isInside(el) {
@@ -520,6 +548,304 @@ export function registerDocEditor(Alpine) {
             if (!this.blockEnabled()) return;
             this.eachSelectedBlock((block) => block.removeAttribute('style'));
             this.setBlock('p');
+        },
+
+        /* ---------- images ---------- */
+
+        /** Images live inside the text, so they need a rich surface. */
+        canInsertImage() {
+            return this.richEnabled();
+        },
+
+        pickImage() {
+            if (!this.canInsertImage()) return;
+            this.rememberRange();
+            this.imageError = '';
+            this.$refs.imageFile?.click();
+        },
+
+        async onImageFile(event) {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (!file) return;
+
+            if (!uploadImage) {
+                this.imageError = 'Pengunggah gambar tidak tersedia.';
+
+                return;
+            }
+
+            this.imageBusy = true;
+            this.imageError = '';
+
+            try {
+                const url = await uploadImage(file);
+                if (!url) throw new Error('URL gambar kosong.');
+                this.insertImage(url, file.name.replace(/\.[^.]+$/, ''));
+            } catch (e) {
+                this.imageError = e?.message || 'Gagal mengunggah gambar.';
+            } finally {
+                this.imageBusy = false;
+            }
+        },
+
+        insertImage(url, alt = '') {
+            const target = this.active;
+            const el = this.surface(target);
+            if (!el || !this.canInsertImage()) return;
+
+            this.focusSurface(target);
+            this.restoreRange();
+
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = alt;
+            img.setAttribute('loading', 'lazy');
+
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount && this.isInside(el)) {
+                const range = sel.getRangeAt(0);
+                range.deleteContents();
+                range.insertNode(img);
+                range.setStartAfter(img);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            } else {
+                el.appendChild(img);
+            }
+
+            this.syncSurface(target);
+            this.selectImage(img);
+        },
+
+        onSurfaceClick(name, event) {
+            const target = event.target;
+
+            if (target instanceof HTMLImageElement) {
+                this.selectImage(target);
+
+                return;
+            }
+
+            // Mengklik teks deskripsi tetap memilih gambarnya.
+            const figure = target?.closest?.('.evomi-figure');
+            this.selectImage(figure ? figure.querySelector('img') : null);
+        },
+
+        selectImage(img) {
+            if (this.activeImage && this.activeImage !== img) {
+                this.activeImage.classList.remove('is-selected');
+            }
+
+            this.activeImage = img || null;
+
+            if (!img) {
+                this.imageAlt = '';
+                this.imageCaption = '';
+                this.imageHasCaption = false;
+                this.imageWidth = '';
+                this.imageAlign = 'inline';
+
+                return;
+            }
+
+            img.classList.add('is-selected');
+
+            const unit = this.imageUnit(img);
+            this.imageAlt = img.getAttribute('alt') || '';
+            this.imageCaption = this.captionNode(img)?.textContent?.trim() || '';
+            this.imageHasCaption = !!this.captionNode(img);
+            this.imageWidth = (unit.style.width || '').replace('%', '');
+            this.imageAlign = unit.style.float === 'left'
+                ? 'left'
+                : unit.style.float === 'right'
+                    ? 'right'
+                    : unit.style.display === 'block'
+                        ? 'center'
+                        : 'inline';
+        },
+
+        /**
+         * A captioned picture is a <span class="evomi-figure"> around the image
+         * — a span, not a <figure>, so it can sit inside a paragraph without
+         * the browser splitting the sentence in half.
+         */
+        imageUnit(img = null) {
+            const target = img || this.activeImage;
+            if (!target) return null;
+            const parent = target.parentElement;
+
+            return parent?.classList?.contains('evomi-figure') ? parent : target;
+        },
+
+        captionNode(img = null) {
+            const unit = this.imageUnit(img);
+
+            return unit && unit !== (img || this.activeImage)
+                ? unit.querySelector('.evomi-caption')
+                : null;
+        },
+
+        hasCaption() {
+            return !!this.captionNode();
+        },
+
+        /**
+         * The caption is ordinary editable text inside the document, so the
+         * font, size and colour controls work on it exactly like body text.
+         * This only adds or removes it.
+         */
+        toggleCaption() {
+            const img = this.activeImage;
+            if (!img) return;
+
+            if (this.hasCaption()) {
+                this.removeCaption();
+
+                return;
+            }
+
+            let unit = this.imageUnit(img);
+
+            if (unit === img) {
+                const figure = document.createElement('span');
+                figure.className = 'evomi-figure';
+                figure.setAttribute('style', img.getAttribute('style') || '');
+                img.replaceWith(figure);
+                img.removeAttribute('style');
+                figure.appendChild(img);
+                unit = figure;
+            }
+
+            const caption = document.createElement('span');
+            caption.className = 'evomi-caption';
+            caption.setAttribute('data-placeholder', deps.captionPlaceholder || 'Tulis deskripsi gambar…');
+            caption.textContent = '';
+            unit.appendChild(caption);
+
+            this.imageCaption = '';
+            this.syncSurface(this.active);
+            this.focusCaption(caption);
+        },
+
+        removeCaption() {
+            const img = this.activeImage;
+            const unit = this.imageUnit(img);
+            if (!img || !unit || unit === img) return;
+
+            unit.querySelector('.evomi-caption')?.remove();
+            img.style.cssText = unit.style.cssText;
+            unit.replaceWith(img);
+
+            this.imageCaption = '';
+            this.syncSurface(this.active);
+        },
+
+        focusCaption(caption) {
+            const node = caption || this.captionNode();
+            if (!node) return;
+
+            this.$nextTick(() => {
+                const range = document.createRange();
+                range.selectNodeContents(node);
+                range.collapse(false);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                this.refreshState();
+            });
+        },
+
+        /** Captions the writer emptied out are dropped on the next sync. */
+        tidyFigures(el) {
+            el.querySelectorAll('.evomi-figure').forEach((figure) => {
+                const img = figure.querySelector('img');
+                if (!img) {
+                    figure.remove();
+
+                    return;
+                }
+
+                const caption = figure.querySelector('.evomi-caption');
+                if (caption && caption.textContent.trim() === '' && figure !== this.imageUnit()) {
+                    caption.remove();
+                }
+
+                if (!figure.querySelector('.evomi-caption')) {
+                    img.style.cssText = figure.style.cssText;
+                    figure.replaceWith(img);
+                }
+            });
+        },
+
+        /** Keeps the picture in the flow of the sentence, or floats it aside. */
+        setImageAlign(mode) {
+            const unit = this.imageUnit();
+            if (!unit) return;
+
+            unit.style.float = '';
+            unit.style.display = '';
+            unit.style.margin = '';
+
+            if (mode === 'left') {
+                unit.style.float = 'left';
+                unit.style.margin = '4px 14px 6px 0';
+            } else if (mode === 'right') {
+                unit.style.float = 'right';
+                unit.style.margin = '4px 0 6px 14px';
+            } else if (mode === 'center') {
+                unit.style.display = 'block';
+                unit.style.margin = '14px auto';
+            } else {
+                unit.style.verticalAlign = 'middle';
+                unit.style.margin = '0 4px';
+            }
+
+            this.imageAlign = mode;
+            this.syncSurface(this.active);
+        },
+
+        setImageWidth(percent) {
+            const img = this.activeImage;
+            const unit = this.imageUnit();
+            if (!img || !unit) return;
+
+            const value = Number(percent);
+            if (!value) {
+                unit.style.width = '';
+                this.imageWidth = '';
+            } else {
+                const clamped = Math.min(100, Math.max(5, value));
+                unit.style.width = clamped + '%';
+                this.imageWidth = String(clamped);
+            }
+
+            img.style.height = 'auto';
+            if (unit !== img) img.style.width = '100%';
+
+            this.syncSurface(this.active);
+        },
+
+        stepImageWidth(delta) {
+            const current = Number(this.imageWidth) || 100;
+            this.setImageWidth(current + delta);
+        },
+
+        setImageAlt(value) {
+            const img = this.activeImage;
+            if (!img) return;
+            img.setAttribute('alt', String(value ?? '').slice(0, 200));
+            this.syncSurface(this.active);
+        },
+
+        removeImage() {
+            const img = this.activeImage;
+            if (!img) return;
+            const target = this.active;
+            (this.imageUnit() || img).remove();
+            this.selectImage(null);
+            this.syncSurface(target);
         },
 
         /* ---------- links ---------- */

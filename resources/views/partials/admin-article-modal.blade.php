@@ -168,30 +168,6 @@
                         </div>
                     </section>
 
-                    {{-- Tipografi --}}
-                    <section class="doc-side-card" x-data="{ open: false }">
-                        <button type="button" class="doc-side-toggle" @click="open = !open">
-                            <span x-text="t('articles','typography')"></span>
-                            <svg class="w-4 h-4 transition-transform" :class="open && 'rotate-180'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
-                        </button>
-                        <p class="doc-side-hint" x-show="!open" x-cloak x-text="t('articles','typography_hint')"></p>
-
-                        <div class="space-y-3" x-show="open" x-cloak x-transition.opacity.duration.150ms>
-                            @include('partials.admin-article-typography', ['prefix' => 'title'])
-                            @include('partials.admin-article-typography', ['prefix' => 'excerpt'])
-                            @include('partials.admin-article-typography', ['prefix' => 'content'])
-
-                            <div class="rounded-xl border border-gray-200 bg-white p-3 space-y-3">
-                                <div>
-                                    <p class="text-sm font-bold text-gray-900" x-text="t('articles','typography_headings')"></p>
-                                    <p class="mt-1 text-[11px] leading-relaxed text-gray-500" x-text="t('articles','heading_hint')"></p>
-                                </div>
-                                @foreach (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as $level)
-                                    @include('partials.admin-article-typography', ['prefix' => $level])
-                                @endforeach
-                            </div>
-                        </div>
-                    </section>
                 </aside>
             </div>
 

@@ -301,6 +301,51 @@ class ArticleHeadingTypographyTest extends TestCase
         $this->assertStringContainsString('Ringkasan tebal saja.', $html);
     }
 
+    public function test_content_keeps_inline_images_and_rejects_unsafe_sources(): void
+    {
+        $clean = ArticleContent::sanitizeHtml(
+            '<p>Awal <img src="/storage/articles/inline/a.webp" alt="Botol" '
+            .'style="width: 50%; float: left; position: fixed" onerror="alert(1)"> akhir</p>'
+            .'<img src="data:image/png;base64,AAAA" alt="jahat">'
+            .'<img src="javascript:alert(1)" alt="jahat">',
+        );
+
+        $this->assertStringContainsString('<img src="/storage/articles/inline/a.webp"', $clean);
+        $this->assertStringContainsString('alt="Botol"', $clean);
+        $this->assertStringContainsString('width: 50%', $clean);
+        $this->assertStringContainsString('float: left', $clean);
+        $this->assertStringContainsString('loading="lazy"', $clean);
+        $this->assertStringNotContainsString('position: fixed', $clean);
+        $this->assertStringNotContainsString('onerror', $clean);
+        $this->assertStringNotContainsString('data:image', $clean);
+        $this->assertStringNotContainsString('javascript:', $clean);
+    }
+
+    public function test_excerpt_keeps_an_inline_image(): void
+    {
+        $clean = ArticleContent::sanitizeInlineHtml(
+            'Ringkasan <img src="/storage/articles/inline/b.webp" alt="Ikon" style="width: 25%"> selesai',
+        );
+
+        $this->assertStringContainsString('<img src="/storage/articles/inline/b.webp"', $clean);
+        $this->assertStringContainsString('width: 25%', $clean);
+        $this->assertSame('Ringkasan selesai', ArticleContent::plainText($clean));
+    }
+
+    public function test_article_page_prints_an_inline_image(): void
+    {
+        $article = $this->makeArticle([
+            'slug' => 'konten-dengan-gambar',
+            'content' => '<p>Sebelum <img src="/storage/articles/inline/c.webp" alt="Contoh" style="width: 40%"> sesudah.</p>',
+        ]);
+
+        $html = $this->get("/artikel/{$article->slug}")->assertOk()->getContent();
+
+        $this->assertStringContainsString('src="/storage/articles/inline/c.webp"', $html);
+        $this->assertStringContainsString('alt="Contoh"', $html);
+        $this->assertStringNotContainsString('&lt;img', $html);
+    }
+
     public function test_article_page_falls_back_to_defaults_without_heading_fonts(): void
     {
         $article = $this->makeArticle(['slug' => 'tanpa-heading-fonts']);
