@@ -44,8 +44,11 @@ class BelanjaCatalog
         $url = asset('storage/'.$clean);
 
         // Menempel waktu ubah berkas: mengganti foto produk memakai nama file
-        // yang sama tidak lagi tertahan cache browser pengunjung lama.
-        $stamp = @filemtime(public_path('storage/'.$clean));
+        // yang sama tidak lagi tertahan cache browser pengunjung lama. Berkasnya
+        // dicari di storage/app/public, bukan lewat symlink public/storage -
+        // di server, symlink itu ada di docroot, bukan di dalam public/.
+        $stamp = @filemtime(storage_path('app/public/'.$clean))
+            ?: @filemtime(public_path('storage/'.$clean));
 
         return $stamp ? $url.'?v='.$stamp : $url;
     }
