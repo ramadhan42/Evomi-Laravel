@@ -3,25 +3,31 @@ name: Deploy ke evomi.shop
 # Alur deploy:
 #   1. Build aset di CI, commit balik bila berubah - server tidak menjalankan
 #      Node, jadi hasil build harus sudah ada di repo saat server menariknya.
-#   2. Kirim satu berkas evomi-deploy.php (9,6 KB) ke public_html lewat FTP.
-#   3. Panggil berkas itu. Server menarik sendiri rilisnya dari GitHub, menyalin
-#      kode/gambar/aset, mengonversi unggahan ke WebP, migrasi, lalu cache.
-#   4. Hapus lagi berkas itu supaya tidak ada endpoint deploy yang menganggur.
+#   2. Jalankan deploy/ssh-deploy.sh di server lewat SSH, sekali per domain.
+#      Server menarik sendiri rilisnya dari GitHub, menyalin kode/gambar/aset,
+#      mengonversi unggahan ke WebP, migrasi, lalu cache.
 #
-# FTP hanya dipakai untuk memindahkan satu berkas kecil, bukan seluruh rilis.
-# Perintah curl dipakai langsung, tanpa action pihak ketiga, supaya kredensial
-# tidak pernah melewati kode orang lain.
+# Dulu langkah 2 mengunggah satu berkas PHP ke docroot lewat FTP lalu
+# memanggilnya lewat HTTP. Cara itu ditinggalkan: unggahan FTP-nya timeout
+# sesekali (run #14 dan #16 gagal setelah menggantung ~134 detik, sementara run
+# yang sehat selesai dalam 3 detik), dan setiap kegagalan melewatkan deploy
+# kedua domain. Lewat SSH tidak ada berkas yang menginap di docroot, tidak ada
+# endpoint deploy yang sempat menganggur, dan keluarannya langsung terbaca di
+# log Actions. evomi-deploy.php sengaja ditinggal di repo sebagai jalur
+# cadangan bila suatu saat SSH tidak tersedia.
 #
 # Secret yang harus diisi di Settings > Secrets and variables > Actions:
-#   FTP_HOST         145.79.14.242
-#   FTP_USERNAME     u160994497.evomi.shop
-#   FTP_PASSWORD     (password FTP)
-#   EVOMI_SYNC_KEY   nilai yang sama persis dengan di laravel/.env
+#   SSH_HOST         alamat server (mis. 145.79.14.242)
+#   SSH_USER         user SSH hosting (mis. u160994497)
+#   SSH_PRIVATE_KEY  private key OpenSSH untuk deploy (tanpa passphrase);
+#                    public key-nya sudah terpasang di ~/.ssh/authorized_keys
 #
-# Variabel opsional (Settings > Secrets and variables > Actions > Variables):
-#   FTP_REMOTE_DIR   default: public_html
+# Variabel opsional (tab Variables):
+#   SSH_PORT         default: 65002 (port SSH Hostinger)
 #   SITE_URL         default: https://evomi.shop
-
+#   SECOND_SITE      default: evomi.id  (kosongkan untuk mematikan)
+#   SECOND_SITE_URL  default: https://evomi.id
+#
 # Dua hal yang menentukan kapan workflow ini benar-benar jalan:
 #
 #   1. paths-ignore membuat push yang tidak mengubah berkas apa pun ikut
@@ -31,9 +37,6 @@ name: Deploy ke evomi.shop
 #   2. workflow_dispatch (tombol "Run workflow" di tab Actions) hanya muncul
 #      bila berkas workflow ada di branch default. Selama deploy.yml cuma ada
 #      di branch ini dan belum di main, tombol itu tidak akan tampil.
-#
-# Konsekuensinya: satu-satunya cara memicu deploy adalah push yang mengubah
-# minimal satu berkas non-.md ke branch di bawah.
 on:
   push:
     branches:
@@ -43,9 +46,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # Menyerialkan deploy untuk KEDUA domain, bukan evomi.shop saja: satu run
-  # mengunggah satu berkas ke docroot evomi.shop lalu memakainya untuk keduanya.
-  # Dua run bersamaan akan saling menghapus berkas itu di tengah jalan.
+  # Menyerialkan deploy untuk KEDUA domain: satu run menyentuh dua docroot di
+  # akun yang sama, jadi dua run bersamaan bisa saling menimpa di tengah jalan.
   group: deploy-evomi
   cancel-in-progress: false
 
@@ -57,19 +59,12 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # Akun FTP evomi.shop mendarat LANGSUNG di dalam public_html - login-nya
-      # sudah berisi index.php, .htaccess, dan symlink storage. Jadi default-nya
-      # titik, bukan "public_html": menambahkan nama folder itu sekali lagi akan
-      # membuat public_html/public_html/ dan endpoint-nya membalas 404.
-      # Setel variabel repo FTP_REMOTE_DIR bila suatu saat akunnya mendarat di home.
-      REMOTE_DIR: ${{ vars.FTP_REMOTE_DIR || '.' }}
+      SSH_PORT: ${{ vars.SSH_PORT || '65002' }}
       SITE_URL: ${{ vars.SITE_URL || 'https://evomi.shop' }}
-      # Domain kedua di akun yang sama, di-deploy lewat endpoint domain pertama
-      # (lihat langkah "domain kedua"). Kosongkan variabel repo SECOND_SITE
-      # untuk mematikannya.
+      FIRST_SITE: ${{ vars.FIRST_SITE || 'evomi.shop' }}
       SECOND_SITE: ${{ vars.SECOND_SITE || 'evomi.id' }}
       SECOND_SITE_URL: ${{ vars.SECOND_SITE_URL || 'https://evomi.id' }}
-      SCRIPT: evomi-deploy.php
+      SCRIPT: deploy/ssh-deploy.sh
 
     steps:
       - name: Ambil kode
@@ -106,24 +101,25 @@ jobs:
 
           echo "aset build diperbarui dan didorong ke repo"
 
-      # Memastikan keempat secret terbaca SEBELUM apa pun dikirim ke server.
-      #
-      # Sebelumnya hanya FTP_HOST dan FTP_PASSWORD yang dicek, dan pesannya
-      # menyebut tiga nama sekaligus tanpa menunjuk mana yang kurang - dua run
-      # gagal berturut-turut tanpa petunjuk. EVOMI_SYNC_KEY tidak dicek sama
-      # sekali, sehingga bila hanya kunci itu yang kosong, alurnya baru gagal
-      # jauh di belakang dengan balasan 403 yang membingungkan.
-      #
-      # Nilainya tidak pernah dicetak; yang dilaporkan hanya namanya.
+      # Server menarik rilis dari GitHub berdasarkan sha. Kalau langkah di atas
+      # membuat commit baru, sha itulah yang harus dipakai - bukan sha yang
+      # memicu workflow, yang belum berisi aset hasil build.
+      - name: Tentukan sha rilis
+        run: |
+          sha=$(git rev-parse HEAD)
+          echo "RELEASE_SHA=$sha" >> "$GITHUB_ENV"
+          echo "rilis yang akan dipasang: $sha"
+
+      # Memastikan ketiga secret terbaca SEBELUM menyentuh server. Nilainya
+      # tidak pernah dicetak; yang dilaporkan hanya namanya.
       - name: Pastikan secret deploy tersedia
         env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          EVOMI_SYNC_KEY: ${{ secrets.EVOMI_SYNC_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           kurang=""
-          for nama in FTP_HOST FTP_USERNAME FTP_PASSWORD EVOMI_SYNC_KEY; do
+          for nama in SSH_HOST SSH_USER SSH_PRIVATE_KEY; do
             [ -z "${!nama:-}" ] && kurang="${kurang}${nama} "
           done
 
@@ -132,13 +128,30 @@ jobs:
             exit 1
           fi
 
-          echo "keempat secret terbaca"
+          echo "ketiga secret terbaca"
 
-      - name: Kirim script deploy lewat FTP
+      - name: Siapkan kunci SSH
         env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Host key diambil sekali di sini, jadi ssh tidak perlu ditawari
+          # StrictHostKeyChecking=no yang menerima host mana pun.
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          echo "kunci dan host key siap"
+
+      - name: Kirim script deploy
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           set -euo pipefail
 
@@ -147,121 +160,39 @@ jobs:
             exit 1
           fi
 
-          # REMOTE_DIR "." berarti akun FTP sudah mendarat di public_html.
-          if [ "$REMOTE_DIR" = "." ] || [ -z "$REMOTE_DIR" ]; then
-            remote_path="$SCRIPT"
-          else
-            remote_path="$REMOTE_DIR/$SCRIPT"
-          fi
-          echo "REMOTE_PATH=$remote_path" >> "$GITHUB_ENV"
+          scp -P "$SSH_PORT" -i ~/.ssh/deploy_key -o BatchMode=yes \
+              "$SCRIPT" "$SSH_USER@$SSH_HOST:~/ssh-deploy.sh"
 
-          # --ftp-create-dirs supaya tidak gagal kalau folder tujuan belum ada.
-          curl --fail --silent --show-error \
-               --ftp-create-dirs \
-               --user "$FTP_USERNAME:$FTP_PASSWORD" \
-               --upload-file "$SCRIPT" \
-               "ftp://$FTP_HOST/$remote_path"
-
-          echo "$SCRIPT terkirim ke $remote_path"
+          echo "$SCRIPT terkirim"
 
       - name: Jalankan deploy di server
         id: run
         env:
-          EVOMI_SYNC_KEY: ${{ secrets.EVOMI_SYNC_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
 
-          # --max-time longgar: server menarik ~32 MB lalu menjalankan migrasi.
-          http=$(curl --silent --show-error \
-                      --max-time 900 \
-                      --get \
-                      --data-urlencode "key=$EVOMI_SYNC_KEY" \
-                      --write-out '%{http_code}' \
-                      --output deploy-output.txt \
-                      "$SITE_URL/$SCRIPT" || echo 000)
+          ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key -o BatchMode=yes \
+              "$SSH_USER@$SSH_HOST" \
+              "DEPLOY_REPO='$GITHUB_REPOSITORY' bash ~/ssh-deploy.sh '$RELEASE_SHA' '$FIRST_SITE'"
 
-          echo "HTTP $http"
-          echo "--- keluaran server ---"
-          cat deploy-output.txt || true
-          echo "-----------------------"
-
-          if [ "$http" != "200" ]; then
-            echo "::error::endpoint deploy membalas HTTP $http"
-            exit 1
-          fi
-
-          # Endpoint tetap balas 200 walau salah satu tahap gagal, jadi
-          # keberhasilannya dinilai dari penanda di keluarannya.
-          if ! grep -q 'cache_built=yes' deploy-output.txt; then
-            echo "::error::deploy tidak selesai bersih - lihat keluaran di atas"
-            exit 1
-          fi
-
-          echo "deploy selesai"
-
-      # Deploy domain kedua lewat endpoint yang SAMA, dengan parameter ?site=.
-      #
-      # evomi.id tidak punya akun FTP sendiri - akun yang ada terkunci di docroot
-      # evomi.shop - jadi berkas deploy tidak bisa diunggah ke sana. Karena kedua
-      # domain ada di satu akun Unix, satu berkas di evomi.shop bisa melayani
-      # keduanya. Berkasnya sudah terunggah dari langkah sebelumnya dan baru
-      # dihapus setelah langkah ini.
       - name: Jalankan deploy di server (domain kedua)
         id: run_second
         if: steps.run.outcome == 'success' && env.SECOND_SITE != ''
         env:
-          EVOMI_SYNC_KEY: ${{ secrets.EVOMI_SYNC_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
 
-          http=$(curl --silent --show-error \
-                      --max-time 900 \
-                      --get \
-                      --data-urlencode "key=$EVOMI_SYNC_KEY" \
-                      --data-urlencode "site=$SECOND_SITE" \
-                      --write-out '%{http_code}' \
-                      --output deploy-second.txt \
-                      "$SITE_URL/$SCRIPT" || echo 000)
+          ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key -o BatchMode=yes \
+              "$SSH_USER@$SSH_HOST" \
+              "DEPLOY_REPO='$GITHUB_REPOSITORY' bash ~/ssh-deploy.sh '$RELEASE_SHA' '$SECOND_SITE'"
 
-          echo "HTTP $http"
-          echo "--- keluaran server ($SECOND_SITE) ---"
-          cat deploy-second.txt || true
-          echo "-----------------------"
-
-          if [ "$http" != "200" ]; then
-            echo "::error::endpoint deploy $SECOND_SITE membalas HTTP $http"
-            exit 1
-          fi
-
-          if ! grep -q 'cache_built=yes' deploy-second.txt; then
-            echo "::error::deploy $SECOND_SITE tidak selesai bersih - lihat keluaran di atas"
-            exit 1
-          fi
-
-          echo "deploy $SECOND_SITE selesai"
-
-      - name: Hapus script dari server
-        # Dijalankan walau tahap sebelumnya gagal: endpoint deploy tidak boleh
-        # tertinggal menganggur di docroot.
+      - name: Bersihkan kunci
         if: always()
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-        run: |
-          if [ -z "${REMOTE_PATH:-}" ]; then
-            echo "script belum sempat terkirim - tidak ada yang perlu dihapus"
-            exit 0
-          fi
-
-          if curl --fail --silent --show-error \
-                  --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                  --quote "DELE $REMOTE_PATH" \
-                  "ftp://$FTP_HOST/"; then
-            echo "$REMOTE_PATH dihapus dari server"
-          else
-            echo "::warning::gagal menghapus $SCRIPT - hapus manual lewat File Manager"
-          fi
+        run: rm -f ~/.ssh/deploy_key
 
       - name: Periksa hasil di situs
         if: steps.run.outcome == 'success'
