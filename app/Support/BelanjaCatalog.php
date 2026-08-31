@@ -41,8 +41,13 @@ class BelanjaCatalog
         }
 
         $clean = ltrim(preg_replace('#^storage/#i', '', $path) ?? $path, '/');
+        $url = asset('storage/'.$clean);
 
-        return asset('storage/'.$clean);
+        // Menempel waktu ubah berkas: mengganti foto produk memakai nama file
+        // yang sama tidak lagi tertahan cache browser pengunjung lama.
+        $stamp = @filemtime(public_path('storage/'.$clean));
+
+        return $stamp ? $url.'?v='.$stamp : $url;
     }
 
     /**
