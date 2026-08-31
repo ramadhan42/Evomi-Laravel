@@ -13,7 +13,7 @@ name: Deploy evomi.shop + evomi.id
 # yang sehat selesai dalam 3 detik), dan setiap kegagalan melewatkan deploy
 # kedua domain. Lewat SSH tidak ada berkas yang menginap di docroot, tidak ada
 # endpoint deploy yang sempat menganggur, dan keluarannya langsung terbaca di
-# log Actions. evomi-deploy.php sengaja ditinggal di repo sebagai jalur
+# log Actions. deploy/legacy-evomi-deploy.php ditinggal sebagai jalur
 # cadangan bila suatu saat SSH tidak tersedia.
 #
 # Secret yang harus diisi di Settings > Secrets and variables > Actions:
