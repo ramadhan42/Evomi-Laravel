@@ -439,11 +439,129 @@ function wait(ms) {
 /* ——— Full-page loader (parity with Next.js LoadingScreen) ——— */
 const LOADER_MIN_MS = 1200;
 const LOADER_MAX_MS = 2400;
+// Grace after the clip ends: the last frame holds while a slow page finishes.
+const LOADER_VIDEO_GRACE_MS = 4000;
 
 function unlockEvomiLoaderScroll() {
     document.documentElement.classList.remove('evomi-loading');
     document.body.style.overflow = '';
     document.documentElement.style.overflow = '';
+}
+
+/**
+ * Video loading screen: plays the clip behind the loader, fits it to the
+ * viewport and paints the backdrop with the video's own edge colour so a
+ * letterboxed clip has no visible band. Any failure (missing file, blocked
+ * autoplay, reduced motion) simply leaves the animated orb in place.
+ */
+function initEvomiLoaderVideo(root, onSettled) {
+    const video = document.getElementById('evomi-loader-video');
+    if (!video) return null;
+
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion) return null;
+
+    const applyFit = () => {
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        if (!vw || !vh) return;
+
+        const videoRatio = vw / vh;
+        const screenRatio = window.innerWidth / Math.max(1, window.innerHeight);
+        // Crop only while the shapes are close; beyond that, letterbox instead
+        // of cutting the animation in half on a phone held upright.
+        const drift = Math.abs(videoRatio - screenRatio) / videoRatio;
+        root.classList.toggle('fit-contain', drift > 0.35);
+    };
+
+    const paintBackdrop = () => {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 18;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (!ctx) return;
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            let r = 0;
+            let g = 0;
+            let b = 0;
+            let n = 0;
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const edge = x === 0 || y === 0 || x === canvas.width - 1 || y === canvas.height - 1;
+                    if (!edge) continue;
+                    const i = (y * canvas.width + x) * 4;
+                    r += data[i];
+                    g += data[i + 1];
+                    b += data[i + 2];
+                    n++;
+                }
+            }
+            if (!n) return;
+
+            root.style.background = `rgb(${Math.round(r / n)}, ${Math.round(g / n)}, ${Math.round(b / n)})`;
+        } catch (e) {
+            /* canvas can be unavailable; the gradient stays */
+        }
+    };
+
+    // Nothing to watch if the clip cannot play at all: show the orb instead of
+    // an empty screen and let the loader fall back to its own timing.
+    const giveUp = () => {
+        root.classList.add('show-fallback');
+        onSettled?.();
+    };
+
+    const reveal = () => {
+        applyFit();
+        paintBackdrop();
+        root.classList.add('is-video-playing');
+    };
+
+    let started = false;
+    const startClip = () => {
+        if (started) return;
+        started = true;
+
+        try {
+            video.currentTime = 0;
+        } catch (e) {
+            /* seeking before data is harmless to skip */
+        }
+
+        const played = video.play?.();
+        if (played?.catch) played.catch(giveUp);
+    };
+
+    /*
+     * The clip is started a painted frame late on purpose: `autoplay` would
+     * begin during parsing, before the browser has put anything on screen, and
+     * the opening of the animation would be over before it was ever visible.
+     */
+    const startWhenVisible = () => {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(startClip));
+    };
+
+    video.addEventListener('loadedmetadata', applyFit);
+    video.addEventListener('loadeddata', applyFit);
+    video.addEventListener('playing', reveal, { once: true });
+    video.addEventListener('ended', () => onSettled?.(), { once: true });
+    video.addEventListener('error', giveUp, { once: true });
+    window.addEventListener('resize', applyFit);
+    window.addEventListener('orientationchange', applyFit);
+
+    if (video.readyState >= 2) {
+        startWhenVisible();
+    } else {
+        video.addEventListener('loadeddata', startWhenVisible, { once: true });
+        // A clip that never buffers must not hold the page hostage.
+        window.setTimeout(() => (started ? null : giveUp()), 2500);
+    }
+
+    return video;
 }
 
 function initEvomiLoader() {
@@ -454,6 +572,10 @@ function initEvomiLoader() {
         return;
     }
 
+    let clipDone = false;
+    const video = initEvomiLoaderVideo(root, () => {
+        clipDone = true;
+    });
     const startedAt = Date.now();
     let raf = 0;
     let done = false;
@@ -479,26 +601,60 @@ function initEvomiLoader() {
             root.classList.add('is-hidden');
             root.setAttribute('aria-busy', 'false');
             root.removeAttribute('aria-live');
+            video?.pause?.();
         }, 500);
     };
 
     const tick = () => {
         if (done) return;
-        const elapsed = Date.now() - startedAt;
-        const soft = Math.min(92, 8 + (elapsed / LOADER_MAX_MS) * 84);
-        setProgress(soft);
+
+        const clip = clipMs();
+        if (clip && video && video.currentTime > 0) {
+            // Honest progress: the bar fills exactly as the clip plays.
+            setProgress(Math.min(99, (video.currentTime * 1000 / clip) * 100));
+        } else {
+            const elapsed = Date.now() - startedAt;
+            setProgress(Math.min(92, 8 + (elapsed / maxMs()) * 84));
+        }
+
         raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
 
+    /*
+     * Timing with a clip: it plays exactly once and is never cut short, even if
+     * the page is ready first. Should the page still be loading when the clip
+     * ends, its last frame holds instead of looping. Without a clip the
+     * original 1.2s / 2.4s window applies.
+     */
+    const clipMs = () => {
+        const clip = (video?.duration || 0) * 1000;
+
+        return Number.isFinite(clip) && clip > 250 ? clip : 0;
+    };
+
+    const maxMs = () => (video ? (clipMs() || LOADER_MAX_MS) + LOADER_VIDEO_GRACE_MS : LOADER_MAX_MS);
+
     const tryFinish = () => {
         const elapsed = Date.now() - startedAt;
-        const ready = document.readyState === 'complete' || elapsed >= LOADER_MAX_MS;
-        if (ready && elapsed >= LOADER_MIN_MS) {
-            finish();
-            return;
+
+        if (elapsed < maxMs()) {
+            // Never leave in the middle of the clip.
+            if (video && !clipDone) {
+                pollTimer = window.setTimeout(tryFinish, 80);
+
+                return;
+            }
+
+            const minimum = video ? 0 : LOADER_MIN_MS;
+            if (document.readyState !== 'complete' || elapsed < minimum) {
+                pollTimer = window.setTimeout(tryFinish, 120);
+
+                return;
+            }
         }
-        pollTimer = window.setTimeout(tryFinish, 120);
+
+        finish();
     };
 
     const onLoad = () => tryFinish();
@@ -506,7 +662,7 @@ function initEvomiLoader() {
         tryFinish();
     } else {
         window.addEventListener('load', onLoad, { once: true });
-        maxTimer = window.setTimeout(tryFinish, LOADER_MAX_MS);
+        maxTimer = window.setTimeout(tryFinish, maxMs());
     }
 
     // Safety: if the tab is hidden mid-load, still unlock eventually

@@ -205,6 +205,88 @@ body *,
     text-align: center;
 }
 
+/* ---- Video loading screen ------------------------------------------------
+   The video fills the screen when its shape is close to the viewport's, and
+   is letterboxed against its own edge colour when it is not — so it never
+   crops the animation and never shows a mismatched band. */
+
+.evomi-loader-video {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    pointer-events: none;
+}
+
+.evomi-loader.fit-contain .evomi-loader-video {
+    object-fit: contain;
+}
+
+.evomi-loader-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+    pointer-events: none;
+    background: linear-gradient(to top, rgba(2, 26, 46, 0.22) 0%, rgba(2, 26, 46, 0) 9%);
+}
+
+.evomi-loader.is-video-playing .evomi-loader-scrim {
+    opacity: 1;
+}
+
+/* With a clip in place the video *is* the loading screen: the only thing
+   left over it is a hairline progress bar along the bottom edge. The orb and
+   wordmark stay in the markup purely as the fallback for a clip that cannot
+   play, so the screen is never left empty. */
+.evomi-loader.has-video .evomi-loader-orb,
+.evomi-loader.has-video .evomi-loader-copy {
+    display: none;
+}
+
+.evomi-loader.has-video.show-fallback .evomi-loader-orb {
+    display: flex;
+}
+
+.evomi-loader.has-video.show-fallback .evomi-loader-copy {
+    display: block;
+}
+
+.evomi-loader.has-video:not(.show-fallback) .evomi-loader-inner {
+    position: absolute;
+    inset: auto 0 calc(env(safe-area-inset-bottom, 0px)) 0;
+    max-width: none;
+    gap: 0;
+}
+
+.evomi-loader.has-video:not(.show-fallback) .evomi-loader-track {
+    width: 100%;
+    height: 3px;
+    border-radius: 0;
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.evomi-loader.has-video:not(.show-fallback) .evomi-loader-bar {
+    border-radius: 0;
+    transition: width 0.12s linear;
+}
+
+.evomi-loader.has-video.show-fallback .evomi-loader-video,
+.evomi-loader.has-video.show-fallback .evomi-loader-scrim {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .evomi-loader-video,
+    .evomi-loader-scrim {
+        display: none;
+    }
+}
+
 .evomi-loader-brand {
     margin: 0;
     font-family: var(--font-nohemi), sans-serif;
@@ -3569,12 +3651,12 @@ select.admin-field-input {
 
     --hero-wave-l-left-m: -24%;
     --hero-wave-l-left-d: -11%;
-    --hero-wave-l-top-m: -44%;
-    --hero-wave-l-top-d: -35%;
+    --hero-wave-l-top-m: -38%;
+    --hero-wave-l-top-d: -29%;
     --hero-wave-r-right-m: -17%;
     --hero-wave-r-right-d: -11%;
-    --hero-wave-r-top-m: -74%;
-    --hero-wave-r-top-d: -50%;
+    --hero-wave-r-top-m: -77%;
+    --hero-wave-r-top-d: -53%;
 
     --hero-p1-size-m: 1;
     --hero-p1-size-d: 1;
@@ -3663,6 +3745,17 @@ select.admin-field-input {
     shape-rendering: geometricPrecision;
 }
 
+@media (min-width: 768px) {
+    /* The wing box is stretched between the screen edge and the bottles, so the
+       artwork fills it rather than keeping its own box aspect. */
+    .hero-wave-svg svg,
+    .hero-wave-svg img {
+        width: 100%;
+        height: 100%;
+        object-fit: fill;
+    }
+}
+
 .hero-product-hit {
     cursor: pointer;
 }
@@ -3717,8 +3810,10 @@ select.admin-field-input {
 }
 
 .hero-wave-left {
-    left: var(--hero-wave-l-left-m, -17%);
-    top: var(--hero-wave-l-top-m, -31%);
+    /* Anchored to the viewport edge, not to the 1280px stage: past that width
+       the stage stops growing and the wings used to drift inwards. */
+    left: calc(50% - 50vw + var(--hero-wave-l-left-m, -24%));
+    top: var(--hero-wave-l-top-m, -38%);
     width: 56%;
     height: auto;
     aspect-ratio: 394 / 269;
@@ -3728,8 +3823,8 @@ select.admin-field-input {
 }
 
 .hero-wave-right {
-    right: var(--hero-wave-r-right-m, -17%);
-    top: var(--hero-wave-r-top-m, -49%);
+    right: calc(50% - 50vw + var(--hero-wave-r-right-m, -17%));
+    top: var(--hero-wave-r-top-m, -77%);
     width: 48%;
     height: auto;
     aspect-ratio: 418 / 449;
@@ -4007,17 +4102,28 @@ select.admin-field-input {
     }
 
     .hero-wave-left {
-        left: var(--hero-wave-l-left-d, -11%);
-        top: var(--hero-wave-l-top-d, -35%);
-        width: 46%;
+        /* Outer end pinned to the screen, inner end pinned where the bottles
+           are: the ribbon stretches across the extra space on wide screens
+           instead of drifting away from the products. */
+        left: calc(50% - 50vw + var(--hero-wave-l-left-d, -11%));
+        right: calc(100% - var(--hero-wave-l-left-d, -11%) - 46%);
+        top: var(--hero-wave-l-top-d, -29%);
+        width: auto;
+        /* Height stays what it was at 1280 so the ribbon only spans sideways
+           and never grows down into the section below. */
+        aspect-ratio: auto;
+        height: 97.6%;
         transform: scale(1.14) rotate(-9deg);
         transform-origin: 88% 78%;
     }
 
     .hero-wave-right {
-        right: var(--hero-wave-r-right-d, -11%);
-        top: var(--hero-wave-r-top-d, -50%);
-        width: 40%;
+        right: calc(50% - 50vw + var(--hero-wave-r-right-d, -11%));
+        left: calc(100% - var(--hero-wave-r-right-d, -11%) - 40%);
+        top: var(--hero-wave-r-top-d, -53%);
+        width: auto;
+        aspect-ratio: auto;
+        height: 133.5%;
         transform: scale(1.14) rotate(9deg);
         transform-origin: 12% 78%;
     }

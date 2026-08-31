@@ -308,12 +308,12 @@ final class CmsStorefront
 
             '--hero-wave-l-left-m' => $s('wave_left_left_mobile', '-24%'),
             '--hero-wave-l-left-d' => $s('wave_left_left_desktop', '-11%'),
-            '--hero-wave-l-top-m' => $s('wave_left_top_mobile', '-44%'),
-            '--hero-wave-l-top-d' => $s('wave_left_top_desktop', '-35%'),
+            '--hero-wave-l-top-m' => $s('wave_left_top_mobile', '-38%'),
+            '--hero-wave-l-top-d' => $s('wave_left_top_desktop', '-29%'),
             '--hero-wave-r-right-m' => $s('wave_right_right_mobile', '-17%'),
             '--hero-wave-r-right-d' => $s('wave_right_right_desktop', '-11%'),
-            '--hero-wave-r-top-m' => $s('wave_right_top_mobile', '-74%'),
-            '--hero-wave-r-top-d' => $s('wave_right_top_desktop', '-50%'),
+            '--hero-wave-r-top-m' => $s('wave_right_top_mobile', '-77%'),
+            '--hero-wave-r-top-d' => $s('wave_right_top_desktop', '-53%'),
 
             '--hero-p1-size-m' => $scale($s('product1_size_mobile', '100')),
             '--hero-p1-size-d' => $scale($s('product1_size_desktop', '100')),

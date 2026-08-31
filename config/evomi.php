@@ -10,6 +10,23 @@ return [
     | Pola sama seperti Arcanisia.
     |
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Video layar loading (opsional)
+    |--------------------------------------------------------------------------
+    |
+    | Kosongkan untuk memakai file pertama yang ditemukan di:
+    |   public/storage/loading-screen/loading-screen.(webm|mp4)
+    |   public/videos/loading-screen.(webm|mp4)
+    |
+    | Isi dengan path relatif terhadap public/ atau URL penuh untuk memakai
+    | berkas lain. Tanpa berkas apa pun, loader memakai animasi orb seperti
+    | sebelumnya.
+    |
+    */
+    'loader_video' => env('EVOMI_LOADER_VIDEO'),
+    'loader_video_poster' => env('EVOMI_LOADER_VIDEO_POSTER'),
+
     'development_admin' => [
         'name' => env('EVOMI_ADMIN_NAME', 'Evomi Admin'),
         'email' => env('EVOMI_ADMIN_EMAIL'),

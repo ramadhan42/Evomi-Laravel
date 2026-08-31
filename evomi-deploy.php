@@ -199,6 +199,10 @@ $targets = [
     ['public/src', $laravel . '/public/src'],
     ['public/src', $docRoot . '/src'],
 
+    // Video layar loading: docroot yang melayani /videos/loading-screen.mp4
+    ['public/videos', $laravel . '/public/videos'],
+    ['public/videos', $docRoot . '/videos'],
+
     // Media unggahan yang ikut repo
     ['storage/app/public', $laravel . '/storage/app/public'],
 ];

@@ -93,7 +93,7 @@
                     @if ($waveLeftRaster)
                         <img src="{{ $waveLeftCms }}" alt="" class="w-full h-auto block overflow-visible hero-wave-float-l">
                     @else
-                        <svg class="w-full h-auto block overflow-visible hero-wave-float-l" viewBox="0 0 394 269" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg class="w-full h-auto block overflow-visible hero-wave-float-l" preserveAspectRatio="none" viewBox="0 0 394 269" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <defs>
                                 <linearGradient id="heroWaveLeftGrad" x1="-16.1182" y1="57.6073" x2="385.318" y2="143.822" gradientUnits="userSpaceOnUse">
                                     <stop offset="0.339313" stop-color="#60BBFF" />
@@ -108,7 +108,7 @@
                     @if ($waveRightRaster)
                         <img src="{{ $waveRightCms }}" alt="" class="w-full h-auto block overflow-visible hero-wave-float-r">
                     @else
-                        <svg class="w-full h-auto block overflow-visible hero-wave-float-r" viewBox="0 0 418 449" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg class="w-full h-auto block overflow-visible hero-wave-float-r" preserveAspectRatio="none" viewBox="0 0 418 449" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <defs>
                                 <linearGradient id="heroWaveRightGradOuter" x1="446.42" y1="74.4447" x2="-7.16213" y2="352.017" gradientUnits="userSpaceOnUse">
                                     <stop offset="0.333877" stop-color="#A5E194" />
