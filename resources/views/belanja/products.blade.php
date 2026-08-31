@@ -1,16 +1,16 @@
 @php
     $products = $products ?? [];
     $cms = \App\Support\CmsStorefront::forPage('belanja');
-    $emptyTitle = $cms->textLines('list', 'empty_title', evomi_l('Belum ada produk', 'No products yet'), 2);
-    $emptyHint = $cms->textLines('list', 'empty_hint', evomi_l('Produk akan muncul di sini setelah tersedia.', 'Products will appear here when available.'), 3);
+    $emptyTitle = $cms->richText('list', 'empty_title', evomi_l('Belum ada produk', 'No products yet'), 2);
+    $emptyHint = $cms->richText('list', 'empty_hint', evomi_l('Produk akan muncul di sini setelah tersedia.', 'Products will appear here when available.'), 3);
     $cardStyle = \App\Support\BelanjaCmsDefaults::cardStyleAttr($cms);
 @endphp
 
 <section class="belanja-products bg-transparent flex flex-col items-center w-full pt-0 pb-0 px-3 md:px-6 relative overflow-visible" style="{{ $cardStyle }}">
     @if (count($products) === 0)
         <div class="relative z-10 w-full max-w-xl mx-auto px-4 py-16 text-center">
-            <h2 class="cms-fs cms-lines font-semibold text-gray-900" style="{{ $cms->fontInline('list', 'empty_title', '600') }}">{{ $emptyTitle }}</h2>
-            <p class="cms-fs cms-lines mt-2 text-gray-600" style="{{ $cms->fontInline('list', 'empty_hint', '400') }}">{{ $emptyHint }}</p>
+            <h2 class="cms-fs cms-lines font-semibold text-gray-900" style="{{ $cms->fontInline('list', 'empty_title', '600') }}">{!! $emptyTitle !!}</h2>
+            <p class="cms-fs cms-lines mt-2 text-gray-600" style="{{ $cms->fontInline('list', 'empty_hint', '400') }}">{!! $emptyHint !!}</p>
         </div>
     @else
         {{-- Figma: gap ~32px, container 920 — jarak antar produk seperti semula --}}

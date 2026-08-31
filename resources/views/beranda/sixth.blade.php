@@ -1,29 +1,29 @@
 @php
     /** @var \App\Support\CmsStorefront $cms */
     $cms = $cms ?? \App\Support\CmsStorefront::forPage('beranda');
-    $title1 = $cms->textLines('sixth', 'title_1', 'Packaging', 2);
-    $title2 = $cms->textLines('sixth', 'title_2', 'Reveal', 2);
+    $title1 = $cms->richText('sixth', 'title_1', 'Packaging', 2);
+    $title2 = $cms->richText('sixth', 'title_2', 'Reveal', 2);
     $packagingImg = $cms->image('sixth', 'image', '/src/images/section 6/packaging.webp');
-    $marqueeText = $cms->textLines('sixth', 'marquee_text', 'Every Version of Me', 1);
+    $marqueeText = $cms->richText('sixth', 'marquee_text', 'Every Version of Me', 1);
     $labelBase = 'flex items-center gap-1 whitespace-pre-line text-left text-white pointer-events-none';
     $labels = [
         'purpose' => [
-            'text' => $cms->textLines('sixth', 'label1', "Purpose\nPrestige", 2),
+            'text' => $cms->richText('sixth', 'label1', "Purpose\nPrestige", 2),
             'icon' => asset('src/images/section 6/purpose.webp'),
             'style' => $cms->fontInline('sixth', 'label1', '500'),
         ],
         'rebel' => [
-            'text' => $cms->textLines('sixth', 'label2', "Rebel\nBrave", 2),
+            'text' => $cms->richText('sixth', 'label2', "Rebel\nBrave", 2),
             'icon' => asset('src/images/section 6/rabel.webp'),
             'style' => $cms->fontInline('sixth', 'label2', '500'),
         ],
         'peaceful' => [
-            'text' => $cms->textLines('sixth', 'label3', "Peaceful\nCalm", 2),
+            'text' => $cms->richText('sixth', 'label3', "Peaceful\nCalm", 2),
             'icon' => asset('src/images/section 6/peaceful.webp'),
             'style' => $cms->fontInline('sixth', 'label3', '500'),
         ],
         'sweet' => [
-            'text' => $cms->textLines('sixth', 'label4', "Sweet\nShy", 2),
+            'text' => $cms->richText('sixth', 'label4', "Sweet\nShy", 2),
             'icon' => asset('src/images/section 6/sweetshy.webp'),
             'style' => $cms->fontInline('sixth', 'label4', '500'),
         ],
@@ -38,8 +38,8 @@
 <section class="relative z-0 bg-[#1172BA] flex flex-col items-center justify-center pt-10 pb-24 md:pt-8 md:pb-28 overflow-hidden select-none w-full" style="{{ $cms->sectionGapStyleAttr('sixth', ['hx_m' => '16px', 'hx_d' => '24px', 'vy_m' => '12px', 'vy_d' => '20px']) }}">
     <div class="relative z-30 flex items-center justify-center gap-2 md:gap-3 text-center px-3 sm:px-4 py-2 mb-3 md:top-12 md:mb-19 parallax-self" data-reveal data-parallax="0.05">
         <h2 class="text-[24px] sm:text-[28px] md:text-[42px] leading-tight font-bold">
-            <span class="cms-fs cms-lines text-white" style="{{ $cms->fontInline('sixth', 'title_1', '700') }}">{{ $title1 }}</span>
-            <span class="cms-fs cms-lines text-[#A5E194]" style="{{ $cms->fontInline('sixth', 'title_2', '700') }}"> {{ $title2 }}</span>
+            <span class="cms-fs cms-lines text-white" style="{{ $cms->fontInline('sixth', 'title_1', '700') }}">{!! $title1 !!}</span>
+            <span class="cms-fs cms-lines text-[#A5E194]" style="{{ $cms->fontInline('sixth', 'title_2', '700') }}"> {!! $title2 !!}</span>
         </h2>
         <img
             src="{{ asset('src/images/section 6/star-medium.webp') }}"
@@ -74,7 +74,7 @@
                 data-reveal
                 data-reveal-delay="0.3"
             >
-                <span class="cms-fs text-[16px] leading-tight whitespace-pre-line" style="{{ $labels['purpose']['style'] }}">{{ $labels['purpose']['text'] }}</span>
+                <span class="cms-fs text-[16px] leading-tight whitespace-pre-line" style="{{ $labels['purpose']['style'] }}">{!! $labels['purpose']['text'] !!}</span>
                 <img src="{{ $labels['purpose']['icon'] }}" alt="Purpose" class="w-[24px] h-[24px] object-contain">
             </div>
 
@@ -83,7 +83,7 @@
                 data-reveal
                 data-reveal-delay="0.4"
             >
-                <span class="cms-fs text-[16px] leading-tight whitespace-pre-line" style="{{ $labels['rebel']['style'] }}">{{ $labels['rebel']['text'] }}</span>
+                <span class="cms-fs text-[16px] leading-tight whitespace-pre-line" style="{{ $labels['rebel']['style'] }}">{!! $labels['rebel']['text'] !!}</span>
                 <img src="{{ $labels['rebel']['icon'] }}" alt="Rabel" class="w-[24px] h-[24px] object-contain">
             </div>
         </div>
@@ -100,19 +100,19 @@
 
                 <div class="md:hidden absolute inset-0 z-30 pointer-events-none">
                     <div class="{{ $labelBase }} absolute left-[0%] top-[-28%] bg-[#0A5A96]/55 backdrop-blur-[2px] px-1.5 py-1 rounded-full">
-                        <span class="cms-fs text-[9px] leading-tight whitespace-pre-line" style="{{ $labels['purpose']['style'] }}">{{ $labels['purpose']['text'] }}</span>
+                        <span class="cms-fs text-[9px] leading-tight whitespace-pre-line" style="{{ $labels['purpose']['style'] }}">{!! $labels['purpose']['text'] !!}</span>
                         <img src="{{ $labels['purpose']['icon'] }}" alt="" class="w-[11px] h-[11px] object-contain">
                     </div>
                     <div class="{{ $labelBase }} absolute right-[31%] top-[-27%] bg-[#0A5A96]/55 backdrop-blur-[2px] px-1.5 py-1 rounded-full">
-                        <span class="cms-fs text-[9px] leading-tight whitespace-pre-line" style="{{ $labels['rebel']['style'] }}">{{ $labels['rebel']['text'] }}</span>
+                        <span class="cms-fs text-[9px] leading-tight whitespace-pre-line" style="{{ $labels['rebel']['style'] }}">{!! $labels['rebel']['text'] !!}</span>
                         <img src="{{ $labels['rebel']['icon'] }}" alt="" class="w-[11px] h-[11px] object-contain">
                     </div>
                     <div class="{{ $labelBase }} absolute left-[17%] bottom-[-27%] bg-[#0A5A96]/55 backdrop-blur-[2px] px-1.5 py-1 rounded-full">
-                        <span class="cms-fs text-[9px] leading-tight whitespace-pre-line" style="{{ $labels['peaceful']['style'] }}">{{ $labels['peaceful']['text'] }}</span>
+                        <span class="cms-fs text-[9px] leading-tight whitespace-pre-line" style="{{ $labels['peaceful']['style'] }}">{!! $labels['peaceful']['text'] !!}</span>
                         <img src="{{ $labels['peaceful']['icon'] }}" alt="" class="w-[11px] h-[11px] object-contain">
                     </div>
                     <div class="{{ $labelBase }} absolute right-[8%] bottom-[-27%] bg-[#0A5A96]/55 backdrop-blur-[2px] px-1.5 py-1 rounded-full">
-                        <span class="cms-fs text-[9px] leading-tight whitespace-pre-line" style="{{ $labels['sweet']['style'] }}">{{ $labels['sweet']['text'] }}</span>
+                        <span class="cms-fs text-[9px] leading-tight whitespace-pre-line" style="{{ $labels['sweet']['style'] }}">{!! $labels['sweet']['text'] !!}</span>
                         <img src="{{ $labels['sweet']['icon'] }}" alt="" class="w-[11px] h-[11px] object-contain">
                     </div>
                 </div>
@@ -125,7 +125,7 @@
                 data-reveal
                 data-reveal-delay="0.5"
             >
-                <span class="cms-fs text-[16px] leading-tight whitespace-pre-line" style="{{ $labels['peaceful']['style'] }}">{{ $labels['peaceful']['text'] }}</span>
+                <span class="cms-fs text-[16px] leading-tight whitespace-pre-line" style="{{ $labels['peaceful']['style'] }}">{!! $labels['peaceful']['text'] !!}</span>
                 <img src="{{ $labels['peaceful']['icon'] }}" alt="Peaceful" class="w-[24px] h-[24px] object-contain">
             </div>
 
@@ -134,7 +134,7 @@
                 data-reveal
                 data-reveal-delay="0.6"
             >
-                <span class="cms-fs text-[16px] leading-tight whitespace-pre-line" style="{{ $labels['sweet']['style'] }}">{{ $labels['sweet']['text'] }}</span>
+                <span class="cms-fs text-[16px] leading-tight whitespace-pre-line" style="{{ $labels['sweet']['style'] }}">{!! $labels['sweet']['text'] !!}</span>
                 <img src="{{ $labels['sweet']['icon'] }}" alt="Sweet" class="w-[24px] h-[24px] object-contain">
             </div>
         </div>
@@ -150,7 +150,7 @@
                 >
                     @for ($i = 0; $i < 2; $i++)
                         @foreach ($marqueeIcons as $icon)
-                            <span class="cms-fs text-[11px] md:text-[14px] whitespace-nowrap text-white" style="{{ $cms->fontInline('sixth', 'marquee_text', '500') }}">{{ $marqueeText }}</span>
+                            <span class="cms-fs text-[11px] md:text-[14px] whitespace-nowrap text-white" style="{{ $cms->fontInline('sixth', 'marquee_text', '500') }}">{!! $marqueeText !!}</span>
                             <div class="relative w-[14px] h-[14px] md:w-[25px] md:h-[25px] shrink-0">
                                 <img src="{{ $icon }}" alt="" class="w-full h-full object-contain">
                             </div>

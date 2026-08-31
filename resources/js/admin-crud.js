@@ -27,7 +27,7 @@ import {
     HEADING_LEVELS,
     resolveFontFamilyCss,
 } from './font-catalog';
-import { looksLikeHtml, registerDocEditor } from './doc-editor';
+import { looksLikeHtml, registerCmsRichText, registerDocEditor } from './doc-editor';
 
 function unwrapList(payload) {
     if (Array.isArray(payload)) return payload;
@@ -1217,6 +1217,7 @@ export function registerAdminCrud(Alpine, deps) {
     }
 
     registerDocEditor(Alpine, { uploadImage: uploadInlineArticleImage });
+    registerCmsRichText(Alpine);
 
     /* ---------- ARTICLES ---------- */
     Alpine.data('evomiAdminArticles', () => ({
@@ -3211,6 +3212,51 @@ export function registerAdminCrud(Alpine, deps) {
         return rounded.toFixed(decimals).replace(/\.?0+$/, '');
     }
 
+    /*
+     * Field teks yang halamannya sudah mencetak HTML hasil saringan, jadi aman
+     * disunting dengan editor: nilainya disimpan sebagai HTML inline (tebal,
+     * miring, garis bawah, warna, ukuran, font, tautan). Sisanya tetap memakai
+     * kotak teks biasa karena nilainya masih dicetak apa adanya - kalau dipaksa,
+     * tag-nya justru terlihat mentah di halaman.
+     */
+    const CMS_RICH_TEXT_FIELDS = new Set([
+        'beranda.hero.headline_1', 'beranda.hero.headline_2', 'beranda.hero.headline_3', 'beranda.hero.headline_4',
+        'beranda.hero.badge_left', 'beranda.hero.badge_right', 'beranda.hero.marquee_text',
+
+        'beranda.second.headline_1', 'beranda.second.headline_2', 'beranda.second.headline_3',
+        'beranda.second.cta_label',
+        'beranda.second.card1_name', 'beranda.second.card2_name', 'beranda.second.card3_name', 'beranda.second.card4_name',
+
+        'beranda.third.title_1', 'beranda.third.title_2', 'beranda.third.tagline',
+        'beranda.third.card1_title', 'beranda.third.card2_title', 'beranda.third.card3_title',
+        'beranda.third.card1_desc', 'beranda.third.card2_desc', 'beranda.third.card3_desc',
+
+        'beranda.fifth.title_1', 'beranda.fifth.title_2', 'beranda.fifth.subtitle', 'beranda.fifth.cta_label',
+        'beranda.fifth.card1_badge', 'beranda.fifth.card1_title', 'beranda.fifth.card1_desc', 'beranda.fifth.card1_price',
+        'beranda.fifth.card2_badge', 'beranda.fifth.card2_title', 'beranda.fifth.card2_desc', 'beranda.fifth.card2_price',
+        'beranda.fifth.card3_badge', 'beranda.fifth.card3_title', 'beranda.fifth.card3_desc', 'beranda.fifth.card3_price',
+        'beranda.fifth.card4_badge', 'beranda.fifth.card4_title', 'beranda.fifth.card4_desc', 'beranda.fifth.card4_price',
+
+        'beranda.sixth.title_1', 'beranda.sixth.title_2', 'beranda.sixth.marquee_text',
+        'beranda.sixth.label1', 'beranda.sixth.label2', 'beranda.sixth.label3', 'beranda.sixth.label4',
+
+        'beranda.seventh.en_l1', 'beranda.seventh.en_l2', 'beranda.seventh.en_l3', 'beranda.seventh.en_l4',
+        'beranda.seventh.headline_1', 'beranda.seventh.headline_2', 'beranda.seventh.headline_3',
+        'beranda.seventh.headline_4', 'beranda.seventh.headline_5', 'beranda.seventh.cta_label',
+        'beranda.seventh.label1_text', 'beranda.seventh.label2_text',
+        'beranda.seventh.label3_text', 'beranda.seventh.label4_text',
+
+        'belanja.hero.headline_1', 'belanja.hero.headline_2', 'belanja.hero.headline_3',
+        'belanja.list.empty_title', 'belanja.list.empty_hint',
+
+        'footer.bulletin.desc',
+        'kontak.header.subtitle',
+    ]);
+
+    function isCmsRichTextField(page, field) {
+        return CMS_RICH_TEXT_FIELDS.has(`${page}.${field.section || ''}.${field.key || ''}`);
+    }
+
     function fieldKind(field) {
         const key = field.key || '';
         if (field.type === 'image' || isCmsImageKey(key, field.type)) return 'image';
@@ -3393,7 +3439,18 @@ export function registerAdminCrud(Alpine, deps) {
         fieldLabel,
 
         kind(field) {
-            return fieldKind(field);
+            const base = fieldKind(field);
+
+            if ((base === 'text' || base === 'copy') && isCmsRichTextField(this.cmsPageOf(field), field)) {
+                return 'rich';
+            }
+
+            return base;
+        },
+
+        /** Tab navfooter menggabungkan dua halaman, jadi asalnya ikut dibawa. */
+        cmsPageOf(field) {
+            return field.page || (this.tab === 'navfooter' ? 'footer' : this.tab);
         },
 
         isWaveIcon(key) {

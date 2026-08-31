@@ -2,7 +2,7 @@
     $footerAccent = $themeAccent ?? '#1172BA';
     $footerCms = \App\Support\CmsStorefront::forPage('footer');
     $fTitle = $footerCms->get('bulletin', 'title', evomi_l('Buletin Evomi', 'Evomi Bulletin'));
-    $fDesc = $footerCms->get('bulletin', 'desc', evomi_l(
+    $fDesc = $footerCms->richText('bulletin', 'desc', evomi_l(
         'Daftar untuk menerima koleksi terbaru, penawaran eksklusif, dan cerita tentang setiap karakter aroma.',
         'Subscribe to receive the latest collections, exclusive offers, and stories behind every scent character.'
     ));
@@ -24,7 +24,7 @@
         <div class="evomi-footer__bulletin flex flex-col gap-3 md:gap-4 w-full lg:w-[45%] max-w-[400px] mx-auto lg:mx-0 text-center lg:text-left items-center lg:items-start" data-footer-enter="up">
             <h3 class="text-[32px] md:text-[40px] text-white font-bold leading-tight">{{ $fTitle }}</h3>
             <p class="text-[16px] md:text-[18px] text-white opacity-90 leading-relaxed">
-                {{ $fDesc }}
+                {!! $fDesc !!}
             </p>
             <form
                 class="flex flex-col gap-3 w-full mt-3"

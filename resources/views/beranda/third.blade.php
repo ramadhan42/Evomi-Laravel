@@ -1,9 +1,9 @@
 @php
     /** @var \App\Support\CmsStorefront $cms */
     $cms = $cms ?? \App\Support\CmsStorefront::forPage('beranda');
-    $title1 = $cms->textLines('third', 'title_1', 'Brand', 2);
-    $title2 = $cms->textLines('third', 'title_2', 'Value', 2);
-    $tagline = $cms->textLines('third', 'tagline', 'Every Version of Me', 2);
+    $title1 = $cms->richText('third', 'title_1', 'Brand', 2);
+    $title2 = $cms->richText('third', 'title_2', 'Value', 2);
+    $tagline = $cms->richText('third', 'tagline', 'Every Version of Me', 2);
     $defaults = [
         1 => [
             'title' => "Self\nAwareness",
@@ -24,8 +24,8 @@
     $values = [];
     for ($i = 1; $i <= 3; $i++) {
         $values[] = [
-            'title' => $cms->lines('third', "card{$i}_title", $defaults[$i]['title'], 2),
-            'desc' => $cms->textLines('third', "card{$i}_desc", $defaults[$i]['desc'], 3),
+            'title' => $cms->richLines('third', "card{$i}_title", $defaults[$i]['title'], 2),
+            'desc' => $cms->richText('third', "card{$i}_desc", $defaults[$i]['desc'], 3),
             'icon' => $cms->image('third', "card{$i}_icon", $defaults[$i]['icon']),
             'titleStyle' => $cms->fontInline('third', "card{$i}_title", '600'),
             'descStyle' => $cms->fontInline('third', "card{$i}_desc", '500'),
@@ -35,8 +35,8 @@
 <section class="relative z-10 bg-[#0071BC] flex flex-col items-center text-center w-full px-2 overflow-hidden pb-12 md:pb-14" style="{{ $cms->sectionGapStyleAttr('third', ['hx_m' => '40px', 'hx_d' => '56px', 'vy_m' => '40px', 'vy_d' => '56px']) }}">
     <div class="flex items-center justify-center gap-3 md:gap-[22px] mt-10 md:mt-14 mb-6 md:mb-[30px] parallax-self" data-reveal data-parallax="0.05">
         <h2 class="text-[28px] md:text-[42px] lg:text-[48px] leading-[1.08] font-semibold">
-            <span class="cms-fs cms-lines text-white" style="{{ $cms->fontInline('third', 'title_1', '700') }}">{{ $title1 }}</span>
-            <span class="cms-fs cms-lines text-[#A5E194]" style="{{ $cms->fontInline('third', 'title_2', '700') }}"> {{ $title2 }}</span>
+            <span class="cms-fs cms-lines text-white" style="{{ $cms->fontInline('third', 'title_1', '700') }}">{!! $title1 !!}</span>
+            <span class="cms-fs cms-lines text-[#A5E194]" style="{{ $cms->fontInline('third', 'title_2', '700') }}"> {!! $title2 !!}</span>
         </h2>
         <div class="w-6 h-6 md:w-7 md:h-8 relative flex justify-center items-center pointer-events-none shrink-0">
             <img
@@ -58,7 +58,7 @@
                 >
                     <h3 class="bv-card-title cms-fs text-white text-[18px] md:text-[22px] lg:text-[26px] mb-4 md:mb-6 text-left px-1 font-semibold" style="{{ $card['titleStyle'] }}">
                         @foreach ($card['title'] as $line)
-                            <span class="bv-card-title-line">{{ $line }}</span>
+                            <span class="bv-card-title-line">{!! $line !!}</span>
                         @endforeach
                     </h3>
                     <div class="relative bg-white rounded-[24px] md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl flex flex-col flex-grow transition-[box-shadow,filter] duration-300 ease-out hover:z-10 hover:shadow-2xl hover:brightness-[1.02]">
@@ -70,7 +70,7 @@
                             >
                         </div>
                         <p class="cms-fs cms-lines text-left text-[#0071BC] text-[13px] md:text-[15px] leading-[1.5] font-parkinsans font-medium" style="{{ $card['descStyle'] }}">
-                            {{ $card['desc'] }}
+                            {!! $card['desc'] !!}
                         </p>
                     </div>
                 </div>
@@ -79,6 +79,6 @@
     </div>
 
     <p class="cms-fs cms-lines text-white text-[20px] md:text-[28px] mt-4 md:mt-[10px] mb-6 md:mb-8 relative z-10 font-bold" style="{{ $cms->fontInline('third', 'tagline', '700') }}">
-        {{ $tagline }}
+        {!! $tagline !!}
     </p>
 </section>

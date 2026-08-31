@@ -198,6 +198,94 @@ final class CmsStorefront
     }
 
     /**
+     * Baris teks CMS sebagai HTML inline yang sudah disaring.
+     *
+     * Field teks kini disunting dengan editor, jadi nilainya bisa mengandung
+     * tebal, miring, warna, ukuran, dan tautan. Nilai lama yang berupa teks
+     * polos tetap jalan: isinya di-escape seperti sebelumnya. Keluarannya
+     * inline saja - heading dan daftar akan merusak tata letak kartu dan
+     * judul yang font serta ukurannya sudah diatur halaman.
+     *
+     * Batas "Max Baris" tetap berlaku: baris dipisah dari <br> untuk nilai
+     * berformat, dan dari baris baru untuk nilai polos.
+     *
+     * @return array<int, string>
+     */
+    public function richLines(string $section, string $key, string $fallback = '', ?int $defaultMax = null): array
+    {
+        $raw = trim((string) $this->get($section, $key, $fallback));
+        $max = $this->maxLines($section, $key, $defaultMax ?? 2);
+
+        if ($raw === '') {
+            return [];
+        }
+
+        if (! ArticleContent::looksLikeHtml($raw)) {
+            $parts = preg_split("/\r\n|\n|\r/", $raw);
+            $parts = is_array($parts) && $parts !== [] ? $parts : [$raw];
+
+            return array_slice(array_map(static fn ($line) => e($line), $parts), 0, $max);
+        }
+
+        return array_slice(self::splitOnBreaks(ArticleContent::sanitizeInlineHtml($raw)), 0, $max);
+    }
+
+    /**
+     * Sama dengan richLines(), tapi barisnya sudah disatukan dengan <br>.
+     */
+    public function richText(string $section, string $key, string $fallback = '', ?int $defaultMax = null): string
+    {
+        return implode('<br>', $this->richLines($section, $key, $fallback, $defaultMax));
+    }
+
+    /**
+     * Memecah HTML inline pada setiap <br>, sambil menutup lalu membuka lagi
+     * tag yang sedang terbuka. Tanpa ini, satu baris bisa berakhir dengan
+     * <span> yang menganga saat dicetak ke elemen terpisah.
+     *
+     * @return array<int, string>
+     */
+    private static function splitOnBreaks(string $html): array
+    {
+        if (! preg_match_all('/<[^>]+>/', $html, $matches, PREG_OFFSET_CAPTURE)) {
+            return [$html];
+        }
+
+        $lines = [];
+        $stack = [];
+        $buffer = '';
+        $offset = 0;
+
+        foreach ($matches[0] as [$tag, $position]) {
+            $buffer .= substr($html, $offset, $position - $offset);
+            $offset = $position + strlen($tag);
+
+            if (preg_match('/^<br\b[^>]*>$/i', $tag)) {
+                foreach (array_reverse($stack) as $open) {
+                    $buffer .= '</'.$open['name'].'>';
+                }
+                $lines[] = $buffer;
+                $buffer = implode('', array_column($stack, 'tag'));
+
+                continue;
+            }
+
+            if (str_starts_with($tag, '</')) {
+                array_pop($stack);
+            } elseif (! str_ends_with($tag, '/>') && ! preg_match('/^<(img|hr|input|source)\b/i', $tag)) {
+                preg_match('/^<([a-z0-9]+)/i', $tag, $name);
+                $stack[] = ['name' => strtolower($name[1] ?? ''), 'tag' => $tag];
+            }
+
+            $buffer .= $tag;
+        }
+
+        $lines[] = $buffer.substr($html, $offset);
+
+        return $lines;
+    }
+
+    /**
      * Font family / weight / style only (no size) — for compact UI like product cards.
      */
     public function fontFaceInline(string $section, string $prefix, string $defaultWeight = '400'): string

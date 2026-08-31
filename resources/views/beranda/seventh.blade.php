@@ -3,18 +3,18 @@
     $cms = $cms ?? \App\Support\CmsStorefront::forPage('beranda');
     $isEn = \App\Support\StorefrontText::isEn();
     if ($isEn) {
-        $en1 = $cms->textLines('seventh', 'en_l1', 'Find your', 2);
-        $en2 = $cms->textLines('seventh', 'en_l2', 'scent by', 2);
-        $en3 = $cms->textLines('seventh', 'en_l3', 'playing the ', 2);
-        $en4 = $cms->textLines('seventh', 'en_l4', 'quiz', 2);
+        $en1 = $cms->richText('seventh', 'en_l1', 'Find your', 2);
+        $en2 = $cms->richText('seventh', 'en_l2', 'scent by', 2);
+        $en3 = $cms->richText('seventh', 'en_l3', 'playing the ', 2);
+        $en4 = $cms->richText('seventh', 'en_l4', 'quiz', 2);
     } else {
-        $hl1 = $cms->textLines('seventh', 'headline_1', 'Temukan', 2);
-        $hl2 = $cms->textLines('seventh', 'headline_2', 'aromamu', 2);
-        $hl3 = $cms->textLines('seventh', 'headline_3', 'dengan', 2);
-        $hl4 = $cms->textLines('seventh', 'headline_4', 'bermain', 2);
-        $hl5 = $cms->textLines('seventh', 'headline_5', 'kuis', 2);
+        $hl1 = $cms->richText('seventh', 'headline_1', 'Temukan', 2);
+        $hl2 = $cms->richText('seventh', 'headline_2', 'aromamu', 2);
+        $hl3 = $cms->richText('seventh', 'headline_3', 'dengan', 2);
+        $hl4 = $cms->richText('seventh', 'headline_4', 'bermain', 2);
+        $hl5 = $cms->richText('seventh', 'headline_5', 'kuis', 2);
     }
-    $cta = $cms->textLines('seventh', 'cta_label', evomi_l('Temukan Aromamu', 'Find Your Scent'), 1);
+    $cta = $cms->richText('seventh', 'cta_label', evomi_l('Temukan Aromamu', 'Find Your Scent'), 1);
     $productImg = $cms->image('seventh', 'product_image', '/src/images/section 7/produk.webp');
     $badges = [];
     for ($i = 1; $i <= 4; $i++) {
@@ -25,7 +25,7 @@
             4 => ['text' => 'Sweet', 'title' => 'Sweet Shy', 'color' => '#DD74A5', 'left' => '47.5%', 'top' => '-3%'],
         ][$i];
         $badges[] = [
-            'text' => $cms->textLines('seventh', "label{$i}_text", $defaults['text'], 2),
+            'text' => $cms->richText('seventh', "label{$i}_text", $defaults['text'], 2),
             'title' => $cms->textLines('seventh', "label{$i}_title", $defaults['title'], 2),
             'color' => $cms->get('seventh', "label{$i}_color", $defaults['color']),
             'left' => $cms->get('seventh', "label{$i}_left_mobile", $defaults['left']) ?: $defaults['left'],
@@ -49,14 +49,14 @@
         <div class="parallax-self flex flex-col justify-center items-center text-center md:items-start md:text-left gap-6 md:gap-8" data-reveal data-parallax="0.06">
             <h2 class="text-[30px] sm:text-[36px] md:text-[48px] lg:text-[55px] leading-[1.12] font-semibold text-center md:text-left">
                 @if ($isEn)
-                    <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('seventh', 'en_l1', '600') }}">{{ $en1 }}</span><br>
-                    <span class="cms-fs cms-lines text-[#DD74A5]" style="{{ $cms->fontInline('seventh', 'en_l2', '600') }}">{{ $en2 }}</span><br>
-                    <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('seventh', 'en_l3', '600') }}">{{ $en3 }}</span><span class="cms-fs cms-lines text-[#5EA14A]" style="{{ $cms->fontInline('seventh', 'en_l4', '600') }}">{{ $en4 }}</span>
+                    <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('seventh', 'en_l1', '600') }}">{!! $en1 !!}</span><br>
+                    <span class="cms-fs cms-lines text-[#DD74A5]" style="{{ $cms->fontInline('seventh', 'en_l2', '600') }}">{!! $en2 !!}</span><br>
+                    <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('seventh', 'en_l3', '600') }}">{!! $en3 !!}</span><span class="cms-fs cms-lines text-[#5EA14A]" style="{{ $cms->fontInline('seventh', 'en_l4', '600') }}">{!! $en4 !!}</span>
                 @else
-                    <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('seventh', 'headline_1', '600') }}">{{ $hl1 }}</span><br>
-                    <span class="cms-fs cms-lines text-[#DD74A5]" style="{{ $cms->fontInline('seventh', 'headline_2', '600') }}">{{ $hl2 }}</span><br>
-                    <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('seventh', 'headline_3', '600') }}">{{ $hl3 }}</span><br>
-                    <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('seventh', 'headline_4', '600') }}">{{ $hl4 }} </span><span class="cms-fs cms-lines text-[#5EA14A]" style="{{ $cms->fontInline('seventh', 'headline_5', '600') }}">{{ $hl5 }}</span>
+                    <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('seventh', 'headline_1', '600') }}">{!! $hl1 !!}</span><br>
+                    <span class="cms-fs cms-lines text-[#DD74A5]" style="{{ $cms->fontInline('seventh', 'headline_2', '600') }}">{!! $hl2 !!}</span><br>
+                    <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('seventh', 'headline_3', '600') }}">{!! $hl3 !!}</span><br>
+                    <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('seventh', 'headline_4', '600') }}">{!! $hl4 !!} </span><span class="cms-fs cms-lines text-[#5EA14A]" style="{{ $cms->fontInline('seventh', 'headline_5', '600') }}">{!! $hl5 !!}</span>
                 @endif
             </h2>
 
@@ -69,7 +69,7 @@
                     class="pointer-events-none absolute inset-0 rounded-full bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.22)_45%,transparent_70%)] -translate-x-[120%] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[120%]"
                     aria-hidden="true"
                 ></span>
-                <span class="relative cms-lines">{{ $cta }}</span>
+                <span class="relative cms-lines">{!! $cta !!}</span>
                 <svg class="relative w-4 h-4 md:w-[18px] md:h-[18px] pointer-events-none transition-transform duration-300 ease-out group-hover:translate-x-1" viewBox="0 0 19 19" fill="none" aria-hidden="true">
                     <path d="M3.80933 9.14282H14.476" stroke="currentColor" stroke-width="1.52381" stroke-linecap="round" stroke-linejoin="round"/>
                     <path d="M9.14282 3.80957L14.4762 9.1429L9.14282 14.4762" stroke="currentColor" stroke-width="1.52381" stroke-linecap="round" stroke-linejoin="round"/>
@@ -90,7 +90,7 @@
                             class="s7-badge-hit absolute -translate-x-1/2 -translate-y-[calc(100%+6px)] px-2.5 py-0.5 bg-white rounded-full shadow-md whitespace-nowrap z-30 font-bold"
                             style="color: {{ $badge['color'] }}; left: {{ $badge['left'] }}; top: {{ $badge['top'] }}; font-size: {{ $badge['fsMobile'] }}; {{ $badge['style'] }}"
                         >
-                            {{ $badge['text'] }}
+                            {!! $badge['text'] !!}
                         </a>
                     @endforeach
                 </div>
@@ -113,7 +113,7 @@
                     class="s7-badge-hit absolute -translate-x-1/2 -translate-y-[calc(100%+10px)] px-3.5 lg:px-4 py-1 bg-white rounded-full shadow-md whitespace-nowrap z-30 font-bold"
                     style="color: {{ $badge['color'] }}; left: {{ $badge['left'] }}; top: {{ $badge['top'] }}; font-size: {{ $badge['fsDesktop'] }}; {{ $badge['style'] }}"
                 >
-                    {{ $badge['text'] }}
+                    {!! $badge['text'] !!}
                 </a>
             @endforeach
         </div>

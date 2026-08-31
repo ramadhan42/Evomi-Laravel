@@ -293,7 +293,11 @@ class PageController extends Controller
         return view('pages.kontak', [
             'cms' => [
                 'title' => $cms['header.title'] ?? 'Hubungi Kami',
-                'subtitle' => $cms['header.subtitle'] ?? 'Punya pertanyaan atau ingin berkolaborasi? Tim Evomi siap mendengarkan Anda.',
+                // Subjudul disunting dengan editor teks, jadi format inline-nya
+                // ikut dicetak setelah disaring.
+                'subtitle' => ArticleContent::sanitizeInlineHtml(
+                    $cms['header.subtitle'] ?? 'Punya pertanyaan atau ingin berkolaborasi? Tim Evomi siap mendengarkan Anda.'
+                ),
                 'email_label' => $cms['info.email_label'] ?? 'Email',
                 'email_value' => $cms['info.email_value'] ?? 'hello@evomi.id',
                 'phone_label' => $cms['info.phone_label'] ?? 'WhatsApp',

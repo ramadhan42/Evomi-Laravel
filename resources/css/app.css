@@ -7889,6 +7889,236 @@ select.admin-field-input {
 }
 
 /* ============================================================
+   Editor teks CMS (admin > cms) - versi ringkas dari editor artikel
+   ============================================================ */
+
+.cms-editor {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    overflow: visible;
+    background: #fff;
+}
+
+.cms-editor__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+    padding: 5px 7px;
+    background: #f6f8fb;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 0.75rem 0.75rem 0 0;
+    position: relative;
+    z-index: 5;
+}
+
+.cms-editor__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    color: #4b5563;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.cms-editor__btn svg {
+    width: 15px;
+    height: 15px;
+    fill: currentColor;
+}
+
+.cms-editor__btn:hover {
+    background: #e5eaf1;
+}
+
+.cms-editor__btn.is-on {
+    background: #d3e3fd;
+    color: #0b57d0;
+}
+
+.cms-editor__sep {
+    width: 1px;
+    height: 16px;
+    margin: 0 4px;
+    background: #d7dce3;
+}
+
+.cms-editor__select {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 26px;
+    max-width: 120px;
+    padding: 0 5px 0 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #1f2937;
+}
+
+.cms-editor__select:hover {
+    background: #e5eaf1;
+}
+
+.cms-editor__caret {
+    width: 14px;
+    height: 14px;
+    fill: #6b7280;
+    flex-shrink: 0;
+}
+
+.cms-editor__size {
+    width: 38px;
+    height: 24px;
+    border: 1px solid #d7dce3;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 12px;
+    color: #1f2937;
+    font-variant-numeric: tabular-nums;
+}
+
+.cms-editor__size:hover {
+    border-color: #0b57d0;
+}
+
+.cms-editor__wrap {
+    position: relative;
+}
+
+.cms-editor__menu {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    z-index: 40;
+    min-width: 170px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 5px 0;
+    background: #fff;
+    border: 1px solid #e8eaed;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(60, 64, 67, 0.18);
+}
+
+.cms-editor__menu--size {
+    min-width: 68px;
+}
+
+.cms-editor__item {
+    display: block;
+    width: 100%;
+    padding: 5px 12px;
+    font-size: 13px;
+    color: #1f2937;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.cms-editor__item:hover {
+    background: #f1f3f4;
+}
+
+.cms-editor__item.is-on {
+    background: #e8f0fe;
+    color: #0b57d0;
+}
+
+.cms-editor__menu--color {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 5px;
+    width: 176px;
+    min-width: 0;
+    padding: 9px;
+}
+
+.cms-editor__swatch {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.cms-editor__swatch:hover {
+    outline: 2px solid #0b57d0;
+    outline-offset: 1px;
+}
+
+.cms-editor__menu--link {
+    width: 250px;
+    padding: 9px;
+}
+
+.cms-editor__input {
+    width: 100%;
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid #d7dce3;
+    border-radius: 6px;
+    font-size: 12px;
+    outline: none;
+}
+
+.cms-editor__input:focus {
+    border-color: #0b57d0;
+}
+
+.cms-editor__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 5px;
+    margin-top: 7px;
+}
+
+.cms-editor__chip {
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid #d7dce3;
+    font-size: 12px;
+    color: #374151;
+}
+
+.cms-editor__chip:hover {
+    background: #eef2f7;
+}
+
+.cms-editor__chip.is-primary {
+    background: #0b57d0;
+    border-color: #0b57d0;
+    color: #fff;
+}
+
+.cms-editor__hint {
+    margin-left: auto;
+    padding-right: 4px;
+    font-size: 10px;
+    color: #9aa0a6;
+}
+
+.cms-editor__surface {
+    min-height: 2.75rem;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: #111827;
+    outline: none;
+    overflow-wrap: anywhere;
+}
+
+.cms-editor__surface:focus {
+    box-shadow: inset 0 0 0 2px rgba(11, 87, 208, 0.18);
+    border-radius: 0 0 0.75rem 0.75rem;
+}
+
+.cms-editor__surface a {
+    color: #1155cc;
+    text-decoration: underline;
+}
+
+/* ============================================================
    Google Docs-style article editor (admin > artikel)
    ============================================================ */
 

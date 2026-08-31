@@ -1,19 +1,19 @@
 @php
     /** @var \App\Support\CmsStorefront $cms */
     $cms = $cms ?? \App\Support\CmsStorefront::forPage('beranda');
-    $hl1 = $cms->textLines('hero', 'headline_1', 'Temukan', 1);
-    $hl2 = $cms->textLines('hero', 'headline_2', 'karakter', 1);
-    $hl3 = $cms->textLines('hero', 'headline_3', 'aromamu', 1);
-    $hl4 = $cms->textLines('hero', 'headline_4', 'di Evomi', 1);
+    $hl1 = $cms->richText('hero', 'headline_1', 'Temukan', 1);
+    $hl2 = $cms->richText('hero', 'headline_2', 'karakter', 1);
+    $hl3 = $cms->richText('hero', 'headline_3', 'aromamu', 1);
+    $hl4 = $cms->richText('hero', 'headline_4', 'di Evomi', 1);
     $hl1c = $cms->get('hero', 'headline_1_color', '#FFFFFF');
     $hl2c = $cms->get('hero', 'headline_2_color', '#5CB2ED');
     $hl3c = $cms->get('hero', 'headline_3_color', '#FFA3CB');
     $hl4c = $cms->get('hero', 'headline_4_color', '#FFFFFF');
-    $badgeLeft = $cms->textLines('hero', 'badge_left', 'Eau de Parfum', 2);
-    $badgeRight = $cms->textLines('hero', 'badge_right', 'Recycle Bottle Cap', 2);
+    $badgeLeft = $cms->richText('hero', 'badge_left', 'Eau de Parfum', 2);
+    $badgeRight = $cms->richText('hero', 'badge_right', 'Recycle Bottle Cap', 2);
     $badgeLeftIcon = $cms->image('hero', 'badge_left_icon', '/src/images/section 1/badge-left-star.svg');
     $badgeRightIcon = $cms->image('hero', 'badge_right_icon', '/src/images/section 1/recycle.webp');
-    $marqueeText = $cms->textLines('hero', 'marquee_text', 'Every Version of Me', 1);
+    $marqueeText = $cms->richText('hero', 'marquee_text', 'Every Version of Me', 1);
     $products = [
         [
             'img' => $cms->image('hero', 'product1_image', '/src/images/section 1/botol-purpose-prestige.webp'),
@@ -81,9 +81,9 @@
     {{-- Scroll parallax layer (Next: useScroll opacity + y) — entrance stagger via data-hero-enter --}}
     <div class="hero-parallax-layer w-full flex flex-col items-center justify-center flex-1 z-10 gap-0 m-0 p-0">
         <h1 class="hero-headline font-semibold">
-            <span class="hero-hl-1 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0s; --hero-enter-dur: 0.7s; color: {{ $hl1c }}">{{ trim($hl1) }}</span><span class="hero-hl-2 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.1s; --hero-enter-dur: 0.7s; color: {{ $hl2c }}">{{ trim($hl2) }}</span>
+            <span class="hero-hl-1 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0s; --hero-enter-dur: 0.7s; color: {{ $hl1c }}">{!! trim($hl1) !!}</span><span class="hero-hl-2 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.1s; --hero-enter-dur: 0.7s; color: {{ $hl2c }}">{!! trim($hl2) !!}</span>
             <br>
-            <span class="hero-hl-3 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.2s; --hero-enter-dur: 0.7s; color: {{ $hl3c }}">{{ trim($hl3) }}</span><span class="hero-hl-4 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.3s; --hero-enter-dur: 0.7s; color: {{ $hl4c }}">{{ trim($hl4) }}</span>
+            <span class="hero-hl-3 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.2s; --hero-enter-dur: 0.7s; color: {{ $hl3c }}">{!! trim($hl3) !!}</span><span class="hero-hl-4 cms-lines" data-hero-enter="up" style="--hero-enter-delay: 0.3s; --hero-enter-dur: 0.7s; color: {{ $hl4c }}">{!! trim($hl4) !!}</span>
         </h1>
 
         <div class="hero-visual-stage relative mt-2 mb-0 md:mt-3 w-[100%] md:w-[90%] lg:w-full max-w-7xl mx-auto aspect-[1280/412]">
@@ -155,7 +155,7 @@
                 <div class="hero-badge-left-icon relative shrink-0">
                     <img src="{{ $badgeLeftIcon }}" alt="" class="w-full h-full object-contain">
                 </div>
-                <p class="cms-lines font-bold text-center leading-tight">{{ $badgeLeft }}</p>
+                <p class="cms-lines font-bold text-center leading-tight">{!! $badgeLeft !!}</p>
             </div>
             <div
                 class="hero-badge-right origin-bottom-left absolute inline-flex items-center justify-center gap-1 md:gap-2 bg-white text-[#0071BC] px-2 py-1 md:px-7 md:py-3 rounded-md md:rounded-xl shadow-md select-none whitespace-nowrap z-30"
@@ -165,7 +165,7 @@
                 <div class="hero-badge-right-icon relative shrink-0">
                     <img src="{{ $badgeRightIcon }}" alt="" class="w-full h-full object-contain">
                 </div>
-                <p class="cms-lines font-bold text-center leading-tight">{{ $badgeRight }}</p>
+                <p class="cms-lines font-bold text-center leading-tight">{!! $badgeRight !!}</p>
             </div>
 
             {{-- Bottles row --}}
@@ -216,7 +216,7 @@
                     @for ($i = 0; $i < 2; $i++)
                         @foreach ($dividerIcons as $idx => $icon)
                             <div class="flex items-center gap-4 sm:gap-6 md:gap-8">
-                                <span class="hero-marquee-text whitespace-nowrap text-white font-medium">{{ $marqueeText }}</span>
+                                <span class="hero-marquee-text whitespace-nowrap text-white font-medium">{!! $marqueeText !!}</span>
                                 <div class="hero-div-icon-{{ $idx + 1 }} relative shrink-0">
                                     <img src="{{ $icon }}" alt="" class="w-full h-full object-contain">
                                 </div>

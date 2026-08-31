@@ -1,8 +1,8 @@
 @php
     $cms = \App\Support\CmsStorefront::forPage('belanja');
-    $headline1 = $cms->textLines('hero', 'headline_1', evomi_l('Koleksi', 'Evomi'), 1);
-    $headline2 = $cms->textLines('hero', 'headline_2', evomi_l('Aroma', 'Scent'), 1);
-    $headline3 = $cms->textLines('hero', 'headline_3', evomi_l('Evomi', 'Collection'), 1);
+    $headline1 = $cms->richText('hero', 'headline_1', evomi_l('Koleksi', 'Evomi'), 1);
+    $headline2 = $cms->richText('hero', 'headline_2', evomi_l('Aroma', 'Scent'), 1);
+    $headline3 = $cms->richText('hero', 'headline_3', evomi_l('Evomi', 'Collection'), 1);
     $color1 = $cms->get('hero', 'headline_1_color', '#5EA14A');
     $color2 = $cms->get('hero', 'headline_2_color', '#DD74A5');
     $color3 = $cms->get('hero', 'headline_3_color', '#1172BA');
@@ -20,7 +20,7 @@
             aria-hidden="true"
         >
         <h1 class="belanja-hero__title font-nohemi font-semibold leading-[44px] tracking-tight whitespace-nowrap">
-            <span class="cms-fs" style="color: {{ $color1 }}; {{ $cms->fontInline('hero', 'headline_1', '600') }}">{{ $headline1 }}</span><span class="inline-block w-[0.28em]" aria-hidden="true"></span><span class="cms-fs" style="color: {{ $color2 }}; {{ $cms->fontInline('hero', 'headline_2', '600') }}">{{ $headline2 }}</span><span class="inline-block w-[0.28em]" aria-hidden="true"></span><span class="cms-fs" style="color: {{ $color3 }}; {{ $cms->fontInline('hero', 'headline_3', '600') }}">{{ $headline3 }}</span>
+            <span class="cms-fs" style="color: {{ $color1 }}; {{ $cms->fontInline('hero', 'headline_1', '600') }}">{!! $headline1 !!}</span><span class="inline-block w-[0.28em]" aria-hidden="true"></span><span class="cms-fs" style="color: {{ $color2 }}; {{ $cms->fontInline('hero', 'headline_2', '600') }}">{!! $headline2 !!}</span><span class="inline-block w-[0.28em]" aria-hidden="true"></span><span class="cms-fs" style="color: {{ $color3 }}; {{ $cms->fontInline('hero', 'headline_3', '600') }}">{!! $headline3 !!}</span>
         </h1>
         <img
             src="{{ $starUrl }}"

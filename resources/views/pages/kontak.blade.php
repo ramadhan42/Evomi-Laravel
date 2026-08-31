@@ -11,7 +11,7 @@
     <div class="max-w-3xl mx-auto text-center mb-12 md:mb-16">
         <h1 class="text-[28px] sm:text-[32px] md:text-[48px] font-bold text-gray-900 mb-4 md:mb-6">{{ $cms['title'] ?? 'Hubungi Kami' }}</h1>
         <p class="text-gray-500 text-[15px] md:text-[18px] max-w-2xl mx-auto leading-relaxed">
-            {{ $cms['subtitle'] ?? 'Punya pertanyaan atau ingin berkolaborasi? Tim Evomi siap mendengarkan Anda.' }}
+            {!! $cms['subtitle'] ?? 'Punya pertanyaan atau ingin berkolaborasi? Tim Evomi siap mendengarkan Anda.' !!}
         </p>
     </div>
 

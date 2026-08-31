@@ -1,10 +1,10 @@
 @php
     /** @var \App\Support\CmsStorefront $cms */
     $cms = $cms ?? \App\Support\CmsStorefront::forPage('beranda');
-    $title1 = $cms->textLines('fifth', 'title_1', 'Khas', 2);
-    $title2 = $cms->textLines('fifth', 'title_2', 'Evomi', 2);
-    $subtitle = $cms->textLines('fifth', 'subtitle', 'Empat karakter aroma yang mewakili sisi berbeda dari dirimu.', 3);
-    $cta = $cms->textLines('fifth', 'cta_label', 'Lihat Koleksi', 1);
+    $title1 = $cms->richText('fifth', 'title_1', 'Khas', 2);
+    $title2 = $cms->richText('fifth', 'title_2', 'Evomi', 2);
+    $subtitle = $cms->richText('fifth', 'subtitle', 'Empat karakter aroma yang mewakili sisi berbeda dari dirimu.', 3);
+    $cta = $cms->richText('fifth', 'cta_label', 'Lihat Koleksi', 1);
 
     // Palette & copy mengikuti Next.js FifthSection.tsx
     $nextProducts = [
@@ -65,10 +65,12 @@
             'cardBg' => $d['cardBg'],
             'text' => $d['text'],
             'descColor' => $d['descColor'],
-            'badge' => $cms->textLines('fifth', "card{$i}_badge", $d['badge'], 1),
-            'title' => $cms->textLines('fifth', "card{$i}_title", $d['title'], 2),
-            'desc' => $cms->textLines('fifth', "card{$i}_desc", $d['desc'], 3),
-            'price' => $cms->textLines('fifth', "card{$i}_price", $d['price'], 1),
+            'badge' => $cms->richText('fifth', "card{$i}_badge", $d['badge'], 1),
+            'title' => $cms->richText('fifth', "card{$i}_title", $d['title'], 2),
+            // alt gambar butuh teks polos, bukan markup.
+            'titlePlain' => $cms->textLines('fifth', "card{$i}_title", $d['title'], 2),
+            'desc' => $cms->richText('fifth', "card{$i}_desc", $d['desc'], 3),
+            'price' => $cms->richText('fifth', "card{$i}_price", $d['price'], 1),
             'img' => $cms->image('fifth', "card{$i}_image", $d['image']),
         ];
     }
@@ -92,11 +94,11 @@
     {{-- Judul --}}
     <div class="relative z-10 mb-6 md:mb-10" data-reveal>
         <h2 class="text-[26px] sm:text-[32px] md:text-[38px] mb-2 md:mb-3 leading-tight">
-            <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('fifth', 'title_1', '700') }}">{{ $title1 }}</span>{{ ' ' }}
-            <span class="cms-fs cms-lines text-[#FF8A84]" style="{{ $cms->fontInline('fifth', 'title_2', '700') }}">{{ $title2 }}</span>
+            <span class="cms-fs cms-lines text-[#1172BA]" style="{{ $cms->fontInline('fifth', 'title_1', '700') }}">{!! $title1 !!}</span>{{ ' ' }}
+            <span class="cms-fs cms-lines text-[#FF8A84]" style="{{ $cms->fontInline('fifth', 'title_2', '700') }}">{!! $title2 !!}</span>
         </h2>
         <p class="cms-fs cms-lines text-[12px] sm:text-[14px] md:text-[16px] text-[#5D5D5D] max-w-xl mx-auto px-2 leading-relaxed" style="{{ $cms->fontInline('fifth', 'subtitle', '400') }}">
-            {{ $subtitle }}
+            {!! $subtitle !!}
         </p>
     </div>
 
@@ -121,13 +123,13 @@
                         <span
                             class="cms-fs cms-lines inline-flex items-center bg-white px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-[12px] shadow-sm transition-transform duration-300 ease-out group-hover:-translate-y-0.5 leading-[1.3]"
                             style="color: {{ $product['text'] }}; {{ $cms->fontInline('fifth', "card{$i}_badge", '700') }}"
-                        >{{ $product['badge'] }}</span>
+                        >{!! $product['badge'] !!}</span>
                     </div>
 
                     <div class="relative w-full flex justify-center items-end translate-y-[10%] md:translate-y-[12%] z-10 pb-0 pointer-events-none">
                         <img
                             src="{{ $product['img'] }}"
-                            alt="{{ $product['title'] }}"
+                            alt="{{ $product['titlePlain'] }}"
                             width="500"
                             height="500"
                             class="object-contain drop-shadow-xl w-[78%] sm:w-[80%] md:w-[82%] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-y-2 group-hover:scale-[1.05]"
@@ -143,7 +145,7 @@
                     <h3
                         class="cms-fs cms-lines text-[13px] sm:text-[14px] md:text-[15px] lg:text-[16px] mb-1 md:mb-1.5 leading-tight"
                         style="color: {{ $product['text'] }}; {{ $cms->fontInline('fifth', "card{$i}_title", '700') }}"
-                    >{{ $product['title'] }}</h3>
+                    >{!! $product['title'] !!}</h3>
                     <p
                         class="cms-fs cms-lines text-[10px] md:text-[11px] mb-3 md:mb-4 line-clamp-2 leading-snug"
                         style="color: {{ $product['descColor'] }}; {{ $cms->fontInline('fifth', "card{$i}_desc", '500') }}"
@@ -153,7 +155,7 @@
                         <span
                             class="cms-fs cms-lines text-[11px] md:text-[12px] leading-none"
                             style="color: {{ $product['text'] }}; {{ $cms->fontInline('fifth', "card{$i}_price", '700') }}"
-                        >{{ $product['price'] }}</span>
+                        >{!! $product['price'] !!}</span>
                         <span
                             class="w-6 h-6 md:w-7 md:h-7 rounded-full flex justify-center items-center text-white shrink-0 transition-[background-color,box-shadow] duration-300 group-hover:shadow-md"
                             style="background-color: {{ $product['imgBg'] }}"

@@ -36,7 +36,7 @@
                     <template x-for="field in sec.items" :key="sec.name + '-' + field.key">
                         <div
                             class="space-y-1.5"
-                            :class="(kind(field) === 'image' || kind(field) === 'text' || kind(field) === 'copy') ? 'md:col-span-2' : ''"
+                            :class="(kind(field) === 'image' || kind(field) === 'rich' || kind(field) === 'text' || kind(field) === 'copy') ? 'md:col-span-2' : ''"
                         >
                             <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider" x-text="fieldLabel(field.key)"></label>
 
@@ -158,7 +158,15 @@
                                 </div>
                             </template>
 
-                            {{-- COPY / MULTILINE (Enter max 1–3 baris, diatur di Max Baris) --}}
+                            {{-- Teks berformat: editor seperti di menu artikel --}}
+                            <template x-if="kind(field) === 'rich'">
+                                <div class="space-y-1.5">
+                                    @include('partials.admin-cms-editor')
+                                    <p class="text-[10px] text-gray-400">Enter = baris baru · maks <span x-text="maxLinesFor(field)"></span> baris (ubah di setting Max Baris)</p>
+                                </div>
+                            </template>
+
+                            {{-- COPY / MULTILINE biasa (nilainya dicetak polos di halaman) --}}
                             <template x-if="kind(field) === 'copy' || kind(field) === 'text'">
                                 <div class="space-y-1.5">
                                     <textarea
@@ -169,7 +177,7 @@
                                         class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 resize-y outline-none focus:ring-2 focus:ring-gray-900/15 whitespace-pre-wrap leading-relaxed"
                                         :placeholder="'Maks ' + maxLinesFor(field) + ' baris — tekan Enter untuk baris baru'"
                                     ></textarea>
-                                    <p class="text-[10px] text-gray-400">Enter = baris baru · maks <span x-text="maxLinesFor(field)"></span> baris (ubah di setting Max Baris)</p>
+                                    <p class="text-[10px] text-gray-400">Enter = baris baru · maks <span x-text="maxLinesFor(field)"></span> baris</p>
                                 </div>
                             </template>
 

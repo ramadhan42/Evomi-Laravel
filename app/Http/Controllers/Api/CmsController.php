@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Faq;
 use App\Models\SiteContent;
+use App\Support\ArticleContent;
 use App\Support\BerandaCmsDefaults;
 use App\Support\BelanjaCmsDefaults;
 use App\Support\LocaleResolver;
@@ -129,9 +130,20 @@ class CmsController extends Controller
         $locale = LocaleResolver::normalize($request->input('locale', 'id'));
 
         foreach ($request->input('fields') as $field) {
+            $value = $field['value'] ?? null;
+
+            // Teks CMS disunting dengan editor, jadi nilainya bisa berisi markup.
+            // Yang boleh tersimpan hanya format inline: halaman mencetaknya di
+            // dalam elemen yang tata letak dan fontnya sudah diatur, jadi heading,
+            // daftar, dan paragraf baru akan merusaknya. Dicek dari isinya, bukan
+            // dari tipe field - judul dan label bertipe string juga memakai editor.
+            if (ArticleContent::looksLikeHtml((string) $value)) {
+                $value = ArticleContent::sanitizeInlineHtml((string) $value);
+            }
+
             $payload = [
                 'type' => $field['type'] ?? 'string',
-                'value' => $field['value'] ?? null,
+                'value' => $value,
             ];
 
             SiteContent::updateOrCreate(

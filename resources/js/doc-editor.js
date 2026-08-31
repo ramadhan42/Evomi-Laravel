@@ -152,6 +152,265 @@ export function cleanPastedHtml(html) {
 
 export const DOC_IMAGE_WIDTHS = [25, 50, 75, 100];
 
+/**
+ * Editor ringkas untuk satu field teks CMS.
+ *
+ * Memakai perkakas yang sama dengan editor artikel, tapi menyimpan HTML inline
+ * saja: teks CMS dirender di dalam elemen yang tata letak dan fontnya sudah
+ * diatur halaman (kartu, subjudul, item disclaimer), jadi heading, daftar, dan
+ * paragraf baru justru akan merusaknya. Enter tetap membuat baris baru lewat
+ * <br>, sesuai batas "Max Baris" milik field.
+ */
+export function registerCmsRichText(Alpine) {
+    Alpine.data('cmsRichText', (options = {}) => ({
+        bound: null,
+        maxLines: Number(options.maxLines) || 3,
+        menu: null,
+        last: null,
+        linkUrl: '',
+        savedRange: null,
+        fontFamilyOptions: FONT_FAMILY_OPTIONS,
+        fontSizes: DOC_FONT_SIZES,
+        colors: DOC_COLORS,
+        state: { bold: false, italic: false, underline: false, family: '', size: 16 },
+
+        init() {
+            try {
+                document.execCommand('styleWithCSS', false, true);
+            } catch (e) {
+                /* browser lama memakai bawaannya */
+            }
+
+            this.onSelectionChange = () => {
+                if (this.isInside()) this.refreshState();
+            };
+            document.addEventListener('selectionchange', this.onSelectionChange);
+        },
+
+        destroy() {
+            if (this.onSelectionChange) {
+                document.removeEventListener('selectionchange', this.onSelectionChange);
+            }
+        },
+
+        surface() {
+            return this.$refs.surface || null;
+        },
+
+        isInside() {
+            const el = this.surface();
+            const sel = window.getSelection();
+
+            return !!(el && sel && sel.anchorNode && el.contains(sel.anchorNode));
+        },
+
+        /** Dijalankan x-effect: mengikuti nilai field walau tab CMS berganti. */
+        bind(field, value, maxLines) {
+            this.bound = field;
+            this.maxLines = Number(maxLines) || this.maxLines;
+
+            const incoming = String(value ?? '');
+            if (incoming === this.last) return;
+
+            this.last = incoming;
+            const el = this.surface();
+            if (!el) return;
+
+            el.innerHTML = looksLikeHtml(incoming)
+                ? incoming
+                : escapeHtml(incoming).replace(/\r?\n/g, '<br>');
+
+            this.seedState(el);
+        },
+
+        /** Tanpa kursor di dalam teks, tombol font mengikuti gaya bawaan kolom. */
+        seedState(el) {
+            const style = window.getComputedStyle(el);
+
+            this.state.family = fontFamilyKeyFromCss(style.fontFamily);
+            this.state.size = Math.round(parseFloat(style.fontSize) || 16);
+            this.state.bold = false;
+            this.state.italic = false;
+            this.state.underline = false;
+        },
+
+        sync() {
+            const el = this.surface();
+            if (!el || !this.bound) return;
+
+            let html = el.innerHTML.replace(/<br\s*\/?>\s*$/i, '').trim();
+            if ((el.innerText || '').trim() === '') html = '';
+
+            this.last = html;
+            this.bound.value = html;
+        },
+
+        lineCount() {
+            const el = this.surface();
+
+            return el ? (el.innerText || '').split(/\r?\n/).length : 1;
+        },
+
+        exec(command, value = null) {
+            const el = this.surface();
+            if (!el) return;
+            if (!this.isInside()) el.focus();
+
+            try {
+                document.execCommand(command, false, value);
+            } catch (e) {
+                /* isi tetap seperti apa adanya */
+            }
+
+            this.sync();
+            this.refreshState();
+        },
+
+        /** Sama seperti di editor artikel: tandai lalu tukar simpulnya. */
+        applyInline(prop, value) {
+            const el = this.surface();
+            if (!el) return;
+            if (!this.isInside()) el.focus();
+
+            try {
+                document.execCommand('styleWithCSS', false, false);
+                document.execCommand('fontSize', false, '7');
+                document.execCommand('styleWithCSS', false, true);
+            } catch (e) {
+                return;
+            }
+
+            const applied = [];
+            el.querySelectorAll('font[size="7"], span[style*="xxx-large"]').forEach((node) => {
+                const span = document.createElement('span');
+                span.setAttribute('style', node.getAttribute('style') || '');
+                if (span.style.fontSize === 'xxx-large') span.style.fontSize = '';
+                span.style[prop] = value;
+                while (node.firstChild) span.appendChild(node.firstChild);
+                node.replaceWith(span);
+                applied.push(span);
+            });
+
+            if (applied.length) {
+                const range = document.createRange();
+                range.setStart(applied[0], 0);
+                const last = applied[applied.length - 1];
+                range.setEnd(last, last.childNodes.length);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+
+            this.sync();
+            this.refreshState();
+        },
+
+        setFamily(key) {
+            this.menu = null;
+            this.applyInline('fontFamily', resolveFontFamilyCss(key));
+        },
+
+        setSize(px) {
+            this.menu = null;
+            const size = Math.min(200, Math.max(6, Number(px) || 0));
+            if (size) this.applyInline('fontSize', size + 'px');
+        },
+
+        setColor(color) {
+            this.menu = null;
+            this.restoreRange();
+            this.exec('foreColor', color);
+        },
+
+        rememberRange() {
+            const sel = window.getSelection();
+            this.savedRange = this.isInside() && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+        },
+
+        restoreRange() {
+            if (!this.savedRange) return;
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(this.savedRange);
+        },
+
+        openLink() {
+            this.rememberRange();
+            this.linkUrl = '';
+            this.menu = this.menu === 'link' ? null : 'link';
+        },
+
+        applyLink() {
+            const url = this.linkUrl.trim();
+            this.menu = null;
+            this.restoreRange();
+
+            if (url === '') {
+                this.exec('unlink');
+
+                return;
+            }
+
+            const safe = /^(https?:\/\/|mailto:|tel:|\/|#)/i.test(url) ? url : 'https://' + url;
+            this.exec('createLink', safe);
+        },
+
+        clearFormatting() {
+            this.exec('removeFormat');
+        },
+
+        refreshState() {
+            const el = this.surface();
+            const sel = window.getSelection();
+            if (!el || !sel || !sel.anchorNode || !el.contains(sel.anchorNode)) return;
+
+            const node = sel.anchorNode.nodeType === Node.TEXT_NODE
+                ? sel.anchorNode.parentElement
+                : sel.anchorNode;
+            const style = window.getComputedStyle(node);
+
+            this.state.family = fontFamilyKeyFromCss(style.fontFamily);
+            this.state.size = Math.round(parseFloat(style.fontSize) || 16);
+
+            try {
+                this.state.bold = document.queryCommandState('bold');
+                this.state.italic = document.queryCommandState('italic');
+                this.state.underline = document.queryCommandState('underline');
+            } catch (e) {
+                /* best effort */
+            }
+        },
+
+        familyLabel() {
+            const hit = FONT_FAMILY_OPTIONS.find((o) => o.value === this.state.family);
+
+            return hit ? hit.label.replace(' (project)', '') : '—';
+        },
+
+        familyStyle(key) {
+            return { fontFamily: resolveFontFamilyCss(key) };
+        },
+
+        /** Tempelan dari luar masuk sebagai teks polos, bukan markup Word. */
+        onPaste(event) {
+            const text = event.clipboardData?.getData('text/plain') || '';
+            document.execCommand('insertText', false, text.replace(/\r?\n/g, ' '));
+            this.sync();
+        },
+
+        /** Enter menambah baris baru, dibatasi "Max Baris" milik field. */
+        onKeydown(event) {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+
+            if (this.lineCount() >= this.maxLines) return;
+
+            document.execCommand('insertLineBreak');
+            this.sync();
+        },
+    }));
+}
+
 export function registerDocEditor(Alpine, deps = {}) {
     const uploadImage = deps.uploadImage || null;
 
