@@ -134,7 +134,7 @@
 
             <div
                 class="belanja-detail__thumbs grid w-full mt-2"
-                :style="{ gridTemplateColumns: 'repeat(' + Math.min(gallery.length, 5) + ', minmax(0, 1fr))' }"
+                :style="{ gridTemplateColumns: 'repeat(' + (gallery.length >= 6 ? 3 : Math.min(gallery.length, 5)) + ', minmax(0, 1fr))' }"
             >
                 <template x-for="(image, index) in gallery" :key="'thumb-' + index">
                     <button

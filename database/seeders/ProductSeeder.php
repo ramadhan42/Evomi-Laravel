@@ -18,7 +18,8 @@ class ProductSeeder extends Seeder
      *
      * File gambar per produk (wajib):
      * - belanja.webp         → image_produk_belanja (kartu belanja + slide 1)
-     * - image_1.webp … image_4.webp → slide 2-5 pada slider detail
+     * - image_1.webp … image_5.webp → slide 2-6 pada slider detail
+     *   (image_5.webp = lembar notes varian)
      */
     public function run(): void
     {
@@ -96,6 +97,7 @@ class ProductSeeder extends Seeder
                     'image_2' => $images['image_2'],
                     'image_3' => $images['image_3'],
                     'image_4' => $images['image_4'],
+                    'image_5' => $images['image_5'],
                     'bottle_size' => 50,
                     'perfume_type' => 'Eau de Parfum',
                     'gender' => $item['gender'],
@@ -156,13 +158,17 @@ class ProductSeeder extends Seeder
             $paths[$field] = $relative;
         }
 
-        $image4Source = $sourceDir . DIRECTORY_SEPARATOR . 'image_4.webp';
-        if (File::exists($image4Source)) {
-            $relative = "{$targetDir}/image_4.webp";
-            Storage::disk('public')->put($relative, File::get($image4Source));
-            $paths['image_4'] = $relative;
-        } else {
-            $paths['image_4'] = null;
+        // Slide 5 dan 6 (termasuk lembar notes) opsional per varian.
+        foreach (['image_4', 'image_5'] as $extra) {
+            $source = $sourceDir . DIRECTORY_SEPARATOR . $extra . '.webp';
+
+            if (File::exists($source)) {
+                $relative = "{$targetDir}/{$extra}.webp";
+                Storage::disk('public')->put($relative, File::get($source));
+                $paths[$extra] = $relative;
+            } else {
+                $paths[$extra] = null;
+            }
         }
 
         return $paths;

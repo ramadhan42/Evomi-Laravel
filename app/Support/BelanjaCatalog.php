@@ -136,6 +136,8 @@ class BelanjaCatalog
             $product->image_2,
             $product->image_3,
             $product->image_4,
+            // Lembar notes menutup galeri sebagai slide keenam.
+            $product->image_5,
         ];
         foreach ($slots as $img) {
             $url = self::storageUrl($img);
@@ -143,7 +145,7 @@ class BelanjaCatalog
                 $gallery[] = $url;
             }
         }
-        $gallery = array_slice($gallery, 0, 5);
+        $gallery = array_slice($gallery, 0, 6);
         if ($gallery === []) {
             $gallery = [$primary];
         }
@@ -189,6 +191,11 @@ class BelanjaCatalog
             'top_note' => $localized['top_note'] ?? $product->top_note,
             'middle_note' => $localized['middle_note'] ?? $product->middle_note,
             'base_note' => $localized['base_note'] ?? $product->base_note,
+            'olfactory_family' => $localized['olfactory_family'] ?? $product->olfactory_family,
+            'sillage' => $localized['sillage'] ?? $product->sillage,
+            'projection' => $localized['projection'] ?? $product->projection,
+            'longevity' => $localized['longevity'] ?? $product->longevity,
+            'notes_image' => self::storageUrl($product->image_5),
             'kondisi' => $localized['kondisi'] ?? ($product->kondisi ?: 'Baru'),
             'berat_satuan' => (int) ($product->berat_satuan ?? 250),
             'kategori' => $localized['kategori'] ?? ($product->kategori ?: 'Parfum'),
