@@ -1,4 +1,4 @@
-name: Deploy ke evomi.shop
+name: Deploy evomi.shop + evomi.id
 
 # Alur deploy:
 #   1. Build aset di CI, commit balik bila berubah - server tidak menjalankan
