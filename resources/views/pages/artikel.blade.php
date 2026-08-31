@@ -118,7 +118,7 @@
                         </div>
                         <div class="flex flex-col p-5 text-left">
                             <h3 class="font-semibold text-lg leading-snug text-gray-900 transition-colors group-hover:text-[#1172BA]" x-text="article.title"></h3>
-                            <p class="mt-2 text-sm text-gray-600 line-clamp-3" x-text="article.excerpt"></p>
+                            <p class="mt-2 text-sm text-gray-600 line-clamp-3" x-text="article.excerpt_text || article.excerpt"></p>
                             <div class="mt-4 flex items-center justify-between gap-3">
                                 <p class="text-xs text-gray-400" x-text="formatDate(article.published_at)"></p>
                                 <span class="text-xs font-medium text-[#1172BA] opacity-0 translate-x-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0">{{ evomi_l('Baca →', 'Read →') }}</span>

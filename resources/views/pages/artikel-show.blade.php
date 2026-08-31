@@ -5,14 +5,17 @@
 @section('content')
 @php
     $contentRaw = trim((string) ($article['content'] ?? ''));
+    $contentIsHtml = $article['content_is_html'] ?? \App\Support\ArticleContent::looksLikeHtml($contentRaw);
+    $contentHtml = $article['content_html'] ?? \App\Support\ArticleContent::sanitizeHtml($contentRaw);
+    $contentText = $article['content_text'] ?? \App\Support\ArticleContent::plainText($contentRaw);
     $blocks = $article['content_blocks'] ?? \App\Support\ArticleContent::blocks($contentRaw);
-    $headingStyles = $article['heading_font_styles'] ?? \App\Support\ArticleContent::headingFontStyles(null);
+    $headingCss = $article['heading_css'] ?? \App\Support\ArticleContent::headingCss(null, '.artikel-detail-body');
     $titleTag = $article['title_heading_tag'] ?? 'h1';
     $excerptTag = $article['excerpt_heading_tag'] ?? 'normal';
     $excerptTag = $excerptTag === 'normal' ? 'p' : $excerptTag;
     $contentTag = $article['content_heading_tag'] ?? 'normal';
     $contentTag = $contentTag === 'normal' ? 'p' : $contentTag;
-    $wordCount = count(preg_split('/\s+/u', $contentRaw, -1, PREG_SPLIT_NO_EMPTY) ?: []);
+    $wordCount = count(preg_split('/\s+/u', $contentText, -1, PREG_SPLIT_NO_EMPTY) ?: []);
     $readMinutes = max(1, (int) ceil($wordCount / 180));
     $related = $related ?? [];
     $publishedLabel = ! empty($article['published_at'])
@@ -24,7 +27,7 @@
     class="min-h-screen flex flex-col font-nohemi w-full artikel-page artikel-detail-page"
     x-data="evomiArtikelShow(@js([
         'title' => $article['title'] ?? '',
-        'excerpt' => $article['excerpt'] ?? '',
+        'excerpt' => $article['excerpt_text'] ?? $article['excerpt'] ?? '',
     ]))"
 >
     <section class="relative overflow-hidden text-white pt-10 md:pt-14 pb-14 md:pb-16 px-5 md:px-8">
@@ -68,9 +71,13 @@
     <section class="flex-1 bg-white px-5 md:px-8 py-10 md:py-14">
         <div class="max-w-3xl mx-auto">
             <article class="artikel-fade-up" style="--artikel-delay: 80ms">
-                @if (! empty($article['excerpt']))
+                @php
+                    $excerptHtml = $article['excerpt_html']
+                        ?? \App\Support\ArticleContent::sanitizeInlineHtml($article['excerpt'] ?? '');
+                @endphp
+                @if ($excerptHtml !== '')
                     <{{ $excerptTag }} class="artikel-detail-text text-gray-700 leading-relaxed" style="{{ $article['font_excerpt'] ?? '' }}">
-                        {{ $article['excerpt'] }}
+                        {!! $excerptHtml !!}
                     </{{ $excerptTag }}>
                 @endif
 
@@ -108,16 +115,23 @@
 
                 <div class="my-9 h-px bg-gradient-to-r from-transparent via-[#1172BA]/25 to-transparent"></div>
 
-                <div class="artikel-detail-body space-y-5 text-gray-700 leading-[1.8]" style="{{ $article['font_content'] ?? '' }}">
-                    @forelse ($blocks as $block)
-                        @if ($block['tag'] === 'p')
-                            <{{ $contentTag }} class="artikel-detail-text">{{ $block['text'] }}</{{ $contentTag }}>
-                        @else
-                            <{{ $block['tag'] }} class="artikel-detail-heading text-gray-900" style="{{ $headingStyles[$block['tag']] ?? '' }}">{{ $block['text'] }}</{{ $block['tag'] }}>
-                        @endif
-                    @empty
-                        <p class="text-gray-500">{{ evomi_l('Konten artikel belum tersedia.', 'Article content is not available yet.') }}</p>
-                    @endforelse
+                {{-- Per-level heading typography, shared by rich text and legacy blocks. --}}
+                <style>{!! $headingCss !!}</style>
+
+                <div class="artikel-detail-body text-gray-700 leading-[1.8] @if (! $contentIsHtml) space-y-5 @endif" style="{{ $article['font_content'] ?? '' }}">
+                    @if ($contentIsHtml && $contentHtml !== '')
+                        {!! $contentHtml !!}
+                    @else
+                        @forelse ($blocks as $block)
+                            @if ($block['tag'] === 'p')
+                                <{{ $contentTag }} class="artikel-detail-text">{{ $block['text'] }}</{{ $contentTag }}>
+                            @else
+                                <{{ $block['tag'] }} class="artikel-detail-heading text-gray-900">{{ $block['text'] }}</{{ $block['tag'] }}>
+                            @endif
+                        @empty
+                            <p class="text-gray-500">{{ evomi_l('Konten artikel belum tersedia.', 'Article content is not available yet.') }}</p>
+                        @endforelse
+                    @endif
                 </div>
 
                 @if (count($related) > 0)

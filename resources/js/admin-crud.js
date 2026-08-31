@@ -21,6 +21,13 @@ import {
     createAdminI18nApi,
     readAdminLocale,
 } from './admin-i18n';
+import {
+    FONT_FAMILY_OPTIONS,
+    HEADING_FONT_DEFAULTS,
+    HEADING_LEVELS,
+    resolveFontFamilyCss,
+} from './font-catalog';
+import { looksLikeHtml, registerDocEditor } from './doc-editor';
 
 function unwrapList(payload) {
     if (Array.isArray(payload)) return payload;
@@ -58,6 +65,8 @@ function todayInputDate() {
 }
 
 export function registerAdminCrud(Alpine, deps) {
+    registerDocEditor(Alpine);
+
     const {
         authHeaders,
         readApiJson,
@@ -1121,20 +1130,6 @@ export function registerAdminCrud(Alpine, deps) {
     }
 
     /* ---------- Shared CMS / article font options (Next.js cmsFonts parity) ---------- */
-    const FONT_FAMILY_OPTIONS = [
-        { value: 'nohemi', label: 'Nohemi (project)', group: 'project' },
-        { value: 'parkinsans', label: 'Parkinsans (project)', group: 'project' },
-        { value: 'syne', label: 'Syne (project)', group: 'project' },
-        { value: 'heavy', label: '8-Heavy (project)', group: 'project' },
-        { value: 'arial', label: 'Arial', group: 'system' },
-        { value: 'helvetica', label: 'Helvetica', group: 'system' },
-        { value: 'georgia', label: 'Georgia', group: 'system' },
-        { value: 'times', label: 'Times New Roman', group: 'system' },
-        { value: 'verdana', label: 'Verdana', group: 'system' },
-        { value: 'tahoma', label: 'Tahoma', group: 'system' },
-        { value: 'courier', label: 'Courier New', group: 'system' },
-        { value: 'system', label: 'System UI', group: 'system' },
-    ];
     const FONT_WEIGHT_OPTIONS = [
         { value: '300', label: '300 — Light' },
         { value: '400', label: '400 — Regular' },
@@ -1179,16 +1174,6 @@ export function registerAdminCrud(Alpine, deps) {
         return BLOCK_LEVELS.includes(raw) ? raw : 'normal';
     }
 
-    /* Per-level article heading defaults — mirrors App\Support\ArticleContent::defaults(). */
-    const HEADING_FONT_DEFAULTS = {
-        h1: { font_family: 'nohemi', font_weight: '700', font_style: 'normal', font_size: '32' },
-        h2: { font_family: 'nohemi', font_weight: '700', font_style: 'normal', font_size: '28' },
-        h3: { font_family: 'nohemi', font_weight: '600', font_style: 'normal', font_size: '22' },
-        h4: { font_family: 'parkinsans', font_weight: '600', font_style: 'normal', font_size: '20' },
-        h5: { font_family: 'parkinsans', font_weight: '600', font_style: 'normal', font_size: '18' },
-        h6: { font_family: 'parkinsans', font_weight: '600', font_style: 'normal', font_size: '16' },
-    };
-    const HEADING_LEVELS = Object.keys(HEADING_FONT_DEFAULTS);
     const HEADING_FONT_KEYS = ['font_family', 'font_weight', 'font_style', 'font_size'];
 
     /**
@@ -1210,37 +1195,23 @@ export function registerAdminCrud(Alpine, deps) {
         return out;
     }
 
+    /** Readable text behind rich-text content, for the typography previews. */
+    function articleText(value) {
+        const raw = String(value ?? '');
+        if (raw === '') return '';
+        if (!looksLikeHtml(raw)) return raw;
+        const doc = new DOMParser().parseFromString(raw, 'text/html');
+        return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
     function isHeadingFormKey(key) {
         return /^h[1-6]_font_(family|weight|style|size)$/.test(key || '');
     }
 
-    const FONT_FAMILY_CSS = {
-        nohemi: "var(--font-nohemi), 'Nohemi', sans-serif",
-        parkinsans: "var(--font-parkinsans), 'Parkinsans', sans-serif",
-        syne: "var(--font-syne), 'Syne', sans-serif",
-        heavy: "var(--font-heavy), '8-Heavy', sans-serif",
-        arial: 'Arial, Helvetica, sans-serif',
-        helvetica: 'Helvetica, Arial, sans-serif',
-        georgia: "Georgia, 'Times New Roman', serif",
-        times: "'Times New Roman', Times, serif",
-        verdana: 'Verdana, Geneva, sans-serif',
-        tahoma: 'Tahoma, Geneva, sans-serif',
-        courier: "'Courier New', Courier, monospace",
-        system: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    };
-
-    function resolveFontFamilyCss(raw) {
-        const key = String(raw || '')
-            .trim()
-            .toLowerCase();
-        if (FONT_FAMILY_CSS[key]) return FONT_FAMILY_CSS[key];
-        if (key.includes(',') || key.startsWith('var(')) return String(raw).trim();
-        return FONT_FAMILY_CSS.nohemi;
-    }
-
     /* ---------- ARTICLES ---------- */
     Alpine.data('evomiAdminArticles', () => ({
-        ...listMixin(6),
+        ...listMixin(8),
+        statusFilter: 'all',
         form: emptyArticleForm(),
         imageFile: null,
         imagePreview: null,
@@ -1282,6 +1253,68 @@ export function registerAdminCrud(Alpine, deps) {
             } finally {
                 this.loading = false;
             }
+        },
+
+        /* ---------- list interactions ---------- */
+
+        filteredItems() {
+            const q = this.search.trim().toLowerCase();
+
+            return this.items.filter((row) => {
+                if (this.statusFilter === 'published' && !row.is_published) return false;
+                if (this.statusFilter === 'draft' && row.is_published) return false;
+                if (!q) return true;
+
+                return JSON.stringify(row).toLowerCase().includes(q);
+            });
+        },
+
+        setStatusFilter(value) {
+            this.statusFilter = value;
+            this.page = 1;
+        },
+
+        statusCount(value) {
+            if (value === 'published') return this.items.filter((a) => a.is_published).length;
+            if (value === 'draft') return this.items.filter((a) => !a.is_published).length;
+
+            return this.items.length;
+        },
+
+        /** Publish / unpublish straight from the table. */
+        async togglePublish(article) {
+            const next = article.is_published ? 0 : 1;
+            try {
+                await adminJson(`/api/admin/articles/${article.id}`, {
+                    method: 'PUT',
+                    body: { is_published: next },
+                });
+                article.is_published = !!next;
+                this.notify(
+                    next ? this.t('articles', 'now_published') : this.t('articles', 'now_draft'),
+                );
+            } catch (e) {
+                this.notify(e.message || this.t('articles', 'save_error'), 'error');
+            }
+        },
+
+        previewUrl(article) {
+            return '/artikel/' + (article?.slug || '');
+        },
+
+        /** Categories already in use, offered as suggestions in the editor. */
+        categoryOptions() {
+            const names = this.items
+                .map((a) => String(a.category || '').trim())
+                .filter(Boolean);
+
+            return [...new Set(names)].sort();
+        },
+
+        excerptPreview(article) {
+            const text = articleText(article?.excerpt || article?.content || '');
+
+            return text.length > 90 ? text.slice(0, 90).trim() + '…' : text;
         },
 
         openAdd() {
@@ -1418,9 +1451,14 @@ export function registerAdminCrud(Alpine, deps) {
         /** First heading of this level inside the content, else a sample line. */
         headingSample(prefix) {
             const level = Number(prefix.slice(1));
-            const re = new RegExp('^\\s*#{' + level + '}(?!#)\\s+(\\S.*)$', 'm');
-            const hit = re.exec(String(this.form.content || this.form.content_en || ''));
-            if (hit) return hit[1].trim();
+            const content = String(this.form.content || this.form.content_en || '');
+            const tag = new RegExp('<h' + level + '\\b[^>]*>([\\s\\S]*?)</h' + level + '>', 'i');
+            const hash = new RegExp('^\\s*#{' + level + '}(?!#)\\s+(\\S.*)$', 'm');
+            const hit = tag.exec(content) || hash.exec(content);
+            if (hit) {
+                const text = articleText(hit[1]).trim();
+                if (text !== '') return text;
+            }
             return this.t('articles', 'heading_sample') + ' ' + level;
         },
 
@@ -1428,7 +1466,8 @@ export function registerAdminCrud(Alpine, deps) {
             if (this.isHeadingPrefix(prefix)) return this.headingSample(prefix);
             if (prefix === 'title') return this.form.title || this.form.title_en || '—';
             if (prefix === 'excerpt') return this.form.excerpt || this.form.excerpt_en || '—';
-            return String(this.form.content || this.form.content_en || '—').slice(0, 160);
+            const content = articleText(this.form.content || this.form.content_en || '');
+            return content === '' ? '—' : content.slice(0, 160);
         },
 
         typographyPreviewStyle(prefix) {
@@ -1452,6 +1491,11 @@ export function registerAdminCrud(Alpine, deps) {
 
         async save() {
             if (this.saving) return;
+            // The rich text editor has no native "required", so guard here.
+            if (articleText(this.form.content) === '') {
+                this.notify(this.t('articles', 'content_required'), 'error');
+                return;
+            }
             this.saving = true;
             this.uploadProgress = this.imageFile ? 0 : 15;
             try {

@@ -194,7 +194,7 @@ class ArticleController extends Controller
         $data['slug'] = $request->filled('slug')
             ? Article::makeUniqueSlug($request->input('slug'))
             : Article::makeUniqueSlug($request->input('title'));
-        $data['category'] = $data['category'] ?: 'parfum';
+        $data['category'] = ($data['category'] ?? '') ?: 'parfum';
         $data['is_published'] = $request->boolean('is_published', true);
         $data['published_at'] = $data['published_at'] ?? now();
 
@@ -210,6 +210,18 @@ class ArticleController extends Controller
         $data['content_font_weight'] = $data['content_font_weight'] ?? '400';
         $data['content_font_style'] = $data['content_font_style'] ?? 'normal';
         $data['content_font_size'] = $data['content_font_size'] ?? '17';
+        foreach (['content', 'content_en'] as $richField) {
+            if (isset($data[$richField])) {
+                $data[$richField] = ArticleContent::normalizeContent($data[$richField]);
+            }
+        }
+
+        foreach (['excerpt', 'excerpt_en'] as $inlineField) {
+            if (isset($data[$inlineField])) {
+                $data[$inlineField] = ArticleContent::normalizeExcerpt($data[$inlineField]);
+            }
+        }
+
         $data['title_heading_level'] = ArticleContent::headingLevel($request->input('title_heading_level'));
         $data['excerpt_heading_level'] = ArticleContent::blockLevel($request->input('excerpt_heading_level'));
         $data['content_heading_level'] = ArticleContent::blockLevel($request->input('content_heading_level'));
@@ -281,6 +293,18 @@ class ArticleController extends Controller
 
         if ($request->has('is_published')) {
             $data['is_published'] = $request->boolean('is_published');
+        }
+
+        foreach (['content', 'content_en'] as $richField) {
+            if (array_key_exists($richField, $data)) {
+                $data[$richField] = ArticleContent::normalizeContent($data[$richField]);
+            }
+        }
+
+        foreach (['excerpt', 'excerpt_en'] as $inlineField) {
+            if (array_key_exists($inlineField, $data)) {
+                $data[$inlineField] = ArticleContent::normalizeExcerpt($data[$inlineField]);
+            }
         }
 
         if ($request->has('title_heading_level')) {

@@ -145,6 +145,297 @@ final class ArticleContent
     }
 
     /**
+     * Content on its way into the database: sanitized HTML from the editor,
+     * or plain text left as typed for articles that predate it.
+     */
+    public static function normalizeContent(?string $content): string
+    {
+        $content = (string) $content;
+
+        return self::looksLikeHtml($content) ? self::sanitizeHtml($content) : trim($content);
+    }
+
+    /**
+     * Rich-text content is stored as HTML once it has been through the editor.
+     * Older articles are plain text, so both shapes have to keep rendering.
+     */
+    public static function looksLikeHtml(?string $content): bool
+    {
+        return (bool) preg_match(
+            '/<(p|div|br|hr|h[1-6]|ul|ol|li|blockquote|span|strong|b|em|i|u|s|a|pre|code)\b[^>]*>/i',
+            (string) $content,
+        );
+    }
+
+    /** Tags the editor may produce; anything else is unwrapped or dropped. */
+    private const ALLOWED_TAGS = [
+        'p', 'br', 'hr', 'div',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'del', 'ins', 'mark', 'sub', 'sup',
+        'blockquote', 'ul', 'ol', 'li', 'a', 'span', 'code', 'pre',
+    ];
+
+    /** Tags removed together with everything inside them. */
+    private const DROPPED_TAGS = [
+        'script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'select',
+        'textarea', 'button', 'link', 'meta', 'base', 'svg', 'math', 'template',
+    ];
+
+    /** Inline CSS the editor is allowed to leave behind. */
+    private const ALLOWED_STYLE_PROPS = [
+        'font-family', 'font-size', 'font-weight', 'font-style',
+        'text-decoration', 'text-decoration-line', 'text-align',
+        'color', 'background-color', 'line-height', 'margin-left', 'padding-left',
+    ];
+
+    /**
+     * Strip everything the editor is not allowed to store, so admin-authored
+     * HTML can be printed on the storefront without escaping it.
+     */
+    public static function sanitizeHtml(?string $html): string
+    {
+        $html = trim((string) $html);
+        if ($html === '') {
+            return '';
+        }
+
+        // Without ext-dom there is no way to filter attributes safely, so the
+        // markup is dropped rather than trusted.
+        if (! class_exists(\DOMDocument::class)) {
+            return trim(strip_tags($html));
+        }
+
+        $doc = new \DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        $doc->loadHTML(
+            '<?xml encoding="utf-8" ?><body>'.$html.'</body>',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD,
+        );
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $body = $doc->getElementsByTagName('body')->item(0);
+        if (! $body) {
+            return '';
+        }
+
+        self::cleanChildren($body);
+
+        $out = '';
+        foreach ($body->childNodes as $child) {
+            $out .= $doc->saveHTML($child);
+        }
+
+        return trim($out);
+    }
+
+    private static function cleanChildren(\DOMNode $node): void
+    {
+        foreach (iterator_to_array($node->childNodes) as $child) {
+            if ($child instanceof \DOMText) {
+                continue;
+            }
+
+            if (! $child instanceof \DOMElement) {
+                $child->parentNode?->removeChild($child);
+
+                continue;
+            }
+
+            $tag = strtolower($child->tagName);
+
+            if (in_array($tag, self::DROPPED_TAGS, true)) {
+                $child->parentNode?->removeChild($child);
+
+                continue;
+            }
+
+            self::cleanChildren($child);
+
+            if (! in_array($tag, self::ALLOWED_TAGS, true)) {
+                // Unknown wrapper: keep the text, drop the tag.
+                while ($child->firstChild) {
+                    $child->parentNode?->insertBefore($child->firstChild, $child);
+                }
+                $child->parentNode?->removeChild($child);
+
+                continue;
+            }
+
+            self::cleanAttributes($child, $tag);
+        }
+    }
+
+    private static function cleanAttributes(\DOMElement $el, string $tag): void
+    {
+        foreach (iterator_to_array($el->attributes) as $attr) {
+            $name = strtolower($attr->nodeName);
+            $value = (string) $attr->nodeValue;
+
+            if ($name === 'style') {
+                $style = self::cleanStyle($value);
+                if ($style === '') {
+                    $el->removeAttribute('style');
+                } else {
+                    $el->setAttribute('style', $style);
+                }
+
+                continue;
+            }
+
+            if ($tag === 'a' && in_array($name, ['href', 'target', 'rel'], true)) {
+                continue;
+            }
+
+            $el->removeAttribute($attr->nodeName);
+        }
+
+        if ($tag !== 'a') {
+            return;
+        }
+
+        $href = trim($el->getAttribute('href'));
+        if ($href === '' || ! preg_match('#^(https?://|mailto:|tel:|/|\#)#i', $href)) {
+            $el->removeAttribute('href');
+            $el->removeAttribute('target');
+            $el->removeAttribute('rel');
+
+            return;
+        }
+
+        if ($el->getAttribute('target') === '_blank') {
+            $el->setAttribute('rel', 'noopener noreferrer');
+        } else {
+            $el->removeAttribute('target');
+            $el->removeAttribute('rel');
+        }
+    }
+
+    private static function cleanStyle(string $style): string
+    {
+        $kept = [];
+
+        foreach (explode(';', $style) as $rule) {
+            if (! str_contains($rule, ':')) {
+                continue;
+            }
+
+            [$prop, $value] = explode(':', $rule, 2);
+            $prop = strtolower(trim($prop));
+            $value = trim($value);
+
+            if (! in_array($prop, self::ALLOWED_STYLE_PROPS, true) || $value === '') {
+                continue;
+            }
+            if (preg_match('/url\s*\(|expression|javascript:|@import|[<>{}\\\\]/i', $value)) {
+                continue;
+            }
+            if (! preg_match("/^[\w\s,.'\"()%#\/+-]+$/u", $value)) {
+                continue;
+            }
+
+            $kept[] = $prop.': '.$value;
+        }
+
+        return implode('; ', $kept);
+    }
+
+    /** Tags the excerpt may keep: styling only, never structure. */
+    private const INLINE_TAGS = [
+        'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'del', 'ins',
+        'mark', 'sub', 'sup', 'span', 'a', 'br', 'code',
+    ];
+
+    /**
+     * The excerpt is edited as rich text but printed inside cards, meta tags
+     * and one paragraph, so only inline styling survives.
+     */
+    public static function sanitizeInlineHtml(?string $html): string
+    {
+        $clean = self::sanitizeHtml($html);
+        if ($clean === '' || ! class_exists(\DOMDocument::class)) {
+            return $clean;
+        }
+
+        $doc = new \DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        $doc->loadHTML(
+            '<?xml encoding="utf-8" ?><body>'.$clean.'</body>',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD,
+        );
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $body = $doc->getElementsByTagName('body')->item(0);
+        if (! $body) {
+            return '';
+        }
+
+        self::flattenToInline($body);
+
+        $out = '';
+        foreach ($body->childNodes as $child) {
+            $out .= $doc->saveHTML($child);
+        }
+
+        return trim(preg_replace('/\s+/u', ' ', $out) ?? '');
+    }
+
+    private static function flattenToInline(\DOMNode $node): void
+    {
+        foreach (iterator_to_array($node->childNodes) as $child) {
+            if (! $child instanceof \DOMElement) {
+                continue;
+            }
+
+            self::flattenToInline($child);
+
+            if (in_array(strtolower($child->tagName), self::INLINE_TAGS, true)) {
+                continue;
+            }
+
+            // Blocks become a space so words do not run together.
+            $child->parentNode?->insertBefore($child->ownerDocument->createTextNode(' '), $child);
+            while ($child->firstChild) {
+                $child->parentNode?->insertBefore($child->firstChild, $child);
+            }
+            $child->parentNode?->insertBefore($child->ownerDocument->createTextNode(' '), $child);
+            $child->parentNode?->removeChild($child);
+        }
+    }
+
+    /** Excerpt on its way into the database. */
+    public static function normalizeExcerpt(?string $excerpt): string
+    {
+        $excerpt = (string) $excerpt;
+
+        return self::looksLikeHtml($excerpt) ? self::sanitizeInlineHtml($excerpt) : trim($excerpt);
+    }
+
+    /** Readable text behind the markup, for word counts and previews. */
+    public static function plainText(?string $content): string
+    {
+        $text = preg_replace('/<(br|\/p|\/h[1-6]|\/li|\/div|\/blockquote)\s*\/?>/i', ' ', (string) $content);
+        $text = strip_tags((string) $text);
+
+        return trim(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
+
+    /**
+     * Per-level heading CSS scoped to one selector, so headings inside a rich
+     * text blob pick up the article's own typography.
+     */
+    public static function headingCss($fonts, string $scope): string
+    {
+        $lines = [];
+        foreach (self::LEVELS as $level) {
+            $lines[] = $scope.' '.$level.' { '.self::headingFontInline($fonts, $level).' }';
+        }
+
+        return str_replace(['<', '>'], '', implode("\n", $lines));
+    }
+
+    /**
      * Split article content into renderable blocks.
      *
      * A line like "## Aroma" becomes ['tag' => 'h2', 'text' => 'Aroma'];

@@ -448,10 +448,16 @@ class PageController extends Controller
             'font_content' => $this->articleFontInline($a, 'content'),
             'title_heading_tag' => ArticleContent::headingLevel($a->title_heading_level),
             'excerpt_heading_tag' => ArticleContent::blockLevel($a->excerpt_heading_level),
+            'excerpt_html' => ArticleContent::sanitizeInlineHtml($localized['excerpt']),
+            'excerpt_text' => ArticleContent::plainText($localized['excerpt']),
             'content_heading_tag' => ArticleContent::blockLevel($a->content_heading_level),
             'heading_fonts' => ArticleContent::normalizeFonts($a->heading_fonts),
             'heading_font_styles' => ArticleContent::headingFontStyles($a->heading_fonts),
             'content_blocks' => ArticleContent::blocks($localized['content']),
+            'content_is_html' => ArticleContent::looksLikeHtml($localized['content']),
+            'content_html' => ArticleContent::sanitizeHtml($localized['content']),
+            'content_text' => ArticleContent::plainText($localized['content']),
+            'heading_css' => ArticleContent::headingCss($a->heading_fonts, '.artikel-detail-body'),
         ];
     }
 

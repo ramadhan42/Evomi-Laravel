@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-DGSefffl.css",
+    "file": "assets/app-CEV7FTN6.css",
     "name": "app",
     "names": [
       "app.css"
@@ -9,7 +9,7 @@
     "isEntry": true
   },
   "resources/js/admin-crud.js": {
-    "file": "assets/admin-crud-C9BVYNG8.js",
+    "file": "assets/admin-crud-ChHfl9Lf.js",
     "name": "admin-crud",
     "src": "resources/js/admin-crud.js",
     "isDynamicEntry": true,
@@ -19,7 +19,7 @@
     ]
   },
   "resources/js/admin-i18n.js": {
-    "file": "assets/admin-i18n-Bgo9TdTT.js",
+    "file": "assets/admin-i18n-CWOilkWN.js",
     "name": "admin-i18n",
     "src": "resources/js/admin-i18n.js",
     "isDynamicEntry": true,
@@ -34,7 +34,7 @@
     "isDynamicEntry": true
   },
   "resources/js/app.js": {
-    "file": "assets/app-Bz0YIw17.js",
+    "file": "assets/app-CTb8CYMo.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
