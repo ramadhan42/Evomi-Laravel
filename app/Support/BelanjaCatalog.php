@@ -120,14 +120,22 @@ class BelanjaCatalog
             $primary = self::fallbackAssetUrl($personality);
         }
 
+        // Detail slider: cover first, then the four gallery slots — five slides.
         $gallery = [];
-        foreach ([$product->image_1, $product->image_2, $product->image_3] as $img) {
+        $slots = [
+            $product->image_produk_belanja,
+            $product->image_1,
+            $product->image_2,
+            $product->image_3,
+            $product->image_4,
+        ];
+        foreach ($slots as $img) {
             $url = self::storageUrl($img);
-            if ($url !== '') {
+            if ($url !== '' && ! in_array($url, $gallery, true)) {
                 $gallery[] = $url;
             }
         }
-        $gallery = array_slice($gallery, 0, 3);
+        $gallery = array_slice($gallery, 0, 5);
         if ($gallery === []) {
             $gallery = [$primary];
         }

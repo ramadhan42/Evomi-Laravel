@@ -117,9 +117,6 @@
                     </div>
                 </template>
 
-                <div class="absolute bottom-2 right-2 w-16 h-16 md:w-20 md:h-20 z-20 pointer-events-none opacity-90">
-                    <img src="{{ $characterUrl }}" alt="" class="w-full h-full object-contain drop-shadow-md">
-                </div>
             </div>
 
             <div class="flex justify-center items-center gap-2 my-5" x-show="gallery.length > 1" x-cloak>
@@ -135,12 +132,15 @@
                 </template>
             </div>
 
-            <div class="grid gap-3 w-full mt-2" :class="gallery.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'">
+            <div
+                class="belanja-detail__thumbs grid w-full mt-2"
+                :style="{ gridTemplateColumns: 'repeat(' + Math.min(gallery.length, 5) + ', minmax(0, 1fr))' }"
+            >
                 <template x-for="(image, index) in gallery" :key="'thumb-' + index">
                     <button
                         type="button"
                         @click="currentIndex = index"
-                        class="belanja-detail__thumb relative w-full aspect-square rounded-[16px] overflow-hidden border-2 transition-all duration-300"
+                        class="belanja-detail__thumb relative w-full aspect-square overflow-hidden border-2 transition-all duration-200"
                         :style="{
                             backgroundColor: accent,
                             borderColor: currentIndex === index ? accent : 'transparent',

@@ -1875,6 +1875,41 @@ body.evomi-detail-seamless #evomi-footer-wrap.belanja-detail-footer-seam {
     display: block;
 }
 
+/* Deretan thumbnail slider: satu baris, lebar seragam berapa pun jumlah
+   gambarnya, dengan jarak dan sudut yang ikut mengecil di layar sempit. */
+.belanja-detail__thumbs {
+    gap: 6px;
+}
+
+.belanja-detail__thumb {
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.belanja-detail__thumb:hover {
+    opacity: 1 !important;
+    transform: translateY(-2px);
+}
+
+.belanja-detail__thumb:active {
+    transform: translateY(0) scale(0.97);
+}
+
+.belanja-detail__thumb:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+@media (min-width: 640px) {
+    .belanja-detail__thumbs {
+        gap: 10px;
+    }
+
+    .belanja-detail__thumb {
+        border-radius: 14px;
+    }
+}
+
 /* Footer bulletin CTA — stay white; hover/click use shadow only (not footer blue) */
 .footer-daftar-btn {
     color: var(--footer-accent, var(--evomi-theme, #1172ba));

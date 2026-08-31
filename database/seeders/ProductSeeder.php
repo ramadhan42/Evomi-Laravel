@@ -17,9 +17,8 @@ class ProductSeeder extends Seeder
      * 1 Purpose Prestige, 2 Peaceful Calm, 3 Rebel Brave, 4 Sweet Shy
      *
      * File gambar per produk (wajib):
-     * - belanja.webp         → image_produk_belanja (halaman belanja)
-     * - image_1.webp … image_3.webp → gallery detail (3 slide, sama Next.js)
-     * - image_4.webp         → opsional (disimpan, tidak dipakai di detail)
+     * - belanja.webp         → image_produk_belanja (kartu belanja + slide 1)
+     * - image_1.webp … image_4.webp → slide 2-5 pada slider detail
      */
     public function run(): void
     {

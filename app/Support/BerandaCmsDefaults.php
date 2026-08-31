@@ -187,16 +187,16 @@ final class BerandaCmsDefaults
             ['hero', 'badge_left_icon', 'image', '/src/images/section 1/badge-left-star.svg'],
             ['hero', 'badge_right', 'string', 'Recycle Bottle Cap'],
             ['hero', 'badge_right_icon', 'image', '/src/images/section 1/recycle.webp'],
-            ['hero', 'product1_image', 'image', '/src/images/section 1/botol-purpose-prestige.webp'],
+            ['hero', 'product1_image', 'image', '/src/images/beranda/botol-purpose-prestige.webp'],
             ['hero', 'product1_badge_label', 'string', 'Purpose Prestige'],
             ['hero', 'product1_badge_icon', 'image', '/src/images/section 1/purpose-prestige.webp'],
-            ['hero', 'product2_image', 'image', '/src/images/section 1/botol-rabel-brave.webp'],
+            ['hero', 'product2_image', 'image', '/src/images/beranda/botol-rabel-brave.webp'],
             ['hero', 'product2_badge_label', 'string', 'Rebel Brave'],
             ['hero', 'product2_badge_icon', 'image', '/src/images/section 1/rabel-brave.webp'],
-            ['hero', 'product3_image', 'image', '/src/images/section 1/botol-peaceful-calm.webp'],
+            ['hero', 'product3_image', 'image', '/src/images/beranda/botol-peaceful-calm.webp'],
             ['hero', 'product3_badge_label', 'string', 'Peaceful Calm'],
             ['hero', 'product3_badge_icon', 'image', '/src/images/section 1/peaceful-calm.webp'],
-            ['hero', 'product4_image', 'image', '/src/images/section 1/botol-sweet-shy.webp'],
+            ['hero', 'product4_image', 'image', '/src/images/beranda/botol-sweet-shy.webp'],
             ['hero', 'product4_badge_label', 'string', 'Sweet Shy'],
             ['hero', 'product4_badge_icon', 'image', '/src/images/section 1/sweet-shy.webp'],
             ['hero', 'marquee_text', 'string', 'Every Version of Me'],
@@ -393,10 +393,10 @@ final class BerandaCmsDefaults
     private static function fifth(): array
     {
         $cards = [
-            1 => ['Optimis', 'Purpose Prestige', 'Aroma yang merefleksikan ketenangan dan kejelasan tujuan.', 'Rp189.000', '/src/images/section 5/purpose-prestige.webp'],
-            2 => ['Damai', 'Peaceful Calm', 'Aroma menenangkan yang menyatu dengan diri.', 'Rp199.000', '/src/images/section 5/peaceful-calm.webp'],
-            3 => ['Berani', 'Rebel Brave', 'Keberanian dan semangat untuk mengekspresikan diri.', 'Rp179.000', '/src/images/section 5/rabel-brave.webp'],
-            4 => ['Manis', 'Sweet Shy', 'Aroma menenangkan yang menyatu dengan diri.', 'Rp189.000', '/src/images/section 5/sweet-shy.webp'],
+            1 => ['Optimis', 'Purpose Prestige', 'Aroma yang merefleksikan ketenangan dan kejelasan tujuan.', 'Rp189.000', '/src/images/beranda/botol-purpose-prestige.webp'],
+            2 => ['Damai', 'Peaceful Calm', 'Aroma menenangkan yang menyatu dengan diri.', 'Rp199.000', '/src/images/beranda/botol-peaceful-calm.webp'],
+            3 => ['Berani', 'Rebel Brave', 'Keberanian dan semangat untuk mengekspresikan diri.', 'Rp179.000', '/src/images/beranda/botol-rabel-brave.webp'],
+            4 => ['Manis', 'Sweet Shy', 'Aroma menenangkan yang menyatu dengan diri.', 'Rp189.000', '/src/images/beranda/botol-sweet-shy.webp'],
         ];
 
         $rows = [
@@ -478,7 +478,7 @@ final class BerandaCmsDefaults
             ['seventh', 'headline_4', 'string', 'bermain'],
             ['seventh', 'headline_5', 'string', 'kuis'],
             ['seventh', 'cta_label', 'string', 'Temukan Aromamu'],
-            ['seventh', 'product_image', 'image', '/src/images/section 7/produk.webp'],
+            ['seventh', 'product_image', 'image', '/src/images/beranda/produk-kuis.webp'],
         ];
 
         foreach ($labels as $n => [$text, $title, $color, $left, $top]) {
