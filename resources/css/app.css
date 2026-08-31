@@ -7751,9 +7751,15 @@ select.admin-field-input {
     transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.evomi-mp__icon svg {
+.evomi-mp__icon svg,
+.evomi-mp__icon img {
     width: 1.35rem;
     height: 1.35rem;
+}
+
+/* Logo raster (Tokopedia) tetap utuh proporsinya di kotak yang sama. */
+.evomi-mp__icon img {
+    object-fit: contain;
 }
 
 .evomi-mp__btn:hover .evomi-mp__icon {
