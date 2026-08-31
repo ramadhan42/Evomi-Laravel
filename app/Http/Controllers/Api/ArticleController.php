@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Article;
+use App\Support\ArticleContent;
 use App\Support\BelanjaCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -39,6 +40,18 @@ class ArticleController extends Controller
         'content_font_weight' => 'nullable|string|max:10',
         'content_font_style' => 'nullable|in:normal,italic',
         'content_font_size' => 'nullable|string|max:20',
+    ];
+
+    private const HEADING_RULES = [
+        'title_heading_level' => 'nullable|in:h1,h2,h3,h4,h5,h6',
+        'excerpt_heading_level' => 'nullable|in:normal,h1,h2,h3,h4,h5,h6',
+        'content_heading_level' => 'nullable|in:normal,h1,h2,h3,h4,h5,h6',
+        'heading_fonts' => 'nullable|array',
+        'heading_fonts.*' => 'array',
+        'heading_fonts.*.font_family' => 'nullable|string|max:40',
+        'heading_fonts.*.font_weight' => 'nullable|string|max:10',
+        'heading_fonts.*.font_style' => 'nullable|in:normal,italic',
+        'heading_fonts.*.font_size' => 'nullable|string|max:20',
     ];
 
     private function isStoredUpload(?string $path): bool
@@ -157,7 +170,7 @@ class ArticleController extends Controller
             'author' => 'nullable|string|max:120',
             'is_published' => 'nullable|boolean',
             'published_at' => 'nullable|date',
-        ], self::TYPOGRAPHY_RULES));
+        ], self::TYPOGRAPHY_RULES, self::HEADING_RULES));
 
         if ($validator->fails()) {
             return response()->json([
@@ -197,6 +210,10 @@ class ArticleController extends Controller
         $data['content_font_weight'] = $data['content_font_weight'] ?? '400';
         $data['content_font_style'] = $data['content_font_style'] ?? 'normal';
         $data['content_font_size'] = $data['content_font_size'] ?? '17';
+        $data['title_heading_level'] = ArticleContent::headingLevel($request->input('title_heading_level'));
+        $data['excerpt_heading_level'] = ArticleContent::blockLevel($request->input('excerpt_heading_level'));
+        $data['content_heading_level'] = ArticleContent::blockLevel($request->input('content_heading_level'));
+        $data['heading_fonts'] = ArticleContent::normalizeFonts($request->input('heading_fonts'));
 
         if ($request->hasFile('image')) {
             $data['image'] = $request->file('image')->store('articles', 'public');
@@ -235,7 +252,7 @@ class ArticleController extends Controller
             'author' => 'nullable|string|max:120',
             'is_published' => 'nullable|boolean',
             'published_at' => 'nullable|date',
-        ], self::TYPOGRAPHY_RULES));
+        ], self::TYPOGRAPHY_RULES, self::HEADING_RULES));
 
         if ($validator->fails()) {
             return response()->json([
@@ -264,6 +281,26 @@ class ArticleController extends Controller
 
         if ($request->has('is_published')) {
             $data['is_published'] = $request->boolean('is_published');
+        }
+
+        if ($request->has('title_heading_level')) {
+            $data['title_heading_level'] = ArticleContent::headingLevel(
+                $request->input('title_heading_level'),
+                $article->title_heading_level ?: 'h1',
+            );
+        }
+
+        foreach (['excerpt_heading_level', 'content_heading_level'] as $levelField) {
+            if ($request->has($levelField)) {
+                $data[$levelField] = ArticleContent::blockLevel(
+                    $request->input($levelField),
+                    $article->{$levelField} ?: ArticleContent::NONE,
+                );
+            }
+        }
+
+        if ($request->has('heading_fonts')) {
+            $data['heading_fonts'] = ArticleContent::normalizeFonts($request->input('heading_fonts'));
         }
 
         if ($request->hasFile('image')) {

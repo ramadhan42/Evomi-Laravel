@@ -1162,6 +1162,58 @@ export function registerAdminCrud(Alpine, deps) {
         { value: '40', label: '40px' },
         { value: '48', label: '48px' },
     ];
+    const HEADING_LEVEL_OPTIONS = [
+        { value: 'h1', label: 'H1' },
+        { value: 'h2', label: 'H2' },
+        { value: 'h3', label: 'H3' },
+        { value: 'h4', label: 'H4' },
+        { value: 'h5', label: 'H5' },
+        { value: 'h6', label: 'H6' },
+    ];
+    /* Excerpt & content may also be rendered as plain text ("normal"). */
+    const BLOCK_LEVEL_OPTIONS = [{ value: 'normal', label: 'Normal' }, ...HEADING_LEVEL_OPTIONS];
+    const BLOCK_LEVELS = BLOCK_LEVEL_OPTIONS.map((o) => o.value);
+
+    /** Level of a body field, falling back to plain text. */
+    function blockLevel(raw) {
+        return BLOCK_LEVELS.includes(raw) ? raw : 'normal';
+    }
+
+    /* Per-level article heading defaults — mirrors App\Support\ArticleContent::defaults(). */
+    const HEADING_FONT_DEFAULTS = {
+        h1: { font_family: 'nohemi', font_weight: '700', font_style: 'normal', font_size: '32' },
+        h2: { font_family: 'nohemi', font_weight: '700', font_style: 'normal', font_size: '28' },
+        h3: { font_family: 'nohemi', font_weight: '600', font_style: 'normal', font_size: '22' },
+        h4: { font_family: 'parkinsans', font_weight: '600', font_style: 'normal', font_size: '20' },
+        h5: { font_family: 'parkinsans', font_weight: '600', font_style: 'normal', font_size: '18' },
+        h6: { font_family: 'parkinsans', font_weight: '600', font_style: 'normal', font_size: '16' },
+    };
+    const HEADING_LEVELS = Object.keys(HEADING_FONT_DEFAULTS);
+    const HEADING_FONT_KEYS = ['font_family', 'font_weight', 'font_style', 'font_size'];
+
+    /**
+     * Heading typography lives in the articles.heading_fonts JSON column but is
+     * edited as flat form keys (h2_font_weight, …) so it can reuse the shared
+     * admin-article-typography partial.
+     */
+    function headingFontsToForm(raw) {
+        const source = raw && typeof raw === 'object' ? raw : {};
+        const out = {};
+        for (const level of HEADING_LEVELS) {
+            const given =
+                source[level] && typeof source[level] === 'object' ? source[level] : {};
+            for (const key of HEADING_FONT_KEYS) {
+                const value = String(given[key] ?? '').trim();
+                out[level + '_' + key] = value || HEADING_FONT_DEFAULTS[level][key];
+            }
+        }
+        return out;
+    }
+
+    function isHeadingFormKey(key) {
+        return /^h[1-6]_font_(family|weight|style|size)$/.test(key || '');
+    }
+
     const FONT_FAMILY_CSS = {
         nohemi: "var(--font-nohemi), 'Nohemi', sans-serif",
         parkinsans: "var(--font-parkinsans), 'Parkinsans', sans-serif",
@@ -1198,6 +1250,9 @@ export function registerAdminCrud(Alpine, deps) {
         fontWeightOptions: FONT_WEIGHT_OPTIONS,
         fontStyleOptions: FONT_STYLE_OPTIONS,
         fontSizeOptions: FONT_SIZE_OPTIONS,
+        headingLevelOptions: HEADING_LEVEL_OPTIONS,
+        blockLevelOptions: BLOCK_LEVEL_OPTIONS,
+        headingLevels: HEADING_LEVELS,
         fontFamilyGroups: [
             {
                 key: 'project',
@@ -1270,6 +1325,12 @@ export function registerAdminCrud(Alpine, deps) {
                 content_font_weight: a.content_font_weight || '400',
                 content_font_style: a.content_font_style || 'normal',
                 content_font_size: a.content_font_size || '17',
+                title_heading_level: HEADING_LEVELS.includes(a.title_heading_level)
+                    ? a.title_heading_level
+                    : 'h1',
+                excerpt_heading_level: blockLevel(a.excerpt_heading_level),
+                content_heading_level: blockLevel(a.content_heading_level),
+                ...headingFontsToForm(a.heading_fonts),
             };
             this.imageFile = null;
             this.existingImage = a.image_url || a.image || null;
@@ -1324,6 +1385,8 @@ export function registerAdminCrud(Alpine, deps) {
             else if (kind === 'weight') opts = FONT_WEIGHT_OPTIONS;
             else if (kind === 'style') opts = FONT_STYLE_OPTIONS;
             else if (kind === 'size') opts = FONT_SIZE_OPTIONS;
+            else if (kind === 'level') opts = HEADING_LEVEL_OPTIONS;
+            else if (kind === 'block_level') opts = BLOCK_LEVEL_OPTIONS;
             const hit = opts.find((o) => String(o.value) === value);
             return hit?.label || value || 'Pilih…';
         },
@@ -1336,7 +1399,14 @@ export function registerAdminCrud(Alpine, deps) {
             return {};
         },
 
+        isHeadingPrefix(prefix) {
+            return HEADING_LEVELS.includes(prefix);
+        },
+
         typographyLabel(prefix) {
+            if (this.isHeadingPrefix(prefix)) {
+                return this.t('articles', 'heading_in_content') + ' ' + prefix.toUpperCase();
+            }
             const labels = {
                 title: this.t('articles', 'typography_title'),
                 excerpt: this.t('articles', 'typography_excerpt'),
@@ -1345,7 +1415,17 @@ export function registerAdminCrud(Alpine, deps) {
             return labels[prefix] || prefix;
         },
 
+        /** First heading of this level inside the content, else a sample line. */
+        headingSample(prefix) {
+            const level = Number(prefix.slice(1));
+            const re = new RegExp('^\\s*#{' + level + '}(?!#)\\s+(\\S.*)$', 'm');
+            const hit = re.exec(String(this.form.content || this.form.content_en || ''));
+            if (hit) return hit[1].trim();
+            return this.t('articles', 'heading_sample') + ' ' + level;
+        },
+
         typographyPreview(prefix) {
+            if (this.isHeadingPrefix(prefix)) return this.headingSample(prefix);
             if (prefix === 'title') return this.form.title || this.form.title_en || '—';
             if (prefix === 'excerpt') return this.form.excerpt || this.form.excerpt_en || '—';
             return String(this.form.content || this.form.content_en || '—').slice(0, 160);
@@ -1360,7 +1440,7 @@ export function registerAdminCrud(Alpine, deps) {
                 fontWeight: this.form[`${prefix}_font_weight`] || '400',
                 fontStyle: this.form[`${prefix}_font_style`] || 'normal',
                 fontSize: `${size}px`,
-                lineHeight: prefix === 'title' ? '1.2' : '1.55',
+                lineHeight: prefix === 'title' || this.isHeadingPrefix(prefix) ? '1.28' : '1.55',
             };
         },
 
@@ -1378,6 +1458,11 @@ export function registerAdminCrud(Alpine, deps) {
                 const fd = new FormData();
                 Object.entries(this.form).forEach(([k, v]) => {
                     if (k === 'id') return;
+                    if (isHeadingFormKey(k)) {
+                        const [level, ...rest] = k.split('_');
+                        fd.append('heading_fonts[' + level + '][' + rest.join('_') + ']', v ?? '');
+                        return;
+                    }
                     fd.append(k, v ?? '');
                 });
                 if (this.imageFile) fd.append('image', this.imageFile);
@@ -1454,6 +1539,10 @@ export function registerAdminCrud(Alpine, deps) {
             content_font_weight: '400',
             content_font_style: 'normal',
             content_font_size: '17',
+            title_heading_level: 'h1',
+            excerpt_heading_level: 'normal',
+            content_heading_level: 'normal',
+            ...headingFontsToForm(null),
         };
     }
 

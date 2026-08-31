@@ -138,6 +138,19 @@ class AdminDashboardApiTest extends TestCase
     public function test_tracking_timeline_normalizes_date_to_time(): void
     {
         Sanctum::actingAs($this->admin());
+        $product = $this->makeProduct();
+
+        // Trackings are derived from orders: an orphan row is purged before listing.
+        Order::create([
+            'id' => 'ord-track-1',
+            'user_id' => null,
+            'guest_email' => 'guest@evomi.test',
+            'product_id' => $product->id,
+            'quantity' => 1,
+            'total_price' => 100000,
+            'status' => 'dalam_perjalanan',
+            'payment_status' => Order::PAYMENT_PENDING,
+        ]);
 
         OrderTracking::create([
             'order_id' => 'ord-track-1',

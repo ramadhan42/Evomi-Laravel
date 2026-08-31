@@ -5,8 +5,13 @@
 @section('content')
 @php
     $contentRaw = trim((string) ($article['content'] ?? ''));
-    $paragraphs = preg_split("/\n\s*\n/", $contentRaw) ?: [];
-    $paragraphs = array_values(array_filter(array_map('trim', $paragraphs)));
+    $blocks = $article['content_blocks'] ?? \App\Support\ArticleContent::blocks($contentRaw);
+    $headingStyles = $article['heading_font_styles'] ?? \App\Support\ArticleContent::headingFontStyles(null);
+    $titleTag = $article['title_heading_tag'] ?? 'h1';
+    $excerptTag = $article['excerpt_heading_tag'] ?? 'normal';
+    $excerptTag = $excerptTag === 'normal' ? 'p' : $excerptTag;
+    $contentTag = $article['content_heading_tag'] ?? 'normal';
+    $contentTag = $contentTag === 'normal' ? 'p' : $contentTag;
     $wordCount = count(preg_split('/\s+/u', $contentRaw, -1, PREG_SPLIT_NO_EMPTY) ?: []);
     $readMinutes = max(1, (int) ceil($wordCount / 180));
     $related = $related ?? [];
@@ -41,10 +46,10 @@
                 <span class="inline-flex rounded-full bg-white/15 px-3.5 py-1 text-[11px] uppercase tracking-[0.16em] text-[#E8F4FC] font-semibold ring-1 ring-white/20 backdrop-blur-sm">
                     {{ $article['category'] ?? 'parfum' }}
                 </span>
-                <h1
+                <{{ $titleTag }}
                     class="artikel-detail-title mt-5 leading-[1.12] tracking-tight drop-shadow-[0_1px_0_rgba(0,0,0,0.05)] text-white"
                     style="{{ $article['font_title'] ?? '' }}"
-                >{{ $article['title'] }}</h1>
+                >{{ $article['title'] }}</{{ $titleTag }}>
                 <div class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-white/80">
                     @if ($publishedLabel !== '')
                         <span>{{ $publishedLabel }}</span>
@@ -64,9 +69,9 @@
         <div class="max-w-3xl mx-auto">
             <article class="artikel-fade-up" style="--artikel-delay: 80ms">
                 @if (! empty($article['excerpt']))
-                    <p class="text-gray-700 leading-relaxed" style="{{ $article['font_excerpt'] ?? '' }}">
+                    <{{ $excerptTag }} class="artikel-detail-text text-gray-700 leading-relaxed" style="{{ $article['font_excerpt'] ?? '' }}">
                         {{ $article['excerpt'] }}
-                    </p>
+                    </{{ $excerptTag }}>
                 @endif
 
                 @if (! empty($article['image']))
@@ -104,8 +109,12 @@
                 <div class="my-9 h-px bg-gradient-to-r from-transparent via-[#1172BA]/25 to-transparent"></div>
 
                 <div class="artikel-detail-body space-y-5 text-gray-700 leading-[1.8]" style="{{ $article['font_content'] ?? '' }}">
-                    @forelse ($paragraphs as $paragraph)
-                        <p>{{ $paragraph }}</p>
+                    @forelse ($blocks as $block)
+                        @if ($block['tag'] === 'p')
+                            <{{ $contentTag }} class="artikel-detail-text">{{ $block['text'] }}</{{ $contentTag }}>
+                        @else
+                            <{{ $block['tag'] }} class="artikel-detail-heading text-gray-900" style="{{ $headingStyles[$block['tag']] ?? '' }}">{{ $block['text'] }}</{{ $block['tag'] }}>
+                        @endif
                     @empty
                         <p class="text-gray-500">{{ evomi_l('Konten artikel belum tersedia.', 'Article content is not available yet.') }}</p>
                     @endforelse

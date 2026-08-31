@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\QuizPersonalityResult;
 use App\Models\QuizQuestion;
 use App\Models\SiteContent;
+use App\Support\ArticleContent;
 use App\Support\BelanjaCatalog;
 use App\Support\CmsStorefront;
 use App\Support\ShippingConfig;
@@ -445,6 +446,12 @@ class PageController extends Controller
             'font_title' => $this->articleFontInline($a, 'title'),
             'font_excerpt' => $this->articleFontInline($a, 'excerpt'),
             'font_content' => $this->articleFontInline($a, 'content'),
+            'title_heading_tag' => ArticleContent::headingLevel($a->title_heading_level),
+            'excerpt_heading_tag' => ArticleContent::blockLevel($a->excerpt_heading_level),
+            'content_heading_tag' => ArticleContent::blockLevel($a->content_heading_level),
+            'heading_fonts' => ArticleContent::normalizeFonts($a->heading_fonts),
+            'heading_font_styles' => ArticleContent::headingFontStyles($a->heading_fonts),
+            'content_blocks' => ArticleContent::blocks($localized['content']),
         ];
     }
 

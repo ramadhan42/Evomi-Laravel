@@ -44,7 +44,7 @@ class BerandaCmsDefaultsTest extends TestCase
         $this->assertSame('500', $map['sixth|label1_font_weight'][1]);
         $this->assertSame('9px', $map['sixth|label1_fs_mobile'][1]);
 
-        $this->assertSame('Mulai Kuis', $map['seventh|cta_label'][1]);
+        $this->assertSame('Temukan Aromamu', $map['seventh|cta_label'][1]);
         $this->assertSame('30px', $map['seventh|headline_1_fs_mobile'][1]);
         $this->assertSame('55px', $map['seventh|headline_1_fs_desktop'][1]);
         $this->assertSame('14px', $map['seventh|cta_label_fs_mobile'][1]);

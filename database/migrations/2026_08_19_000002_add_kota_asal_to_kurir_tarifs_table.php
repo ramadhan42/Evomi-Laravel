@@ -88,21 +88,26 @@ return new class extends Migration
         });
     }
 
+    /* Schema introspection instead of raw MySQL queries, so this also runs on sqlite. */
     private function indexExists(string $table, string $index): bool
     {
-        $rows = DB::select('SHOW INDEX FROM `'.$table.'` WHERE Key_name = ?', [$index]);
+        foreach (Schema::getIndexes($table) as $row) {
+            if (strcasecmp((string) ($row['name'] ?? ''), $index) === 0) {
+                return true;
+            }
+        }
 
-        return count($rows) > 0;
+        return false;
     }
 
     private function foreignKeyExists(string $table, string $foreignKey): bool
     {
-        $database = DB::getDatabaseName();
-        $rows = DB::select(
-            'SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = ? AND CONSTRAINT_TYPE = ?',
-            [$database, $table, $foreignKey, 'FOREIGN KEY']
-        );
+        foreach (Schema::getForeignKeys($table) as $row) {
+            if (strcasecmp((string) ($row['name'] ?? ''), $foreignKey) === 0) {
+                return true;
+            }
+        }
 
-        return count($rows) > 0;
+        return false;
     }
 };

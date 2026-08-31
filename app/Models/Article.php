@@ -34,11 +34,16 @@ class Article extends Model
         'content_font_weight',
         'content_font_style',
         'content_font_size',
+        'title_heading_level',
+        'excerpt_heading_level',
+        'content_heading_level',
+        'heading_fonts',
         'is_published',
         'published_at',
     ];
 
     protected $casts = [
+        'heading_fonts' => 'array',
         'is_published' => 'boolean',
         'published_at' => 'datetime',
     ];

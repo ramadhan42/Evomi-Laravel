@@ -1891,8 +1891,21 @@ body.evomi-surface-blue #evomi-main {
     word-break: break-word;
 }
 
-.artikel-detail-page .artikel-detail-body p {
+/* Body text keeps paragraph looks even when rendered with a heading tag. */
+.artikel-detail-page .artikel-detail-body p,
+.artikel-detail-page .artikel-detail-text {
     overflow-wrap: anywhere;
+}
+
+.artikel-detail-page .artikel-detail-heading {
+    overflow-wrap: anywhere;
+    line-height: 1.28;
+    letter-spacing: -0.01em;
+}
+
+/* Headings need more air above than the uniform space-y-5 gives them. */
+.artikel-detail-page .artikel-detail-body > .artikel-detail-heading:not(:first-child) {
+    margin-top: 2rem;
 }
 
 @media (max-width: 767px) {

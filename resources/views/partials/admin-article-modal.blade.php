@@ -95,7 +95,7 @@
                     </label>
                 </div>
 
-                @include('partials.admin-article-typography', ['prefix' => 'title'])
+                @include('partials.admin-article-typography', ['prefix' => 'title', 'withLevel' => true])
 
                 <div class="grid md:grid-cols-3 gap-3">
                     <label class="block text-sm">
@@ -139,7 +139,7 @@
                     ></textarea>
                 </label>
 
-                @include('partials.admin-article-typography', ['prefix' => 'excerpt'])
+                @include('partials.admin-article-typography', ['prefix' => 'excerpt', 'withLevel' => true, 'levelOptions' => 'blockLevelOptions', 'levelKind' => 'block_level', 'levelHint' => 'block_level_hint'])
 
                 <label class="block text-sm">
                     <span class="mb-1 block text-gray-600" x-text="t('articles','content_id')"></span>
@@ -159,7 +159,18 @@
                     ></textarea>
                 </label>
 
-                @include('partials.admin-article-typography', ['prefix' => 'content'])
+                @include('partials.admin-article-typography', ['prefix' => 'content', 'withLevel' => true, 'levelOptions' => 'blockLevelOptions', 'levelKind' => 'block_level', 'levelHint' => 'block_level_hint'])
+
+                {{-- Heading typography used by "#"-prefixed lines inside the content --}}
+                <div class="rounded-2xl border border-gray-200 bg-white p-3 space-y-3">
+                    <div>
+                        <p class="text-sm font-bold text-gray-900" x-text="t('articles','typography_headings')"></p>
+                        <p class="mt-1 text-[11px] leading-relaxed text-gray-500" x-text="t('articles','heading_hint')"></p>
+                    </div>
+                    @foreach (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as $level)
+                        @include('partials.admin-article-typography', ['prefix' => $level])
+                    @endforeach
+                </div>
 
                 <div class="grid md:grid-cols-2 gap-3">
                     <label class="block text-sm">

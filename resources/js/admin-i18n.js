@@ -215,6 +215,22 @@ const DICT = {
         font_weight: ['Weight', 'Weight'],
         font_style: ['Style', 'Style'],
         font_size: ['Font size', 'Font size'],
+        heading_level: ['Level heading', 'Heading level'],
+        heading_level_hint: [
+            'Tag HTML yang dipakai saat judul dirender.',
+            'HTML tag used when the title is rendered.',
+        ],
+        block_level_hint: [
+            'Tag HTML yang dipakai saat teks ini dirender. Pilih Normal untuk teks biasa tanpa heading.',
+            'HTML tag used when this text is rendered. Pick Normal for plain text with no heading.',
+        ],
+        typography_headings: ['Tipografi Heading Konten', 'Content Heading Typography'],
+        heading_in_content: ['Heading', 'Heading'],
+        heading_sample: ['Contoh Heading', 'Sample Heading'],
+        heading_hint: [
+            'Tulis "## Judul bagian" di kolom Konten untuk membuat heading. Jumlah # menentukan levelnya (# = H1, ## = H2, dst).',
+            'Write "## Section title" in the Content field to create a heading. The number of # sets the level (# = H1, ## = H2, and so on).',
+        ],
         upload_in_progress: [
             'Mengunggah gambar & menyimpan artikel…',
             'Uploading image & saving article…',
