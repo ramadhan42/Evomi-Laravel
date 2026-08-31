@@ -142,11 +142,29 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
+          # Kunci yang tersalin sebagian (baris BEGIN/END hilang, atau ada
+          # spasi ikut terbawa) gagal jauh di belakang dengan pesan libcrypto
+          # yang membingungkan. Diperiksa di sini, dan sidik jarinya dicetak
+          # supaya bisa dicocokkan dengan yang terdaftar di server - sidik jari
+          # bukan rahasia.
+          if ! ssh-keygen -y -f ~/.ssh/deploy_key > ~/.ssh/deploy_key.pub 2>/tmp/keyerr; then
+            echo "::error::SSH_PRIVATE_KEY tidak terbaca sebagai kunci OpenSSH: $(tail -1 /tmp/keyerr)"
+            echo "::error::Salin ulang SELURUH isi berkas kunci, termasuk baris -----BEGIN dan -----END"
+            exit 1
+          fi
+
+          echo "sidik jari kunci: $(ssh-keygen -lf ~/.ssh/deploy_key.pub)"
+
           # Host key diambil sekali di sini, jadi ssh tidak perlu ditawari
           # StrictHostKeyChecking=no yang menerima host mana pun.
-          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/tmp/scanerr || true
 
-          echo "kunci dan host key siap"
+          if [ ! -s ~/.ssh/known_hosts ]; then
+            echo "::error::ssh-keyscan tidak mendapat host key dari $SSH_HOST:$SSH_PORT - $(tail -2 /tmp/scanerr)"
+            exit 1
+          fi
+
+          echo "host key terbaca: $(wc -l < ~/.ssh/known_hosts) baris"
 
       - name: Kirim script deploy
         env:
@@ -160,8 +178,18 @@ jobs:
             exit 1
           fi
 
-          scp -P "$SSH_PORT" -i ~/.ssh/deploy_key -o BatchMode=yes \
-              "$SCRIPT" "$SSH_USER@$SSH_HOST:~/ssh-deploy.sh"
+          # -v dipakai supaya alasan penolakan (kunci ditolak, host key salah,
+          # atau user keliru) terbaca langsung di log, bukan sekadar "exit 1".
+          # Tujuan ditulis tanpa "~/" karena sebagian server menolak tilde di
+          # sisi scp protokol lama.
+          if ! scp -v -P "$SSH_PORT" -i ~/.ssh/deploy_key -o BatchMode=yes -o IdentitiesOnly=yes \
+                   "$SCRIPT" "$SSH_USER@$SSH_HOST:ssh-deploy.sh" 2>/tmp/scperr; then
+            echo "--- alasan penolakan ---"
+            grep -Ei 'permission denied|host key|libcrypto|invalid format|no such file|refused|timed out|denied|error' /tmp/scperr | tail -12
+            echo "------------------------"
+            echo "::error::scp gagal - lihat alasan di atas"
+            exit 1
+          fi
 
           echo "$SCRIPT terkirim"
 
