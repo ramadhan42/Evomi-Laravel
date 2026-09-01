@@ -8,6 +8,7 @@ use App\Models\SeoSetting;
 use App\Support\SiteSeo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class SitemapTest extends TestCase
@@ -96,6 +97,19 @@ class SitemapTest extends TestCase
         foreach (['/checkout', '/login', '/register', '/dashboard', '/profile'] as $path) {
             $this->assertStringNotContainsString('<loc>'.url($path).'</loc>', $body);
         }
+    }
+
+    /** The few seconds during a deploy when the code is new and the table is not. */
+    public function test_it_still_renders_when_the_seo_table_is_missing(): void
+    {
+        SiteSeo::forgetCache();
+        SitemapController::forgetCache();
+        Schema::drop('seo_settings');
+
+        $response = $this->get('/sitemap.xml');
+
+        $response->assertOk();
+        $this->assertStringContainsString('<loc>'.route('beranda').'</loc>', $response->getContent());
     }
 
     public function test_editing_seo_settings_refreshes_the_cached_document(): void

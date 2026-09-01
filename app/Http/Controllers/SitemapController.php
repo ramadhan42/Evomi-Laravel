@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\SeoSetting;
 use App\Models\SiteContent;
 use App\Support\SiteSeo;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -77,7 +78,16 @@ class SitemapController extends Controller
      */
     private function staticPages(): array
     {
-        $seoDates = SeoSetting::query()->pluck('updated_at', 'page');
+        // The deploy copies code before `migrate` runs, so for a few seconds
+        // this table may not exist yet. A sitemap without `lastmod` is still a
+        // valid sitemap; a 500 logged in Search Console is not worth it.
+        try {
+            $seoDates = SeoSetting::query()->pluck('updated_at', 'page');
+        } catch (QueryException $e) {
+            report($e);
+            $seoDates = collect();
+        }
+
         $cmsDates = SiteContent::query()
             ->selectRaw('page, MAX(updated_at) as updated_at')
             ->groupBy('page')

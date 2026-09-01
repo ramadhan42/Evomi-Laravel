@@ -57,6 +57,10 @@ copy "$SRC/resources"          "$LARAVEL/resources"
 # Aset build dibutuhkan Laravel (manifest) dan docroot (URL publik).
 copy "$SRC/public/build"       "$LARAVEL/public/build"
 copy "$SRC/public/build"       "$DOC/build"
+# robots.txt dilayani langsung dari docroot dan bukan folder, jadi copy() di
+# atas melewatinya - tanpa dua baris ini perubahannya tidak pernah sampai.
+cp   "$SRC/public/robots.txt"  "$DOC/robots.txt"
+cp   "$SRC/public/robots.txt"  "$LARAVEL/public/robots.txt"
 copy "$SRC/public/src"         "$LARAVEL/public/src"
 copy "$SRC/public/src"         "$DOC/src"
 copy "$SRC/public/videos"      "$LARAVEL/public/videos"
