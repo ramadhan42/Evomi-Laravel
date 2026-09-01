@@ -9243,3 +9243,19 @@ select.admin-field-input {
 .artikel-detail-page .artikel-detail-body > *:first-child {
     margin-top: 0;
 }
+
+/* Halaman auth: Chrome mengecat ulang kolom yang diisi otomatis dengan putih
+   kebiruannya sendiri, yang tidak sama dengan putih kolom di sini - hasilnya
+   satu kolom terisi tampak berbeda dari kolom di sebelahnya. Warnanya dikunci
+   lewat inset shadow, satu-satunya cara menimpa cat autofill, dan transisi
+   panjang menahan Chrome mengecatnya kembali sesaat setelah halaman dimuat. */
+.evomi-auth-shell input:-webkit-autofill,
+.evomi-auth-shell input:-webkit-autofill:hover,
+.evomi-auth-shell input:-webkit-autofill:focus,
+.evomi-auth-shell input:-webkit-autofill:active {
+    -webkit-text-fill-color: #111827;
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+    box-shadow: 0 0 0 1000px #ffffff inset;
+    caret-color: #111827;
+    transition: background-color 9999s ease-in-out 0s;
+}

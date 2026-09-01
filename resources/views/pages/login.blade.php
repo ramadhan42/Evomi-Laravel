@@ -4,13 +4,13 @@
 
 @section('content')
 <x-auth-shell>
-    <div class="space-y-8 relative" x-data="evomiAuth('login')">
+    <div class="space-y-6 relative" x-data="evomiAuth('login')">
         <div class="text-center space-y-2">
             <h1 class="text-4xl md:text-5xl font-bold text-white tracking-tight uppercase">Masuk</h1>
             <p class="text-blue-100/80 font-light italic text-sm">Lanjutkan perjalanan Anda bersama Evomi</p>
         </div>
 
-        <form class="space-y-5" @submit.prevent="submit">
+        <form class="space-y-4" @submit.prevent="submit">
             <div class="space-y-2">
                 <label for="login-email" class="text-xs font-semibold text-white/80 uppercase tracking-widest ml-1">Email</label>
                 <input
@@ -20,7 +20,7 @@
                     required
                     autocomplete="email"
                     placeholder="Masukkan email Anda"
-                    class="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder:text-white/40 focus:bg-white/20 focus:border-white/40 outline-none transition-all duration-200"
+                    class="w-full bg-white border border-transparent rounded-2xl px-5 py-4 text-gray-900 placeholder:text-gray-400 focus:border-white focus:ring-2 focus:ring-white/60 outline-none transition-all duration-200"
                 >
             </div>
 
@@ -37,11 +37,11 @@
                         required
                         autocomplete="current-password"
                         placeholder="••••••••"
-                        class="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 pr-12 text-white placeholder:text-white/40 focus:bg-white/20 focus:border-white/40 outline-none transition-all duration-200"
+                        class="w-full bg-white border border-transparent rounded-2xl px-5 py-4 pr-12 text-gray-900 placeholder:text-gray-400 focus:border-white focus:ring-2 focus:ring-white/60 outline-none transition-all duration-200"
                     >
                     <button
                         type="button"
-                        class="absolute right-4 top-1/2 -translate-y-1/2 text-white/55 hover:text-white transition-colors"
+                        class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-colors"
                         @click="showPassword = !showPassword"
                         :aria-label="showPassword ? 'Sembunyikan password' : 'Tampilkan password'"
                     >
@@ -55,18 +55,37 @@
                 </div>
             </div>
 
+            {{-- Sesi panjang. Tanpa centang ini, sesi berakhir saat browser ditutup. --}}
+            <label class="flex items-center gap-2.5 cursor-pointer group select-none ml-1">
+                <span class="relative flex items-center justify-center shrink-0">
+                    <input type="checkbox" x-model="form.remember" class="peer sr-only">
+                    <span
+                        class="h-[18px] w-[18px] rounded-md border border-white/30 bg-white/10 transition-all duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-white/60 peer-checked:bg-white peer-checked:border-white"
+                        aria-hidden="true"
+                    ></span>
+                    <svg
+                        class="pointer-events-none absolute h-3 w-3 text-[#1172ba] opacity-0 transition-opacity duration-200 peer-checked:opacity-100"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                    ><path d="M20 6 9 17l-5-5"/></svg>
+                </span>
+                <span class="text-[13px] text-white/75 group-hover:text-white transition-colors">
+                    Biarkan saya tetap masuk, selama {{ (int) config('evomi.auth.remember_days', 30) }} hari
+                </span>
+            </label>
+
             @include('partials.turnstile-field', ['theme' => 'dark'])
 
             <button
                 type="submit"
                 :disabled="loading"
-                class="w-full bg-white text-[#1172ba] font-bold py-4 rounded-2xl shadow-lg shadow-blue-950/10 hover:bg-blue-50 active:scale-[0.99] transition-all uppercase tracking-widest text-sm mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
+                class="w-full bg-white text-[#1172ba] font-bold py-4 rounded-2xl shadow-lg shadow-blue-950/10 hover:bg-blue-50 active:scale-[0.99] transition-all uppercase tracking-widest text-sm mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
                 <span x-text="loading ? 'Memproses...' : 'Masuk Sekarang'"></span>
             </button>
         </form>
 
-        <div class="text-center pt-2">
+        <div class="text-center">
             <p class="text-sm text-white/70">
                 Belum punya akun?
                 <a href="{{ route('register') }}" data-soft-nav class="text-white font-bold hover:underline underline-offset-4 tracking-wider">DAFTAR</a>

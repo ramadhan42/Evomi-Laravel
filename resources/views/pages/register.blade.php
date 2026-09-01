@@ -29,7 +29,7 @@
                         required
                         autocomplete="name"
                         placeholder="Nama lengkap Anda"
-                        class="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder:text-white/40 focus:bg-white/20 focus:border-white/40 outline-none transition-all duration-200"
+                        class="w-full bg-white border border-transparent rounded-2xl px-5 py-4 text-gray-900 placeholder:text-gray-400 focus:border-white focus:ring-2 focus:ring-white/60 outline-none transition-all duration-200"
                     >
                 </div>
 
@@ -42,7 +42,7 @@
                         required
                         autocomplete="email"
                         placeholder="email@example.com"
-                        class="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder:text-white/40 focus:bg-white/20 focus:border-white/40 outline-none transition-all duration-200"
+                        class="w-full bg-white border border-transparent rounded-2xl px-5 py-4 text-gray-900 placeholder:text-gray-400 focus:border-white focus:ring-2 focus:ring-white/60 outline-none transition-all duration-200"
                     >
                 </div>
 
@@ -56,16 +56,14 @@
                             required
                             autocomplete="new-password"
                             placeholder="••••••••"
-                            @focus="passwordFocused = true"
-                            @blur="passwordFocused = false"
-                            class="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 pr-12 text-white placeholder:text-white/40 focus:bg-white/20 focus:border-white/40 outline-none transition-all duration-200"
+                            class="w-full bg-white border border-transparent rounded-2xl px-5 py-4 pr-12 text-gray-900 placeholder:text-gray-400 focus:border-white focus:ring-2 focus:ring-white/60 outline-none transition-all duration-200"
                         >
+                        {{-- Sebelumnya x-show="passwordFocused": tombolnya tidak
+                             dirender sebelum kolom diklik, jadi tidak ada penanda
+                             bahwa password bisa ditampilkan. --}}
                         <button
                             type="button"
-                            x-show="passwordFocused"
-                            x-cloak
-                            x-transition
-                            class="absolute right-4 top-1/2 -translate-y-1/2 text-white/55 hover:text-white transition-colors"
+                            class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-colors"
                             @mousedown.prevent
                             @click="showPassword = !showPassword"
                             :aria-label="showPassword ? 'Sembunyikan password' : 'Tampilkan password'"

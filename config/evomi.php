@@ -35,6 +35,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Masa berlaku sesi login
+    |--------------------------------------------------------------------------
+    |
+    | Dua umur token, dipilih oleh centang "Biarkan saya tetap masuk" di
+    | halaman login. Yang dicentang bertahan lintas penutupan browser; yang
+    | tidak hanya berumur satu sesi peramban dan tokennya kedaluwarsa cepat,
+    | supaya login di perangkat pinjaman tidak tertinggal terbuka.
+    |
+    */
+    'auth' => [
+        'remember_days' => (int) env('EVOMI_AUTH_REMEMBER_DAYS', 30),
+        'session_hours' => (int) env('EVOMI_AUTH_SESSION_HOURS', 12),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | URL publik (frontend & aset)
     |--------------------------------------------------------------------------
     |
@@ -119,7 +135,6 @@ return [
         'compare_at' => 250000,
         'display' => 190000,
     ],
-
 
     /*
     |--------------------------------------------------------------------------

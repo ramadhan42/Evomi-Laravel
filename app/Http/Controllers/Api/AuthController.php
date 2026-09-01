@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
@@ -14,6 +15,19 @@ use Throwable;
 
 class AuthController extends Controller
 {
+    /**
+     * Umur token, ditentukan centang "Biarkan saya tetap masuk".
+     *
+     * Tanpa centang itu token tetap diberi batas, jadi sesi yang tertinggal di
+     * perangkat pinjaman ikut mati sendiri alih-alih berlaku selamanya.
+     */
+    private static function tokenExpiry(Carbon $now, bool $remember): Carbon
+    {
+        return $remember
+            ? $now->copy()->addDays(max(1, (int) config('evomi.auth.remember_days', 30)))
+            : $now->copy()->addHours(max(1, (int) config('evomi.auth.session_hours', 12)));
+    }
+
     public function register(Request $request)
     {
         $request->validate([
@@ -32,9 +46,16 @@ class AuthController extends Controller
             'last_seen_at' => $now,
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $remember = $request->boolean('remember');
+        $expiresAt = self::tokenExpiry($now, $remember);
+        $token = $user->createToken('auth_token', ['*'], $expiresAt)->plainTextToken;
 
-        return response()->json(['user' => $user, 'token' => $token], 201);
+        return response()->json([
+            'user' => $user,
+            'token' => $token,
+            'remember' => $remember,
+            'expires_at' => $expiresAt->toIso8601String(),
+        ], 201);
     }
 
     public function login(Request $request)
@@ -61,9 +82,16 @@ class AuthController extends Controller
             'last_seen_at' => $now,
         ])->save();
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $remember = $request->boolean('remember');
+        $expiresAt = self::tokenExpiry($now, $remember);
+        $token = $user->createToken('auth_token', ['*'], $expiresAt)->plainTextToken;
 
-        return response()->json(['user' => $user->fresh(), 'token' => $token]);
+        return response()->json([
+            'user' => $user->fresh(),
+            'token' => $token,
+            'remember' => $remember,
+            'expires_at' => $expiresAt->toIso8601String(),
+        ]);
     }
 
     /**

@@ -30,7 +30,7 @@
                         required
                         autocomplete="email"
                         placeholder="email@example.com"
-                        class="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder:text-white/40 focus:bg-white/20 focus:border-white/40 outline-none transition-all duration-200"
+                        class="w-full bg-white border border-transparent rounded-2xl px-5 py-4 text-gray-900 placeholder:text-gray-400 focus:border-white focus:ring-2 focus:ring-white/60 outline-none transition-all duration-200"
                     >
                     <p class="text-[11px] text-white/50 leading-relaxed ml-1">
                         Masukkan email yang Anda pakai saat mendaftar. Tautan reset berlaku 60 menit.

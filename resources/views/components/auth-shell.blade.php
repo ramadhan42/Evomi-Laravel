@@ -59,7 +59,7 @@
     @endforeach
 
     <div
-        class="w-full max-w-[480px] rounded-[40px] p-8 md:p-12 shadow-2xl shadow-blue-950/20 border border-blue-600/20 relative z-10 text-white"
+        class="w-full max-w-[480px] rounded-[40px] p-8 md:p-10 shadow-2xl shadow-blue-950/20 border border-blue-600/20 relative z-10 text-white"
         style="background-color:#1172ba"
     >
         {{ $slot }}

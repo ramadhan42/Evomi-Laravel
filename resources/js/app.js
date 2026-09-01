@@ -1067,38 +1067,102 @@ function isDashboardPath(pathname) {
     return p === '/dashboard' || p.startsWith('/dashboard/');
 }
 
+const AUTH_KEYS = ['auth_token', 'auth_user', 'user', 'auth_expires_at'];
+
+/**
+ * Sesi login disimpan di salah satu dari dua tempat, sesuai centang
+ * "Biarkan saya tetap masuk": localStorage bertahan setelah browser ditutup,
+ * sessionStorage ikut hilang bersama tabnya. Pembacaan selalu memeriksa
+ * keduanya supaya kode pemanggil tidak perlu tahu yang mana dipakai.
+ */
+function authStores() {
+    const out = [];
+    try { if (window.localStorage) out.push(window.localStorage); } catch {}
+    try { if (window.sessionStorage) out.push(window.sessionStorage); } catch {}
+    return out;
+}
+
+function authReadRaw(key) {
+    for (const store of authStores()) {
+        try {
+            const value = store.getItem(key);
+            if (value) return value;
+        } catch {}
+    }
+    return '';
+}
+
+/** Tempat sesi sekarang berada; localStorage kalau belum ada apa-apa. */
+function activeAuthStore() {
+    for (const store of authStores()) {
+        try {
+            if (store.getItem('auth_token')) return store;
+        } catch {}
+    }
+    try { return window.localStorage; } catch { return null; }
+}
+
+/** Token yang sudah lewat masa berlakunya dibuang, bukan dikirim lalu ditolak 401. */
+function authSessionExpired() {
+    const raw = authReadRaw('auth_expires_at');
+    if (!raw) return false;
+    const at = Date.parse(raw);
+    return Number.isFinite(at) && at <= Date.now();
+}
+
 function getAuthToken() {
-    try {
-        return localStorage.getItem('auth_token') || '';
-    } catch {
+    if (authSessionExpired()) {
+        clearAuthSession();
         return '';
     }
+    return authReadRaw('auth_token') || '';
 }
 
 function getAuthUser() {
     try {
-        const raw = localStorage.getItem('auth_user') || localStorage.getItem('user');
+        const raw = authReadRaw('auth_user') || authReadRaw('user');
         return raw ? JSON.parse(raw) : null;
     } catch {
         return null;
     }
 }
 
-function setAuthSession(token, user) {
-    localStorage.setItem('auth_token', token);
-    localStorage.setItem('auth_user', JSON.stringify(user));
-    if (user?.is_admin) {
-        localStorage.setItem('user', JSON.stringify(user));
-    } else {
-        localStorage.removeItem('user');
+/**
+ * `remember` null berarti pertahankan pilihan yang sudah dipakai sesi ini -
+ * dipakai saat data user disegarkan dengan token yang sama.
+ */
+function setAuthSession(token, user, remember = null, expiresAt = null) {
+    const store = remember === null
+        ? activeAuthStore()
+        : (remember ? window.localStorage : window.sessionStorage);
+
+    if (!store) return;
+
+    // Bersihkan tempat satunya supaya tidak ada sisa token ganda yang terbaca
+    // lebih dulu dan membuat sesi seolah hidup kembali.
+    for (const other of authStores()) {
+        if (other === store) continue;
+        try { AUTH_KEYS.forEach((k) => other.removeItem(k)); } catch {}
     }
+
+    try {
+        store.setItem('auth_token', token);
+        store.setItem('auth_user', JSON.stringify(user));
+        if (expiresAt) store.setItem('auth_expires_at', expiresAt);
+        if (user?.is_admin) {
+            store.setItem('user', JSON.stringify(user));
+        } else {
+            store.removeItem('user');
+        }
+    } catch {}
+
     window.dispatchEvent(new Event('auth-change'));
 }
 
 function clearAuthSession() {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('user');
+    for (const store of authStores()) {
+        try { AUTH_KEYS.forEach((k) => store.removeItem(k)); } catch {}
+    }
     window.dispatchEvent(new Event('auth-change'));
 }
 
@@ -6292,8 +6356,7 @@ document.addEventListener('alpine:init', () => {
         loading: false,
         error: '',
         showPassword: false,
-        passwordFocused: false,
-        form: { name: '', email: '', password: '' },
+        form: { name: '', email: '', password: '', remember: true },
         ...turnstileState(),
         modal: {
             show: false,
@@ -6375,13 +6438,15 @@ document.addEventListener('alpine:init', () => {
 
             try {
                 const endpoint = this.mode === 'login' ? '/api/login' : '/api/register';
+                const remember = !!this.form.remember;
                 const body =
                     this.mode === 'login'
-                        ? { email: this.form.email, password, captcha_token: captchaToken }
+                        ? { email: this.form.email, password, remember, captcha_token: captchaToken }
                         : {
                               name: this.form.name.trim(),
                               email: this.form.email,
                               password,
+                              remember,
                               _hp: '',
                               captcha_token: captchaToken,
                           };
@@ -6422,7 +6487,7 @@ document.addEventListener('alpine:init', () => {
                     throw new Error('Token tidak diterima dari server.');
                 }
 
-                setAuthSession(token, user);
+                setAuthSession(token, user, remember, data.expires_at || null);
                 const go = this.destinationForUser(user);
 
                 if (this.mode === 'login') {

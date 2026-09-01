@@ -45,11 +45,11 @@
                         required
                         autocomplete="new-password"
                         placeholder="Minimal 8 karakter"
-                        class="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 pr-12 text-white placeholder:text-white/40 focus:bg-white/20 focus:border-white/40 outline-none transition-all duration-200"
+                        class="w-full bg-white border border-transparent rounded-2xl px-5 py-4 pr-12 text-gray-900 placeholder:text-gray-400 focus:border-white focus:ring-2 focus:ring-white/60 outline-none transition-all duration-200"
                     >
                     <button
                         type="button"
-                        class="absolute right-4 top-1/2 -translate-y-1/2 text-white/55 hover:text-white transition-colors"
+                        class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-colors"
                         @click="showPassword = !showPassword"
                         :aria-label="showPassword ? 'Sembunyikan password' : 'Tampilkan password'"
                     >
@@ -72,7 +72,7 @@
                     required
                     autocomplete="new-password"
                     placeholder="••••••••"
-                    class="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder:text-white/40 focus:bg-white/20 focus:border-white/40 outline-none transition-all duration-200"
+                    class="w-full bg-white border border-transparent rounded-2xl px-5 py-4 text-gray-900 placeholder:text-gray-400 focus:border-white focus:ring-2 focus:ring-white/60 outline-none transition-all duration-200"
                 >
             </div>
 
