@@ -80,7 +80,7 @@ return [
         'exempt_email' => strtolower(trim((string) (
             env('EVOMI_ADMIN_EMAIL')
             ?: config('evomi.development_admin.email')
-            ?: 'admin@evomi.com'
+            ?: 'admin@evomi.id'
         ))),
     ],
 

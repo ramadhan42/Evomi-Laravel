@@ -8,7 +8,7 @@ export function initSourceGuard(getAuthUser) {
         return;
     }
 
-    const exemptEmail = String(cfg.exemptEmail || 'admin@evomi.com')
+    const exemptEmail = String(cfg.exemptEmail || 'admin@evomi.id')
         .trim()
         .toLowerCase();
 

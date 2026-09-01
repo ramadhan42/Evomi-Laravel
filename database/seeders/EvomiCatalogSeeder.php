@@ -186,8 +186,8 @@ class EvomiCatalogSeeder extends Seeder
             return;
         }
 
-        $email = config('evomi.development_admin.email') ?: 'admin@evomi.com';
-        $password = config('evomi.development_admin.password') ?: 'password123';
+        $email = config('evomi.development_admin.email') ?: 'admin@evomi.id';
+        $password = config('evomi.development_admin.password') ?: 'password';
         $name = config('evomi.development_admin.name') ?: 'Evomi Admin';
 
         User::query()->updateOrCreate(
