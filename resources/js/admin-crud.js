@@ -1207,6 +1207,41 @@ export function registerAdminCrud(Alpine, deps) {
         return /^h[1-6]_font_(family|weight|style|size)$/.test(key || '');
     }
 
+    /* ---------- SEO ---------- */
+
+    /** Kept in step with App\Support\ArticleSeo::SCHEMA_TYPES. */
+    const SCHEMA_TYPES = ['BlogPosting', 'Article', 'NewsArticle'];
+    const FAQ_KEYS = ['question', 'answer', 'question_en', 'answer_en'];
+    const FAQ_MAX = 20;
+
+    /** Google's snippet limits — what the meta counters measure against. */
+    const META_TITLE_MAX = 60;
+    const META_DESCRIPTION_MAX = 160;
+
+    /** FAQ rows arrive as JSON from the API and as objects from the form. */
+    function normalizeFaqRows(raw) {
+        let source = raw;
+        if (typeof source === 'string') {
+            try {
+                source = JSON.parse(source);
+            } catch {
+                source = [];
+            }
+        }
+        if (!Array.isArray(source)) return [];
+
+        return source.slice(0, FAQ_MAX).map((row) => {
+            const given = row && typeof row === 'object' ? row : {};
+            const out = {};
+            for (const key of FAQ_KEYS) out[key] = String(given[key] ?? '');
+            return out;
+        });
+    }
+
+    function emptyFaqRow() {
+        return { question: '', answer: '', question_en: '', answer_en: '' };
+    }
+
     /** Gambar sisipan artikel diunggah lewat endpoint admin khusus. */
     async function uploadInlineArticleImage(file) {
         const fd = new FormData();
@@ -1218,6 +1253,208 @@ export function registerAdminCrud(Alpine, deps) {
 
     registerDocEditor(Alpine, { uploadImage: uploadInlineArticleImage });
     registerCmsRichText(Alpine);
+
+    /* ---------- SEO (site-wide meta + share image) ---------- */
+    Alpine.data('evomiAdminSeo', () => ({
+        ...i18nMixin(),
+        loading: true,
+        error: '',
+        rows: [],
+        originals: {},
+        openPage: null,
+        openTranslation: null,
+        savingPage: null,
+        titleMax: 60,
+        descriptionMax: 160,
+
+        init() {
+            this.watchLocale();
+            this.load();
+        },
+
+        async load() {
+            this.loading = true;
+            this.error = '';
+            try {
+                const data = await adminJson('/api/admin/seo');
+                this.rows = (data?.data || []).map((row) => ({
+                    ...row,
+                    meta_title: row.meta_title || '',
+                    meta_title_en: row.meta_title_en || '',
+                    meta_description: row.meta_description || '',
+                    meta_description_en: row.meta_description_en || '',
+                    meta_keywords: row.meta_keywords || '',
+                    og_image: row.og_image || '',
+                    noindex: !!row.noindex,
+                }));
+                // Snapshot so "Kembalikan" can undo unsaved edits.
+                this.originals = {};
+                this.rows.forEach((row) => {
+                    this.originals[row.page] = JSON.parse(JSON.stringify(row));
+                });
+                this.titleMax = data?.meta?.title_max || 60;
+                this.descriptionMax = data?.meta?.description_max || 160;
+                if (!this.openPage && this.rows.length) this.openPage = this.rows[0].page;
+            } catch (e) {
+                this.error = e.message || this.t('seo', 'load_error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        pageLabel(row) {
+            return this.locale === 'en' ? row.label_en || row.label : row.label;
+        },
+
+        toggle(page) {
+            this.openPage = this.openPage === page ? null : page;
+            this.openTranslation = null;
+        },
+
+        toggleTranslation(page) {
+            this.openTranslation = this.openTranslation === page ? null : page;
+        },
+
+        /** The site default row every other page inherits from. */
+        defaultRow() {
+            return this.rows.find((r) => r.page === 'default') || null;
+        },
+
+        /** What this page will actually serve once saved. */
+        effective(row, field) {
+            const own = String(row[field] || '').trim();
+            if (own) return own;
+
+            const fallback = this.defaultRow();
+            if (fallback && fallback.page !== row.page) {
+                const inherited = String(fallback[field] || '').trim();
+                if (inherited) return inherited;
+            }
+
+            return row.resolved?.[field === 'meta_title' ? 'title' : 'description'] || '';
+        },
+
+        length(row, field) {
+            return this.effective(row, field).length;
+        },
+
+        max(field) {
+            return field === 'meta_title' ? this.titleMax : this.descriptionMax;
+        },
+
+        /** Traffic light for the counter: short / good / long. */
+        state(row, field) {
+            const length = this.length(row, field);
+            const max = this.max(field);
+            if (length === 0) return 'short';
+            if (length > max) return 'long';
+            if (length < Math.round(max * 0.5)) return 'short';
+
+            return 'good';
+        },
+
+        stateLabel(row, field) {
+            const state = this.state(row, field);
+            if (state === 'long') return this.t('seo', 'too_long');
+            if (state === 'short') return this.t('seo', 'too_short');
+
+            return this.t('seo', 'good');
+        },
+
+        stateClass(row, field) {
+            const state = this.state(row, field);
+            if (state === 'long') return 'text-rose-600';
+            if (state === 'short') return 'text-amber-600';
+
+            return 'text-emerald-600';
+        },
+
+        /** Locally chosen file wins, then the stored one, then the inherited default. */
+        previewImage(row) {
+            if (row.local_preview) return row.local_preview;
+            if (row.og_image_url) return row.og_image_url;
+            if (row.og_image) return mediaUrl(row.og_image);
+
+            const fallback = this.defaultRow();
+            if (fallback && fallback.page !== row.page) {
+                return fallback.local_preview || fallback.og_image_url || '';
+            }
+
+            return '';
+        },
+
+        async onImage(row, event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                this.notify(this.t('seo', 'image_too_large'), 'error');
+                event.target.value = '';
+                return;
+            }
+
+            row.local_preview = URL.createObjectURL(file);
+            this.savingPage = row.page;
+            try {
+                const fd = new FormData();
+                fd.append('image', file);
+                const data = await adminJson('/api/admin/seo/image', { method: 'POST', body: fd });
+                row.og_image = data?.data?.path || '';
+                row.og_image_url = data?.data?.url || '';
+                this.notify(this.t('seo', 'image_uploaded'));
+            } catch (e) {
+                row.local_preview = null;
+                this.notify(e.message, 'error');
+            } finally {
+                this.savingPage = null;
+                event.target.value = '';
+            }
+        },
+
+        clearImage(row) {
+            row.og_image = '';
+            row.og_image_url = '';
+            row.local_preview = null;
+        },
+
+        reset(row) {
+            const original = this.originals[row.page];
+            if (!original) return;
+            Object.assign(row, JSON.parse(JSON.stringify(original)), { local_preview: null });
+        },
+
+        async save(row) {
+            if (this.savingPage) return;
+            this.savingPage = row.page;
+            try {
+                const data = await adminJson(`/api/admin/seo/${row.page}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        meta_title: row.meta_title,
+                        meta_title_en: row.meta_title_en,
+                        meta_description: row.meta_description,
+                        meta_description_en: row.meta_description_en,
+                        meta_keywords: row.meta_keywords,
+                        og_image: row.og_image,
+                        noindex: row.noindex ? 1 : 0,
+                    }),
+                });
+                row.resolved = data?.data?.resolved || row.resolved;
+                row.og_image_url = data?.data?.og_image_url || '';
+                row.local_preview = null;
+                this.originals[row.page] = JSON.parse(JSON.stringify(row));
+                this.notify(this.t('seo', 'saved'));
+            } catch (e) {
+                this.notify(e.message, 'error');
+            } finally {
+                this.savingPage = null;
+            }
+        },
+
+        notify(message, type = 'success') {
+            Alpine.store('adminUi').notify(message, type);
+        },
+    }));
 
     /* ---------- ARTICLES ---------- */
     Alpine.data('evomiAdminArticles', () => ({
@@ -1338,6 +1575,7 @@ export function registerAdminCrud(Alpine, deps) {
             this.saving = false;
             this.uploadProgress = 0;
             this.fontSelectOpen = null;
+            this.faqTranslationOpen = null;
             this.openModal();
         },
 
@@ -1357,6 +1595,16 @@ export function registerAdminCrud(Alpine, deps) {
                 author: a.author || 'Evomi',
                 is_published: a.is_published ? '1' : '0',
                 published_at: (a.published_at || '').slice(0, 10),
+                meta_title: a.meta_title || '',
+                meta_title_en: a.meta_title_en || '',
+                meta_description: a.meta_description || '',
+                meta_description_en: a.meta_description_en || '',
+                meta_keywords: a.meta_keywords || '',
+                canonical_url: a.canonical_url || '',
+                noindex: a.noindex ? '1' : '0',
+                schema_type: SCHEMA_TYPES.includes(a.schema_type) ? a.schema_type : 'BlogPosting',
+                schema_json: a.schema_json || '',
+                faqs: normalizeFaqRows(a.faqs),
                 title_font_family: a.title_font_family || 'nohemi',
                 title_font_weight: a.title_font_weight || '700',
                 title_font_style: a.title_font_style || 'normal',
@@ -1382,6 +1630,7 @@ export function registerAdminCrud(Alpine, deps) {
             this.saving = false;
             this.uploadProgress = 0;
             this.fontSelectOpen = null;
+            this.faqTranslationOpen = null;
             this.openModal();
         },
 
@@ -1494,6 +1743,137 @@ export function registerAdminCrud(Alpine, deps) {
             };
         },
 
+        /* ---------- SEO panel ---------- */
+
+        schemaTypeOptions: SCHEMA_TYPES,
+        seoOpen: false,
+        faqOpen: false,
+        faqTranslationOpen: null,
+
+        /**
+         * What the meta title/description will actually be - an empty field
+         * falls back to the article, so the counter must show that too.
+         */
+        seoFallback(field) {
+            if (field === 'meta_title') return String(this.form.title || '').trim();
+
+            const excerpt = articleText(this.form.excerpt).trim();
+
+            return excerpt || articleText(this.form.content).trim();
+        },
+
+        seoEffective(field) {
+            const typed = String(this.form[field] || '').trim();
+
+            return typed || this.seoFallback(field);
+        },
+
+        seoLength(field) {
+            return this.seoEffective(field).length;
+        },
+
+        seoMax(field) {
+            return field === 'meta_title' ? META_TITLE_MAX : META_DESCRIPTION_MAX;
+        },
+
+        /** Traffic light for the counter: short / good / long. */
+        seoState(field) {
+            const length = this.seoLength(field);
+            const max = this.seoMax(field);
+            if (length === 0) return 'short';
+            if (length > max) return 'long';
+            if (length < Math.round(max * 0.5)) return 'short';
+
+            return 'good';
+        },
+
+        seoStateLabel(field) {
+            const state = this.seoState(field);
+            if (state === 'long') return this.t('articles', 'seo_long');
+            if (state === 'short') return this.t('articles', 'seo_short');
+
+            return this.t('articles', 'seo_good');
+        },
+
+        seoStateClass(field) {
+            const state = this.seoState(field);
+            if (state === 'long') return 'text-rose-600';
+            if (state === 'short') return 'text-amber-600';
+
+            return 'text-emerald-600';
+        },
+
+        /** How the Google result would read with what is filled in now. */
+        seoPreviewUrl() {
+            const slug = String(this.form.slug || '').trim();
+
+            return window.location.origin + '/artikel/' + (slug || '…');
+        },
+
+        /** 'empty' | 'valid' | 'invalid' - drives the JSON-LD hint. */
+        schemaJsonState() {
+            const raw = String(this.form.schema_json || '').trim();
+            if (raw === '') return 'empty';
+            try {
+                const parsed = JSON.parse(raw);
+
+                return parsed && typeof parsed === 'object' ? 'valid' : 'invalid';
+            } catch {
+                return 'invalid';
+            }
+        },
+
+        /** Pretty-print a valid custom blob so it stays readable after edits. */
+        formatSchemaJson() {
+            if (this.schemaJsonState() !== 'valid') return;
+            this.form.schema_json = JSON.stringify(
+                JSON.parse(this.form.schema_json),
+                null,
+                2,
+            );
+        },
+
+        faqRows() {
+            if (!Array.isArray(this.form.faqs)) this.form.faqs = [];
+
+            return this.form.faqs;
+        },
+
+        addFaq() {
+            if (this.faqRows().length >= FAQ_MAX) {
+                this.notify(this.t('articles', 'faq_max'), 'error');
+                return;
+            }
+            this.form.faqs.push(emptyFaqRow());
+            this.faqOpen = true;
+        },
+
+        removeFaq(index) {
+            this.faqRows().splice(index, 1);
+            if (this.faqTranslationOpen === index) this.faqTranslationOpen = null;
+        },
+
+        moveFaq(index, delta) {
+            const rows = this.faqRows();
+            const target = index + delta;
+            if (target < 0 || target >= rows.length) return;
+            const [row] = rows.splice(index, 1);
+            rows.splice(target, 0, row);
+            this.faqTranslationOpen = null;
+        },
+
+        toggleFaqTranslation(index) {
+            this.faqTranslationOpen = this.faqTranslationOpen === index ? null : index;
+        },
+
+        /** Rows that will actually reach the API (and Google). */
+        faqReadyCount() {
+            return this.faqRows().filter(
+                (row) => String(row.question || '').trim() !== ''
+                    && String(row.answer || '').trim() !== '',
+            ).length;
+        },
+
         uploadHeadline() {
             return this.uploadProgress >= 100
                 ? this.t('articles', 'upload_finishing')
@@ -1507,12 +1887,35 @@ export function registerAdminCrud(Alpine, deps) {
                 this.notify(this.t('articles', 'content_required'), 'error');
                 return;
             }
+            // A broken blob would be dropped server-side without telling anyone.
+            if (this.schemaJsonState() === 'invalid') {
+                this.notify(this.t('articles', 'schema_json_invalid'), 'error');
+                return;
+            }
             this.saving = true;
             this.uploadProgress = this.imageFile ? 0 : 15;
             try {
                 const fd = new FormData();
                 Object.entries(this.form).forEach(([k, v]) => {
                     if (k === 'id') return;
+                    if (k === 'faqs') {
+                        // Drop half-filled rows; the API keeps only complete pairs anyway.
+                        const rows = normalizeFaqRows(v).filter(
+                            (row) => row.question.trim() !== '' && row.answer.trim() !== '',
+                        );
+                        if (rows.length === 0) {
+                            // An empty array cannot travel through FormData, so mark
+                            // the field present to let the API clear stored FAQs.
+                            fd.append('faqs', '');
+                            return;
+                        }
+                        rows.forEach((row, i) => {
+                            FAQ_KEYS.forEach((key) => {
+                                fd.append(`faqs[${i}][${key}]`, row[key] ?? '');
+                            });
+                        });
+                        return;
+                    }
                     if (isHeadingFormKey(k)) {
                         const [level, ...rest] = k.split('_');
                         fd.append('heading_fonts[' + level + '][' + rest.join('_') + ']', v ?? '');
@@ -1582,6 +1985,16 @@ export function registerAdminCrud(Alpine, deps) {
             author: 'Evomi',
             is_published: '1',
             published_at: '',
+            meta_title: '',
+            meta_title_en: '',
+            meta_description: '',
+            meta_description_en: '',
+            meta_keywords: '',
+            canonical_url: '',
+            noindex: '0',
+            schema_type: 'BlogPosting',
+            schema_json: '',
+            faqs: [],
             title_font_family: 'nohemi',
             title_font_weight: '700',
             title_font_style: 'normal',

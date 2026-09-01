@@ -3,6 +3,7 @@
     $menuItems = [
         ['key' => 'dashboard', 'path' => route('dashboard'), 'label' => 'Dashboard', 'icon' => 'dashboard'],
         ['key' => 'cms', 'path' => route('dashboard.page', 'cms'), 'label' => 'CMS', 'icon' => 'cms'],
+        ['key' => 'seo', 'path' => route('dashboard.page', 'seo'), 'label' => 'SEO', 'icon' => 'seo'],
         ['key' => 'products', 'path' => route('dashboard.page', 'products'), 'label' => 'Produk', 'icon' => 'products'],
         ['key' => 'articles', 'path' => route('dashboard.page', 'articles'), 'label' => 'Artikel', 'icon' => 'articles'],
         ['key' => 'promos', 'path' => route('dashboard.page', 'promos'), 'label' => 'Promo', 'icon' => 'promos'],

@@ -12,6 +12,7 @@ use App\Models\QuizPersonalityResult;
 use App\Models\QuizQuestion;
 use App\Models\SiteContent;
 use App\Support\ArticleContent;
+use App\Support\ArticleSeo;
 use App\Support\BelanjaCatalog;
 use App\Support\CmsStorefront;
 use App\Support\ShippingConfig;
@@ -129,6 +130,11 @@ class PageController extends Controller
         return view('pages.artikel-show', [
             'article' => $article,
             'related' => $related,
+            'seo' => ArticleSeo::forArticle(
+                $article,
+                route('artikel.show', $model->slug),
+                CmsStorefront::resolveLocale(),
+            ),
         ]);
     }
 
@@ -423,7 +429,11 @@ class PageController extends Controller
             'excerpt_en' => $a->excerpt_en,
             'content' => $a->content,
             'content_en' => $a->content_en,
-        ], ['title', 'excerpt', 'content'], $locale);
+            'meta_title' => $a->meta_title,
+            'meta_title_en' => $a->meta_title_en,
+            'meta_description' => $a->meta_description,
+            'meta_description_en' => $a->meta_description_en,
+        ], ['title', 'excerpt', 'content', 'meta_title', 'meta_description'], $locale);
 
         return [
             'id' => $a->id,
@@ -462,6 +472,16 @@ class PageController extends Controller
             'content_html' => ArticleContent::sanitizeHtml($localized['content']),
             'content_text' => ArticleContent::plainText($localized['content']),
             'heading_css' => ArticleContent::headingCss($a->heading_fonts, '.artikel-detail-body'),
+            'meta_title' => $localized['meta_title'],
+            'meta_description' => $localized['meta_description'],
+            'meta_keywords' => $a->meta_keywords,
+            'canonical_url' => $a->canonical_url,
+            'noindex' => (bool) $a->noindex,
+            'schema_type' => ArticleSeo::schemaType($a->schema_type),
+            'schema_json' => $a->schema_json,
+            'faqs' => ArticleSeo::localizedFaqs($a->faqs, $locale),
+            'updated_at' => optional($a->updated_at)->toIso8601String(),
+            'published_at_iso' => optional($a->published_at ?: $a->created_at)->toIso8601String(),
         ];
     }
 

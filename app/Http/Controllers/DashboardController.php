@@ -9,6 +9,7 @@ class DashboardController extends Controller
     /** @var array<string, array{title: string, view: string}> */
     private const PAGES = [
         'cms' => ['title' => 'CMS', 'view' => 'dashboard.cms'],
+        'seo' => ['title' => 'SEO', 'view' => 'dashboard.seo'],
         'products' => ['title' => 'Produk', 'view' => 'dashboard.products'],
         'articles' => ['title' => 'Artikel', 'view' => 'dashboard.articles'],
         'promos' => ['title' => 'Promo', 'view' => 'dashboard.promos'],

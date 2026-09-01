@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Article;
 use App\Support\ArticleContent;
+use App\Support\ArticleSeo;
 use App\Support\BelanjaCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -53,6 +54,61 @@ class ArticleController extends Controller
         'heading_fonts.*.font_style' => 'nullable|in:normal,italic',
         'heading_fonts.*.font_size' => 'nullable|string|max:20',
     ];
+
+    /** Plain columns the editor fills in for search engines. */
+    private const SEO_FIELDS = [
+        'meta_title',
+        'meta_title_en',
+        'meta_description',
+        'meta_description_en',
+        'meta_keywords',
+        'canonical_url',
+        'schema_json',
+    ];
+
+    private const SEO_RULES = [
+        'meta_title' => 'nullable|string|max:255',
+        'meta_title_en' => 'nullable|string|max:255',
+        'meta_description' => 'nullable|string|max:500',
+        'meta_description_en' => 'nullable|string|max:500',
+        'meta_keywords' => 'nullable|string|max:255',
+        'canonical_url' => 'nullable|string|max:255',
+        'noindex' => 'nullable|boolean',
+        'schema_type' => 'nullable|string|max:40',
+        'schema_json' => 'nullable|string|max:20000',
+        'faqs' => 'nullable|array|max:20',
+        'faqs.*' => 'array',
+        'faqs.*.question' => 'nullable|string|max:300',
+        'faqs.*.answer' => 'nullable|string|max:1200',
+        'faqs.*.question_en' => 'nullable|string|max:300',
+        'faqs.*.answer_en' => 'nullable|string|max:1200',
+    ];
+
+    /**
+     * Blank SEO inputs are stored as NULL so the renderer can tell "left
+     * empty, fall back to the article" from "deliberately set".
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function applySeo(array $data, Request $request): array
+    {
+        foreach (self::SEO_FIELDS as $field) {
+            if (! array_key_exists($field, $data)) {
+                continue;
+            }
+
+            $value = trim((string) $data[$field]);
+            $data[$field] = $value === '' ? null : $value;
+        }
+
+        // A malformed custom schema would break the page's JSON-LD, so drop it.
+        if (! empty($data['schema_json']) && ! is_array(json_decode($data['schema_json'], true))) {
+            $data['schema_json'] = null;
+        }
+
+        return $data;
+    }
 
     private function isStoredUpload(?string $path): bool
     {
@@ -202,7 +258,7 @@ class ArticleController extends Controller
             'author' => 'nullable|string|max:120',
             'is_published' => 'nullable|boolean',
             'published_at' => 'nullable|date',
-        ], self::TYPOGRAPHY_RULES, self::HEADING_RULES));
+        ], self::TYPOGRAPHY_RULES, self::HEADING_RULES, self::SEO_RULES));
 
         if ($validator->fails()) {
             return response()->json([
@@ -221,7 +277,7 @@ class ArticleController extends Controller
             'category',
             'author',
             'published_at',
-        ], self::TYPOGRAPHY_FIELDS));
+        ], self::TYPOGRAPHY_FIELDS, self::SEO_FIELDS));
 
         $data['slug'] = $request->filled('slug')
             ? Article::makeUniqueSlug($request->input('slug'))
@@ -258,6 +314,11 @@ class ArticleController extends Controller
         $data['excerpt_heading_level'] = ArticleContent::blockLevel($request->input('excerpt_heading_level'));
         $data['content_heading_level'] = ArticleContent::blockLevel($request->input('content_heading_level'));
         $data['heading_fonts'] = ArticleContent::normalizeFonts($request->input('heading_fonts'));
+
+        $data = $this->applySeo($data, $request);
+        $data['noindex'] = $request->boolean('noindex');
+        $data['schema_type'] = ArticleSeo::schemaType($request->input('schema_type'));
+        $data['faqs'] = ArticleSeo::normalizeFaqs($request->input('faqs'));
 
         if ($request->hasFile('image')) {
             $data['image'] = $request->file('image')->store('articles', 'public');
@@ -296,7 +357,7 @@ class ArticleController extends Controller
             'author' => 'nullable|string|max:120',
             'is_published' => 'nullable|boolean',
             'published_at' => 'nullable|date',
-        ], self::TYPOGRAPHY_RULES, self::HEADING_RULES));
+        ], self::TYPOGRAPHY_RULES, self::HEADING_RULES, self::SEO_RULES));
 
         if ($validator->fails()) {
             return response()->json([
@@ -315,7 +376,7 @@ class ArticleController extends Controller
             'category',
             'author',
             'published_at',
-        ], self::TYPOGRAPHY_FIELDS));
+        ], self::TYPOGRAPHY_FIELDS, self::SEO_FIELDS));
 
         if ($request->filled('slug')) {
             $data['slug'] = Article::makeUniqueSlug($request->input('slug'), $article->id);
@@ -357,6 +418,23 @@ class ArticleController extends Controller
 
         if ($request->has('heading_fonts')) {
             $data['heading_fonts'] = ArticleContent::normalizeFonts($request->input('heading_fonts'));
+        }
+
+        $data = $this->applySeo($data, $request);
+
+        if ($request->has('noindex')) {
+            $data['noindex'] = $request->boolean('noindex');
+        }
+
+        if ($request->has('schema_type')) {
+            $data['schema_type'] = ArticleSeo::schemaType(
+                $request->input('schema_type'),
+                $article->schema_type ?: 'BlogPosting',
+            );
+        }
+
+        if ($request->has('faqs')) {
+            $data['faqs'] = ArticleSeo::normalizeFaqs($request->input('faqs'));
         }
 
         if ($request->hasFile('image')) {

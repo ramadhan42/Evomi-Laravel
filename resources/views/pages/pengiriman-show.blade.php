@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('title', 'Lacak Pengiriman | Evomi')
-
 @section('content')
 @php
     $tracking = $tracking ?? null;

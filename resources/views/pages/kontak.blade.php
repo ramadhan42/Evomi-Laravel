@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('title', 'Kontak | Evomi')
-
 @section('content')
 @php $cms = $cms ?? []; @endphp
 <div

@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('title', 'Belanja | Evomi')
-
 @section('content')
     @php
         $cms = \App\Support\CmsStorefront::forPage('belanja');

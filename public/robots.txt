@@ -1,2 +1,12 @@
 User-agent: *
-Disallow:
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /checkout
+Disallow: /pembayaran
+Disallow: /login
+Disallow: /register
+Disallow: /lupa-password
+Disallow: /reset-password
+
+Sitemap: https://evomi.shop/sitemap.xml
+Sitemap: https://evomi.id/sitemap.xml

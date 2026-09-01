@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\PaymentGatewayController;
 use App\Http\Controllers\Api\PaymentSettingController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PromoController;
+use App\Http\Controllers\Api\SeoSettingController;
 use App\Http\Controllers\Api\QuizAdminController;
 use App\Http\Controllers\Api\QuizController;
 use App\Http\Controllers\Api\TrafficController;
@@ -178,6 +179,11 @@ Route::middleware(['auth:sanctum', 'last.seen'])->group(function () {
         Route::post('/promos', [PromoController::class, 'store']);
         Route::put('/promos/{id}', [PromoController::class, 'update']);
         Route::delete('/promos/{id}', [PromoController::class, 'destroy']);
+
+        // Dashboard SEO menu: per-page meta + share image.
+        Route::get('/seo', [SeoSettingController::class, 'index']);
+        Route::post('/seo/image', [SeoSettingController::class, 'uploadImage']);
+        Route::put('/seo/{page}', [SeoSettingController::class, 'update']);
 
         Route::get('/articles', [ArticleController::class, 'adminIndex']);
         Route::get('/articles/{id}', [ArticleController::class, 'adminShow']);

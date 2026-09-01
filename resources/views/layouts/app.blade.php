@@ -3,10 +3,14 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="@yield('meta_description', 'Temukan keharuman eksklusif Evomi yang mencerminkan kepribadian Anda.')">
-    <title>@yield('title', 'Evomi Perfume')</title>
+    <meta name="description" content="@yield('meta_description', $seo['description'] ?? 'Temukan keharuman eksklusif Evomi yang mencerminkan kepribadian Anda.')">
+    <title>@yield('title', $seo['title_tag'] ?? 'Evomi Perfume')</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('favicon.png') }}">
+    {{-- Search/social tags, from the dashboard SEO menu or the article itself. --}}
+    @isset($seo)
+        @include('partials.seo-head')
+    @endisset
     @stack('head')
     <script>
         (function () {

@@ -134,6 +134,236 @@
                         </label>
                     </section>
 
+                    {{-- SEO & meta --}}
+                    <section class="doc-side-card">
+                        <button type="button" class="doc-side-toggle" @click="seoOpen = !seoOpen">
+                            <span x-text="t('articles','side_seo')"></span>
+                            <svg class="h-4 w-4 transition-transform" :class="seoOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
+
+                        {{-- How the entry would read on Google, always visible. --}}
+                        <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-3">
+                            <p class="truncate text-[11px] text-emerald-700" x-text="seoPreviewUrl()"></p>
+                            <p class="mt-1 truncate text-[15px] leading-snug text-[#1a0dab]" x-text="seoEffective('meta_title') || t('articles','doc_untitled')"></p>
+                            <p class="mt-1 text-[12px] leading-relaxed text-gray-600 line-clamp-2" x-text="seoEffective('meta_description') || t('articles','seo_hint')"></p>
+                        </div>
+
+                        <div x-show="seoOpen" x-cloak class="flex flex-col gap-2.5">
+                            <p class="doc-side-hint" x-text="t('articles','seo_hint')"></p>
+
+                            <label class="doc-field-row">
+                                <span class="flex items-center justify-between gap-2">
+                                    <span x-text="t('articles','meta_title')"></span>
+                                    <span class="text-[11px] font-semibold tabular-nums" :class="seoStateClass('meta_title')">
+                                        <span x-text="seoLength('meta_title') + '/' + seoMax('meta_title')"></span>
+                                        <span class="font-normal" x-text="'· ' + seoStateLabel('meta_title')"></span>
+                                    </span>
+                                </span>
+                                <input x-model="form.meta_title" :placeholder="t('articles','meta_title_ph')" maxlength="255" class="doc-input">
+                            </label>
+
+                            <label class="doc-field-row">
+                                <span class="flex items-center justify-between gap-2">
+                                    <span x-text="t('articles','meta_description')"></span>
+                                    <span class="text-[11px] font-semibold tabular-nums" :class="seoStateClass('meta_description')">
+                                        <span x-text="seoLength('meta_description') + '/' + seoMax('meta_description')"></span>
+                                        <span class="font-normal" x-text="'· ' + seoStateLabel('meta_description')"></span>
+                                    </span>
+                                </span>
+                                <textarea
+                                    x-model="form.meta_description"
+                                    :placeholder="t('articles','meta_description_ph')"
+                                    maxlength="500"
+                                    rows="3"
+                                    class="doc-input h-auto py-2 leading-relaxed resize-y"
+                                ></textarea>
+                            </label>
+
+                            <label class="doc-field-row">
+                                <span x-text="t('articles','meta_keywords')"></span>
+                                <input x-model="form.meta_keywords" :placeholder="t('articles','meta_keywords_ph')" maxlength="255" class="doc-input">
+                                <span class="doc-side-hint mt-1 block" x-text="t('articles','meta_keywords_hint')"></span>
+                            </label>
+
+                            <label class="doc-field-row">
+                                <span x-text="t('articles','canonical_url')"></span>
+                                <input x-model="form.canonical_url" type="url" :placeholder="t('articles','canonical_url_ph')" maxlength="255" class="doc-input">
+                            </label>
+
+                            <label class="doc-switch">
+                                <input type="checkbox" x-model="form.noindex" true-value="1" false-value="0" class="sr-only peer">
+                                <span class="doc-switch-track"><span class="doc-switch-thumb"></span></span>
+                                <span class="doc-switch-label" x-text="t('articles','noindex')"></span>
+                            </label>
+                            <p class="doc-side-hint" x-text="t('articles','noindex_hint')"></p>
+
+                            <div class="border-t border-gray-100 pt-2.5">
+                                <p class="doc-side-hint mb-2" x-text="t('articles','faq_translations')"></p>
+                                <label class="doc-field-row">
+                                    <span x-text="t('articles','meta_title_en')"></span>
+                                    <input x-model="form.meta_title_en" maxlength="255" class="doc-input">
+                                </label>
+                                <label class="doc-field-row mt-2">
+                                    <span x-text="t('articles','meta_description_en')"></span>
+                                    <textarea x-model="form.meta_description_en" maxlength="500" rows="2" class="doc-input h-auto py-2 leading-relaxed resize-y"></textarea>
+                                </label>
+                            </div>
+                        </div>
+                    </section>
+
+                    {{-- Schema markup --}}
+                    <section class="doc-side-card">
+                        <p class="doc-side-title" x-text="t('articles','side_schema')"></p>
+
+                        <label class="doc-field-row">
+                            <span x-text="t('articles','schema_type')"></span>
+                            <select x-model="form.schema_type" class="doc-input">
+                                <template x-for="type in schemaTypeOptions" :key="type">
+                                    <option :value="type" x-text="type"></option>
+                                </template>
+                            </select>
+                        </label>
+
+                        <label class="doc-field-row">
+                            <span class="flex items-center justify-between gap-2">
+                                <span x-text="t('articles','schema_json')"></span>
+                                <button
+                                    type="button"
+                                    x-show="schemaJsonState() === 'valid'"
+                                    @click="formatSchemaJson()"
+                                    class="text-[11px] font-semibold text-gray-500 underline hover:text-gray-800"
+                                >&#123;&nbsp;&#125;</button>
+                            </span>
+                            <textarea
+                                x-model="form.schema_json"
+                                :placeholder="t('articles','schema_json_ph')"
+                                rows="5"
+                                spellcheck="false"
+                                class="doc-input h-auto py-2 font-mono text-[11px] leading-relaxed resize-y"
+                                :class="schemaJsonState() === 'invalid' ? 'border-rose-400' : ''"
+                            ></textarea>
+                        </label>
+
+                        <p
+                            class="text-[11px] leading-relaxed"
+                            :class="{
+                                'text-rose-600': schemaJsonState() === 'invalid',
+                                'text-emerald-600': schemaJsonState() === 'valid',
+                                'text-gray-400': schemaJsonState() === 'empty',
+                            }"
+                            x-text="schemaJsonState() === 'invalid'
+                                ? t('articles','schema_json_invalid')
+                                : (schemaJsonState() === 'valid' ? t('articles','schema_json_valid') : t('articles','schema_json_hint'))"
+                        ></p>
+                    </section>
+
+                    {{-- FAQ --}}
+                    <section class="doc-side-card">
+                        <button type="button" class="doc-side-toggle" @click="faqOpen = !faqOpen">
+                            <span>
+                                <span x-text="t('articles','side_faq')"></span>
+                                <span
+                                    x-show="faqReadyCount() > 0"
+                                    class="ml-1.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700"
+                                    x-text="faqReadyCount()"
+                                ></span>
+                            </span>
+                            <svg class="h-4 w-4 transition-transform" :class="faqOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
+
+                        <div x-show="faqOpen" x-cloak class="flex flex-col gap-2.5">
+                            <p class="doc-side-hint" x-text="t('articles','faq_hint')"></p>
+
+                            <p
+                                x-show="faqRows().length === 0"
+                                class="rounded-xl border border-dashed border-gray-200 px-3 py-4 text-center text-[11px] text-gray-400"
+                                x-text="t('articles','faq_empty')"
+                            ></p>
+
+                            <template x-for="(faq, index) in faqRows()" :key="index">
+                                <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-2.5">
+                                    <div class="mb-1.5 flex items-center justify-between gap-1">
+                                        <span class="text-[11px] font-bold text-gray-400" x-text="'#' + (index + 1)"></span>
+                                        <div class="flex items-center gap-0.5">
+                                            <button
+                                                type="button"
+                                                @click="moveFaq(index, -1)"
+                                                :disabled="index === 0"
+                                                class="rounded-md p-1 text-gray-400 hover:bg-white hover:text-gray-700 disabled:opacity-30 disabled:pointer-events-none"
+                                                aria-label="Move up"
+                                            >
+                                                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="moveFaq(index, 1)"
+                                                :disabled="index === faqRows().length - 1"
+                                                class="rounded-md p-1 text-gray-400 hover:bg-white hover:text-gray-700 disabled:opacity-30 disabled:pointer-events-none"
+                                                aria-label="Move down"
+                                            >
+                                                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="removeFaq(index)"
+                                                class="rounded-md p-1 text-gray-400 hover:bg-white hover:text-rose-600"
+                                                :aria-label="t('articles','faq_remove')"
+                                            >
+                                                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <input
+                                        x-model="faq.question"
+                                        :placeholder="t('articles','faq_question_ph')"
+                                        maxlength="300"
+                                        class="doc-input mb-1.5"
+                                    >
+                                    <textarea
+                                        x-model="faq.answer"
+                                        :placeholder="t('articles','faq_answer_ph')"
+                                        maxlength="1200"
+                                        rows="3"
+                                        class="doc-input h-auto py-2 leading-relaxed resize-y"
+                                    ></textarea>
+
+                                    <button
+                                        type="button"
+                                        @click="toggleFaqTranslation(index)"
+                                        class="mt-1.5 text-[11px] font-semibold text-gray-500 underline hover:text-gray-800"
+                                        x-text="t('articles','faq_translations')"
+                                    ></button>
+
+                                    <div x-show="faqTranslationOpen === index" x-cloak class="mt-1.5 flex flex-col gap-1.5">
+                                        <input
+                                            x-model="faq.question_en"
+                                            :placeholder="t('articles','faq_question_en')"
+                                            maxlength="300"
+                                            class="doc-input"
+                                        >
+                                        <textarea
+                                            x-model="faq.answer_en"
+                                            :placeholder="t('articles','faq_answer_en')"
+                                            maxlength="1200"
+                                            rows="2"
+                                            class="doc-input h-auto py-2 leading-relaxed resize-y"
+                                        ></textarea>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <button
+                                type="button"
+                                @click="addFaq()"
+                                class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 px-3 py-2 text-xs font-semibold text-gray-600 transition hover:border-gray-900 hover:text-gray-900"
+                            >
+                                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                                <span x-text="t('articles','faq_add')"></span>
+                            </button>
+                        </div>
+                    </section>
+
                     {{-- Gambar sampul --}}
                     <section class="doc-side-card">
                         <p class="doc-side-title" x-text="t('articles','image')"></p>

@@ -17,6 +17,16 @@ class Article extends Model
         'slug',
         'excerpt',
         'excerpt_en',
+        'meta_title',
+        'meta_title_en',
+        'meta_description',
+        'meta_description_en',
+        'meta_keywords',
+        'canonical_url',
+        'noindex',
+        'schema_type',
+        'schema_json',
+        'faqs',
         'content',
         'content_en',
         'image',
@@ -44,6 +54,8 @@ class Article extends Model
 
     protected $casts = [
         'heading_fonts' => 'array',
+        'faqs' => 'array',
+        'noindex' => 'boolean',
         'is_published' => 'boolean',
         'published_at' => 'datetime',
     ];

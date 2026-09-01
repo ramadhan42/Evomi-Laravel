@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProductShareImageController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PageController::class, 'beranda'])->name('beranda');
@@ -26,10 +27,13 @@ Route::get('/register', [PageController::class, 'register'])->name('register');
 Route::get('/lupa-password', [PageController::class, 'lupaPassword'])->name('password.request');
 Route::get('/reset-password/{token}', [PageController::class, 'resetPassword'])->name('password.reset');
 
+// Daftar URL untuk Google, dengan lastmod supaya perubahan SEO cepat dirayapi ulang.
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
+
 Route::get('/dashboard', [DashboardController::class, 'home'])->name('dashboard');
 Route::get('/dashboard/{page}', [DashboardController::class, 'page'])
     ->name('dashboard.page')
-    ->where('page', 'cms|products|articles|promos|payment|kurirs|quiz|orders|trackings|messages|cart|wishlist|users|traffic|subscribers|profile');
+    ->where('page', 'cms|seo|products|articles|promos|payment|kurirs|quiz|orders|trackings|messages|cart|wishlist|users|traffic|subscribers|profile');
 
 Route::prefix('profile')->name('profile.')->group(function () {
     Route::get('/', [ProfileController::class, 'index'])->name('index');

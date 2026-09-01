@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
-@section('title', ($article['title'] ?? evomi_l('Artikel', 'Article')) . ' | Evomi')
+@php
+    $seo = $seo ?? \App\Support\ArticleSeo::forArticle($article, url()->current(), evomi_locale());
+@endphp
+
+@section('title', $seo['title_tag'])
+@section('meta_description', $seo['description'])
 
 @section('content')
 @php
@@ -133,6 +138,34 @@
                         @endforelse
                     @endif
                 </div>
+
+                @if (count($seo['faqs']) > 0)
+                    {{-- Mirrors the FAQPage JSON-LD above so readers see the same answers. --}}
+                    <section class="artikel-faq mt-14 pt-10 border-t border-gray-100" aria-labelledby="artikel-faq-title">
+                        <p class="text-xs uppercase tracking-[0.18em] text-[#1172BA]/70 font-semibold">FAQ</p>
+                        <h2 id="artikel-faq-title" class="mt-2 text-2xl md:text-3xl text-gray-900">
+                            {{ evomi_l('Pertanyaan yang sering diajukan', 'Frequently asked questions') }}
+                        </h2>
+
+                        <div class="mt-6 divide-y divide-gray-100 rounded-3xl border border-gray-100 bg-white">
+                            @foreach ($seo['faqs'] as $index => $faq)
+                                <details class="artikel-faq-item group" @if ($index === 0) open @endif>
+                                    <summary class="flex w-full cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-left">
+                                        <h3 class="text-base font-semibold leading-snug text-gray-900 transition-colors group-hover:text-[#1172BA]">
+                                            {{ $faq['question'] }}
+                                        </h3>
+                                        <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#E8F4FC] text-[#1172BA] transition-transform duration-300 group-open:rotate-180">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                                        </span>
+                                    </summary>
+                                    <div class="px-5 pb-5 -mt-1 text-[15px] leading-relaxed text-gray-600">
+                                        {{ $faq['answer'] }}
+                                    </div>
+                                </details>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
 
                 @if (count($related) > 0)
                     <div class="mt-14 pt-10 border-t border-gray-100">

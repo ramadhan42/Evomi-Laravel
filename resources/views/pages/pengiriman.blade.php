@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('title', 'Pengiriman | Evomi')
-
 @section('content')
 @php
     $steps = [

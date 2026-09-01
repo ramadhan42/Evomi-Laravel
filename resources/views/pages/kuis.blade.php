@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('title', evomi_l('Kuis | Evomi', 'Quiz | Evomi'))
-
 @section('content')
 @php
     $questions = $questions ?? [];

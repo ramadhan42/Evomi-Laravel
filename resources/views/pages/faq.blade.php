@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('title', 'FAQ | Evomi')
-
 @section('content')
 @php $faqGroups = $faqGroups ?? []; @endphp
 

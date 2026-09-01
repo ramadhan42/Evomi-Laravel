@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\CmsStorefront;
+use App\Support\SiteSeo;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View as ViewFacade;
+use Illuminate\View\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -28,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureRateLimiting();
         $this->configurePasswordReset();
+        $this->configureSeo();
 
         Model::preventLazyLoading(! $this->app->isProduction());
 
@@ -40,6 +45,34 @@ class AppServiceProvider extends ServiceProvider
                 URL::forceScheme('https');
             }
         }
+    }
+
+    /**
+     * Hand every storefront page the SEO bundle its dashboard row defines.
+     *
+     * Pages that build their own (an article, a product) already put `seo` in
+     * the view data and are left alone. Routes with no row - checkout, login,
+     * the payment flow - get nothing, so the layout keeps its defaults.
+     */
+    private function configureSeo(): void
+    {
+        ViewFacade::composer('layouts.app', function (View $view) {
+            if (array_key_exists('seo', $view->getData())) {
+                return;
+            }
+
+            $page = SiteSeo::pageForRoute(request()?->route()?->getName());
+
+            if ($page === null) {
+                return;
+            }
+
+            $view->with('seo', SiteSeo::forPage(
+                $page,
+                url()->current(),
+                CmsStorefront::resolveLocale(),
+            ));
+        });
     }
 
     private function configurePasswordReset(): void

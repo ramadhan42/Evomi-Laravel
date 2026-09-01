@@ -2004,6 +2004,37 @@ body.evomi-surface-blue #evomi-main {
     animation-delay: var(--artikel-delay, 0ms);
 }
 
+/* FAQ accordion under an article - <details> styled to match the cards. */
+.artikel-faq-item > summary::-webkit-details-marker {
+    display: none;
+}
+
+.artikel-faq-item > summary::marker {
+    content: '';
+}
+
+.artikel-faq-item > summary:focus-visible {
+    outline: 2px solid #1172BA;
+    outline-offset: -2px;
+    border-radius: 0.75rem;
+}
+
+.artikel-faq-item[open] > summary {
+    padding-bottom: 0.5rem;
+}
+
+.artikel-faq-item[open] > div {
+    animation: artikel-fade-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .artikel-faq-item[open] > div {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}
+
 .artikel-detail-page .artikel-detail-title {
     word-break: break-word;
 }
