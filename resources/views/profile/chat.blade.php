@@ -6,7 +6,7 @@
 <x-profile-shell>
     <div
         x-data="evomiProfileChat('evomi-chat-page-turnstile')"
-        class="profile-page-card profile-page-card--viewport"
+        class="profile-page-card"
         style="--chat-brand: #1172BA"
     >
         <div class="relative px-5 sm:px-7 py-5 text-white shrink-0" style="background: linear-gradient(135deg, #1172BA 0%, #1a7fc4 55%, #0e6aad 100%)">

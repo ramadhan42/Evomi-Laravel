@@ -1214,11 +1214,21 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
    halaman pengaturan yang isinya lebih tinggi justru terpotong lalu dipaksa
    bergulir di dalam kartu. Sekarang hanya batas bawahnya yang dipatok: kartu
    pendek tetap terlihat berisi, kartu panjang tumbuh mengikuti isinya. */
+/* Satu tinggi untuk semua halaman profil.
+   Sebelumnya panelnya tumbuh mengikuti isi, jadi berpindah antara Biodata Diri
+   dan Chat mengubah tinggi halaman dan footer ikut naik-turun. Tingginya kini
+   dipatok sama, dan halaman yang isinya lebih panjang bergulir di dalam
+   kartunya sendiri - bukan memanjangkan halaman. */
+.evomi-profile-shell {
+    --profile-card-h: min(78vh, 760px);
+}
+
 .profile-content-panel {
     position: relative;
     width: 100%;
-    height: auto;
-    min-height: min(62vh, 560px);
+    height: var(--profile-card-h);
+    min-height: var(--profile-card-h);
+    max-height: var(--profile-card-h);
     overflow: hidden;
     opacity: 1;
     transform: translate3d(0, 0, 0);
@@ -1230,6 +1240,7 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
 
 .profile-content-panel > * {
     width: 100%;
+    height: 100%;
     min-height: 100%;
 }
 
@@ -1238,6 +1249,7 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
     display: flex;
     flex-direction: column;
     width: 100%;
+    height: 100%;
     min-height: 100%;
     overflow: hidden;
     border-radius: 28px;
@@ -1248,6 +1260,7 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
 .profile-page-card__loader,
 .profile-page-card__body {
     width: 100%;
+    height: 100%;
     min-height: 100%;
 }
 
@@ -1271,18 +1284,6 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
    dan kolom tulis tetap tertambat di bawah. Tanpa ini kartunya ikut memanjang
    mengikuti jumlah pesan, dan kolom tulisnya terdorong jauh ke bawah halaman.
    Halaman pengaturan sebaliknya dibiarkan tumbuh mengikuti isinya. */
-.profile-page-card--viewport {
-    height: min(70vh, 620px);
-    max-height: min(70vh, 620px);
-}
-
-@media (max-width: 1023px) {
-    .profile-page-card--viewport {
-        height: min(66vh, 560px);
-        max-height: min(66vh, 560px);
-    }
-}
-
 .profile-page-card__scroll {
     flex: 1 1 auto;
     min-height: 0;
@@ -1304,8 +1305,8 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
 }
 
 @media (max-width: 1023px) {
-    .profile-content-panel {
-        min-height: min(58vh, 480px);
+    .evomi-profile-shell {
+        --profile-card-h: min(74vh, 620px);
     }
 }
 
