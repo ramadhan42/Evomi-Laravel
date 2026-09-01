@@ -7016,6 +7016,10 @@ document.addEventListener('alpine:init', () => {
         ready: false,
         activeKey: initialKey || 'settings',
         badges: { cart: 0, wishlist: 0, history: 0, payments: 0, unread: 0 },
+        // Identitas pemilik akun, ditampilkan di kepala menu.
+        userName: '',
+        userEmail: '',
+        avatarUrl: '',
         indicator: { top: 0, height: 0, opacity: 0, color: '#1172BA' },
 
         get indicatorStyle() {
@@ -7029,6 +7033,19 @@ document.addEventListener('alpine:init', () => {
 
         badgeLabel(key) {
             return formatBadge(this.badges?.[key] || 0);
+        },
+
+        get userInitial() {
+            const sumber = (this.userName || this.userEmail || '?').trim();
+
+            return (sumber.charAt(0) || '?').toUpperCase();
+        },
+
+        syncIdentity() {
+            const user = getAuthUser() || {};
+            this.userName = user.name || user.nama_lengkap || '';
+            this.userEmail = user.email || '';
+            this.avatarUrl = avatarUrlFromUser(user) || '';
         },
 
         previewTo(key) {
@@ -7103,8 +7120,12 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             this.ready = true;
+            this.syncIdentity();
             await this.refreshBadges();
-            this._onBadge = () => this.refreshBadges();
+            this._onBadge = () => {
+                this.syncIdentity();
+                this.refreshBadges();
+            };
             window.addEventListener('cart_updated', this._onBadge);
             window.addEventListener('wishlist_updated', this._onBadge);
             window.addEventListener('history_updated', this._onBadge);
@@ -7149,6 +7170,8 @@ document.addEventListener('alpine:init', () => {
         status: { type: '', message: '' },
         toast: '',
         form: { name: '', email: '', phone: '', address: '', password: '' },
+        // Tiap baris biodata tampil sebagai teks sampai tombol Ubah ditekan.
+        editing: {},
         avatarPreview: null,
         avatarFile: null,
         avatarPath: null,
@@ -7189,6 +7212,22 @@ document.addEventListener('alpine:init', () => {
                 window.removeEventListener('evomi-settings-reload', this._onReload);
             }
             if (this._toastTimer) window.clearTimeout(this._toastTimer);
+        },
+
+        isEditing(field) {
+            return !!this.editing[field];
+        },
+
+        toggleEdit(field) {
+            this.editing = { ...this.editing, [field]: !this.editing[field] };
+        },
+
+        /** Apa yang tampil saat baris sedang tidak diubah. */
+        displayValue(field) {
+            const nilai = String(this.form[field] ?? '').trim();
+            if (nilai !== '') return nilai;
+
+            return storefrontL('Belum diisi', 'Not set');
         },
 
         showToast(message, ms = 2400) {

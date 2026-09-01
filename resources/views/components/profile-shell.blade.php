@@ -13,8 +13,8 @@
     // seiring pembelian dialihkan ke marketplace. Route, controller, dan view-nya
     // sengaja dibiarkan utuh supaya tinggal didaftarkan ulang di sini bila dipakai lagi.
     $menuItems = [
-        ['key' => 'settings', 'href' => route('profile.index'), 'label' => evomi_l('Pengaturan Profil', 'Profile Settings'), 'badge' => null, 'color' => '#1172BA'],
-        ['key' => 'chat', 'href' => route('profile.chat'), 'label' => evomi_l('Pesan Anda', 'Your Messages'), 'badge' => 'unread', 'color' => '#1172BA'],
+        ['key' => 'settings', 'href' => route('profile.index'), 'label' => evomi_l('Biodata Diri', 'Personal Info'), 'badge' => null, 'color' => '#1172BA'],
+        ['key' => 'chat', 'href' => route('profile.chat'), 'label' => evomi_l('Chat', 'Chat'), 'badge' => 'unread', 'color' => '#1172BA'],
     ];
 @endphp
 
@@ -34,10 +34,23 @@
 
     <div x-show="ready" x-cloak class="flex flex-col lg:flex-row lg:items-stretch gap-6 lg:gap-8">
         <aside class="w-full lg:w-72 shrink-0">
-            <div class="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-4 sm:p-5 sticky top-6 lg:min-h-[min(80vh,760px)]">
-                <div class="px-3 sm:px-4 py-2 sm:py-3 mb-3 sm:mb-4">
-                    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ evomi_l('Menu Akun', 'Account Menu') }}</h2>
-                    <p class="text-sm text-gray-500 mt-0.5">{{ evomi_l('Kelola aktivitas & akun Anda', 'Manage your activity & account') }}</p>
+            <div class="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-4 sm:p-5 sticky top-6">
+                {{-- Kartu identitas di kepala menu, seperti panel akun marketplace.
+                     Tanpa saldo: Evomi tidak punya dompet, jadi barisnya dihilangkan
+                     alih-alih ditampilkan kosong. --}}
+                <div class="flex items-center gap-3 px-1 pb-4 mb-3 border-b border-gray-100">
+                    <div class="h-12 w-12 shrink-0 rounded-full overflow-hidden ring-2 ring-[#1172BA]/15 bg-[#1172BA]/10 flex items-center justify-center">
+                        <template x-if="avatarUrl">
+                            <img :src="avatarUrl" alt="" class="h-full w-full object-cover">
+                        </template>
+                        <template x-if="!avatarUrl">
+                            <span class="text-base font-bold text-[#1172BA]" x-text="userInitial"></span>
+                        </template>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-sm font-bold text-gray-900 truncate" x-text="userName || '{{ evomi_l('Akun Saya', 'My Account') }}'"></p>
+                        <p class="text-xs text-gray-500 truncate" x-text="userEmail"></p>
+                    </div>
                 </div>
 
                 <nav

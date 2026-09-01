@@ -1209,12 +1209,16 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
     transition: none !important;
 }
 
+/* Tinggi panel dulu dipatok min(80vh, 760px) untuk ketiga sifatnya sekaligus.
+   Akibatnya halaman yang isinya pendek menyisakan bidang putih kosong, dan
+   halaman pengaturan yang isinya lebih tinggi justru terpotong lalu dipaksa
+   bergulir di dalam kartu. Sekarang hanya batas bawahnya yang dipatok: kartu
+   pendek tetap terlihat berisi, kartu panjang tumbuh mengikuti isinya. */
 .profile-content-panel {
     position: relative;
     width: 100%;
-    height: min(80vh, 760px);
-    min-height: min(80vh, 760px);
-    max-height: min(80vh, 760px);
+    height: auto;
+    min-height: min(62vh, 560px);
     overflow: hidden;
     opacity: 1;
     transform: translate3d(0, 0, 0);
@@ -1226,7 +1230,6 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
 
 .profile-content-panel > * {
     width: 100%;
-    height: 100%;
     min-height: 100%;
 }
 
@@ -1235,7 +1238,6 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: 100%;
     min-height: 100%;
     overflow: hidden;
     border-radius: 28px;
@@ -1246,7 +1248,6 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
 .profile-page-card__loader,
 .profile-page-card__body {
     width: 100%;
-    height: 100%;
     min-height: 100%;
 }
 
@@ -1264,6 +1265,22 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+/* Percakapan butuh bingkai bertinggi tetap: daftar pesan bergulir di dalamnya
+   dan kolom tulis tetap tertambat di bawah. Tanpa ini kartunya ikut memanjang
+   mengikuti jumlah pesan, dan kolom tulisnya terdorong jauh ke bawah halaman.
+   Halaman pengaturan sebaliknya dibiarkan tumbuh mengikuti isinya. */
+.profile-page-card--viewport {
+    height: min(70vh, 620px);
+    max-height: min(70vh, 620px);
+}
+
+@media (max-width: 1023px) {
+    .profile-page-card--viewport {
+        height: min(66vh, 560px);
+        max-height: min(66vh, 560px);
+    }
 }
 
 .profile-page-card__scroll {
@@ -1288,9 +1305,7 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
 
 @media (max-width: 1023px) {
     .profile-content-panel {
-        height: min(72vh, 680px);
-        min-height: min(72vh, 680px);
-        max-height: min(72vh, 680px);
+        min-height: min(58vh, 480px);
     }
 }
 
