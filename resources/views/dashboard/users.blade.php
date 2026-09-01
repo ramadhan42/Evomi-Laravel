@@ -174,7 +174,7 @@
                         <input type="password" x-model="form.password" :placeholder="t('users','password_placeholder')" class="admin-field-input">
                     </label>
                     <label class="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                        <input type="checkbox" x-model="form.is_admin" true-value="1" false-value="0" class="rounded border-gray-300 text-gray-900 focus:ring-gray-900">
+                        <input type="checkbox" :checked="String(form.is_admin) === '1'" @change="form.is_admin = $event.target.checked ? '1' : '0'" class="rounded border-gray-300 text-gray-900 focus:ring-gray-900">
                         <span x-text="t('users','toggle_admin')"></span>
                     </label>
                 </div>

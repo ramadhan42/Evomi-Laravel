@@ -93,12 +93,15 @@
                     <section class="doc-side-card">
                         <p class="doc-side-title" x-text="t('articles','side_publish')"></p>
 
+                        {{-- true-value/false-value itu fitur Vue; Alpine mengabaikannya
+                             dan menulis boolean, sehingga labelnya berhenti cocok dan
+                             nilai yang terkirim ditolak validasi. Ikatannya ditulis
+                             eksplisit supaya tetap '1'/'0' seperti yang dipakai kode lain. --}}
                         <label class="doc-switch">
                             <input
                                 type="checkbox"
-                                x-model="form.is_published"
-                                true-value="1"
-                                false-value="0"
+                                :checked="String(form.is_published) === '1'"
+                                @change="form.is_published = $event.target.checked ? '1' : '0'"
                                 class="sr-only peer"
                             >
                             <span class="doc-switch-track"><span class="doc-switch-thumb"></span></span>
@@ -191,7 +194,7 @@
                             </label>
 
                             <label class="doc-switch">
-                                <input type="checkbox" x-model="form.noindex" true-value="1" false-value="0" class="sr-only peer">
+                                <input type="checkbox" :checked="String(form.noindex) === '1'" @change="form.noindex = $event.target.checked ? '1' : '0'" class="sr-only peer">
                                 <span class="doc-switch-track"><span class="doc-switch-thumb"></span></span>
                                 <span class="doc-switch-label" x-text="t('articles','noindex')"></span>
                             </label>
