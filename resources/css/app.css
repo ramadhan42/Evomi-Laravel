@@ -1284,6 +1284,23 @@ html[data-locale-reveal='true'] [data-no-locale-fx] * {
    dan kolom tulis tetap tertambat di bawah. Tanpa ini kartunya ikut memanjang
    mengikuti jumlah pesan, dan kolom tulisnya terdorong jauh ke bawah halaman.
    Halaman pengaturan sebaliknya dibiarkan tumbuh mengikuti isinya. */
+/* Batang gulir di dalam kartu profil disembunyikan, tetapi isinya tetap bisa
+   digulir - dengan roda tetikus, sentuhan, maupun tombol panah. Aturan ini
+   menyasar kedua kartu: daftar biodata dan daftar pesan. Perlu ketiga properti
+   karena tiap mesin peramban memakai caranya sendiri. */
+.profile-page-card__scroll,
+.profile-page-card .overflow-y-auto {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.profile-page-card__scroll::-webkit-scrollbar,
+.profile-page-card .overflow-y-auto::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
 .profile-page-card__scroll {
     flex: 1 1 auto;
     min-height: 0;
