@@ -7,6 +7,7 @@ use App\Models\Article;
 use App\Models\SeoSetting;
 use App\Support\SiteSeo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -110,6 +111,70 @@ class SitemapTest extends TestCase
 
         $response->assertOk();
         $this->assertStringContainsString('<loc>'.route('beranda').'</loc>', $response->getContent());
+    }
+
+    /**
+     * The default row feeds every page that left a field blank, so editing it
+     * has to move their lastmod - otherwise a site-wide description or share
+     * image change ships with a sitemap still claiming nothing happened.
+     */
+    public function test_editing_the_default_row_moves_lastmod_on_inheriting_pages(): void
+    {
+        $before = $this->lastmodFor(route('faq'));
+        $this->assertNotSame('', $before);
+
+        $this->travel(2)->days();
+        SeoSetting::query()->updateOrCreate(
+            ['page' => SiteSeo::DEFAULT_PAGE],
+            ['meta_description' => 'Deskripsi baru untuk seluruh situs.']
+        );
+        SiteSeo::forgetCache();
+        SitemapController::forgetCache();
+
+        $after = $this->lastmodFor(route('faq'));
+
+        $this->assertNotSame($before, $after, 'lastmod halaman FAQ tidak ikut bergerak.');
+        $this->assertTrue(Carbon::parse($after)->greaterThan(Carbon::parse($before)));
+    }
+
+    /** A page that fills in everything itself does not inherit, so it must not move. */
+    public function test_a_fully_filled_page_ignores_the_default_row(): void
+    {
+        SeoSetting::query()->updateOrCreate(['page' => 'faq'], [
+            'meta_title' => 'FAQ Evomi',
+            'meta_description' => 'Pertanyaan yang sering diajukan.',
+            'meta_keywords' => 'faq, evomi',
+            'og_image' => 'cms/seo/faq.png',
+        ]);
+        SiteSeo::forgetCache();
+        SitemapController::forgetCache();
+
+        $before = $this->lastmodFor(route('faq'));
+
+        $this->travel(2)->days();
+        SeoSetting::query()->updateOrCreate(
+            ['page' => SiteSeo::DEFAULT_PAGE],
+            ['meta_description' => 'Deskripsi situs yang lain lagi.']
+        );
+        SiteSeo::forgetCache();
+        SitemapController::forgetCache();
+
+        $this->assertSame($before, $this->lastmodFor(route('faq')));
+    }
+
+    /** Pull the lastmod that belongs to one loc out of the document. */
+    private function lastmodFor(string $loc): string
+    {
+        $body = $this->get('/sitemap.xml')->getContent();
+        $document = simplexml_load_string($body);
+
+        foreach ($document->url as $url) {
+            if ((string) $url->loc === $loc) {
+                return (string) $url->lastmod;
+            }
+        }
+
+        return '';
     }
 
     public function test_editing_seo_settings_refreshes_the_cached_document(): void

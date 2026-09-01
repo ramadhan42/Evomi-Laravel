@@ -106,6 +106,13 @@ class SitemapController extends Controller
 
             $candidates = [$seoDates[$page] ?? null, $cmsDates[$page] ?? null];
 
+            // Anything the page leaves blank is served from the "default" row,
+            // so editing that row really does change this page and its date
+            // has to count here too.
+            if ($this->inheritsFromDefault($row)) {
+                $candidates[] = $seoDates[SiteSeo::DEFAULT_PAGE] ?? null;
+            }
+
             // The two index pages also age with what they list.
             if ($page === 'artikel') {
                 $candidates[] = $newestArticle;
@@ -121,6 +128,29 @@ class SitemapController extends Controller
         }
 
         return $out;
+    }
+
+    /**
+     * Does this page still lean on the "default" row for any of the copy it
+     * renders?
+     *
+     * Only the base fields are checked. An empty `_en` field falls back to the
+     * page's own Indonesian text rather than to the default row, so it is not
+     * a sign of inheritance - counting it would move `lastmod` on pages the
+     * default row never touches, and a sitemap that keeps claiming changes
+     * that did not happen is one Google learns to distrust.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function inheritsFromDefault(array $row): bool
+    {
+        foreach (['meta_title', 'meta_description', 'meta_keywords', 'og_image'] as $field) {
+            if (trim((string) ($row[$field] ?? '')) === '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return list<array{loc: string, lastmod: string}> */
