@@ -5075,6 +5075,10 @@ document.addEventListener('alpine:init', () => {
         freeShipping: Boolean(payload.freeShipping),
 
         currentIndex: 0,
+        // Index of the leftmost thumbnail in the visible window of three.
+        thumbStart: 0,
+        thumbShift: 0,
+        _thumbTouchX: null,
         quantity: 1,
         selectedKurir: null,
         showKurirList: false,
@@ -5107,6 +5111,110 @@ document.addEventListener('alpine:init', () => {
 
         get isOutOfStock() {
             return this.stock <= 0;
+        },
+
+        /* ---------- Thumbnail slider ----------
+         * Six images, three on screen. The window slides one step at a time
+         * and follows the hero image, so the active thumbnail is always the
+         * one you can see - including while the hero rotates on its own. */
+
+        get thumbsPerView() {
+            return Math.min(this.gallery.length, 3);
+        },
+
+        get maxThumbStart() {
+            return Math.max(0, this.gallery.length - this.thumbsPerView);
+        },
+
+        get canSlideThumbs() {
+            return this.gallery.length > this.thumbsPerView;
+        },
+
+        /**
+         * The shift is measured from the live layout and applied in pixels.
+         * A percentage-based calc would work too, but pixels keep the step
+         * exactly one thumbnail wide whatever the container rounds to, and
+         * they are trivial to assert against getBoundingClientRect in a test.
+         */
+        get thumbTrackStyle() {
+            return {
+                '--thumb-per-view': String(this.thumbsPerView),
+                transform: `translateX(-${this.thumbShift}px)`,
+            };
+        },
+
+        /** Width of one thumbnail plus its gap, measured from the live layout. */
+        measureThumbStep() {
+            const viewport = this.$refs.thumbViewport;
+            if (!viewport) return 0;
+
+            const width = viewport.getBoundingClientRect().width;
+            if (!width) return 0;
+
+            const track = this.$refs.thumbTrack;
+            const gap = track ? parseFloat(getComputedStyle(track).columnGap) || 0 : 0;
+
+            return (width + gap) / this.thumbsPerView;
+        },
+
+        syncThumbShift() {
+            this.thumbShift = Math.round(this.thumbStart * this.measureThumbStep());
+        },
+
+        slideThumbs(direction) {
+            // Sliding by hand means the visitor took over. Without this the
+            // 4s hero rotation would drag the window back a moment later and
+            // undo the gesture.
+            this.stopGalleryRotation();
+
+            const next = this.thumbStart + direction;
+            this.thumbStart = Math.min(Math.max(next, 0), this.maxThumbStart);
+            this.syncThumbShift();
+        },
+
+        /** Keep the active thumbnail inside the window, moving as little as possible. */
+        ensureThumbVisible() {
+            const perView = this.thumbsPerView;
+            let start = this.thumbStart;
+
+            if (this.currentIndex < start) {
+                start = this.currentIndex;
+            } else if (this.currentIndex > start + perView - 1) {
+                start = this.currentIndex - perView + 1;
+            }
+
+            this.thumbStart = Math.min(Math.max(start, 0), this.maxThumbStart);
+            this.syncThumbShift();
+        },
+
+        /** Picking a thumbnail is a deliberate choice; stop the auto-rotation. */
+        selectImage(index) {
+            this.currentIndex = index;
+            this.stopGalleryRotation();
+        },
+
+        stopGalleryRotation() {
+            if (this._galleryTimer) {
+                window.clearInterval(this._galleryTimer);
+                this._galleryTimer = null;
+            }
+        },
+
+        onThumbTouchStart(event) {
+            this._thumbTouchX = event.changedTouches?.[0]?.clientX ?? null;
+        },
+
+        onThumbTouchEnd(event) {
+            if (this._thumbTouchX === null) return;
+
+            const endX = event.changedTouches?.[0]?.clientX ?? this._thumbTouchX;
+            const delta = endX - this._thumbTouchX;
+            this._thumbTouchX = null;
+
+            // Below this the gesture reads as a tap on a thumbnail, not a swipe.
+            if (Math.abs(delta) < 40) return;
+
+            this.slideThumbs(delta < 0 ? 1 : -1);
         },
 
         get productSubtotal() {
@@ -5213,7 +5321,14 @@ document.addEventListener('alpine:init', () => {
                 }, 4000);
             }
 
-            this.$nextTick(() => this.syncDetailHeight());
+            // Whatever moves the hero image - a dot, a thumbnail, the timer -
+            // the thumbnail window follows it.
+            this.$watch('currentIndex', () => this.ensureThumbVisible());
+
+            this.$nextTick(() => {
+                this.syncDetailHeight();
+                this.syncThumbShift();
+            });
 
             if (typeof ResizeObserver !== 'undefined') {
                 this._resizeObserver = new ResizeObserver(() => this.syncDetailHeight());
@@ -5221,7 +5336,10 @@ document.addEventListener('alpine:init', () => {
                 if (this.$refs.jaminanBox) this._resizeObserver.observe(this.$refs.jaminanBox);
             }
 
-            this._onResize = () => this.syncDetailHeight();
+            this._onResize = () => {
+                this.syncDetailHeight();
+                this.syncThumbShift();
+            };
             window.addEventListener('resize', this._onResize);
 
             this._onWishlistSync = () => this.syncWishlistState();
@@ -5246,7 +5364,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         destroy() {
-            if (this._galleryTimer) window.clearInterval(this._galleryTimer);
+            this.stopGalleryRotation();
             if (this._resizeObserver) this._resizeObserver.disconnect();
             if (this._onResize) window.removeEventListener('resize', this._onResize);
             if (this._onWishlistSync) {

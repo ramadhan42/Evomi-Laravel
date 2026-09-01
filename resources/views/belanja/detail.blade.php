@@ -132,28 +132,62 @@
                 </template>
             </div>
 
-            <div
-                class="belanja-detail__thumbs grid w-full mt-2"
-                :style="{ gridTemplateColumns: 'repeat(' + (gallery.length >= 6 ? 3 : Math.min(gallery.length, 5)) + ', minmax(0, 1fr))' }"
-            >
-                <template x-for="(image, index) in gallery" :key="'thumb-' + index">
-                    <button
-                        type="button"
-                        @click="currentIndex = index"
-                        class="belanja-detail__thumb relative w-full aspect-square overflow-hidden border-2 transition-all duration-200"
-                        :style="{
-                            backgroundColor: accent,
-                            borderColor: currentIndex === index ? accent : 'transparent',
-                            opacity: currentIndex === index ? 1 : 0.65,
-                        }"
-                    >
-                        <img
-                            :src="image"
-                            :alt="title + ' thumbnail ' + (index + 1)"
-                            class="absolute inset-0 w-full h-full object-cover"
-                            draggable="false"
+            {{-- Tiga thumbnail terlihat sekaligus; sisanya dijangkau dengan
+                 menggeser jendela ini, bukan dengan menumpuk baris kedua. --}}
+            <div class="belanja-detail__thumbs-wrap relative w-full mt-2" x-show="gallery.length > 1" x-cloak>
+                <div
+                    class="belanja-detail__thumbs-viewport"
+                    x-ref="thumbViewport"
+                    @touchstart.passive="onThumbTouchStart($event)"
+                    @touchend.passive="onThumbTouchEnd($event)"
+                >
+                    <div class="belanja-detail__thumbs-track" x-ref="thumbTrack" :style="thumbTrackStyle">
+                        <template x-for="(image, index) in gallery" :key="'thumb-' + index">
+                            <button
+                                type="button"
+                                @click="selectImage(index)"
+                                class="belanja-detail__thumb relative aspect-square overflow-hidden border-2 transition-all duration-200"
+                                :style="{
+                                    backgroundColor: accent,
+                                    borderColor: currentIndex === index ? accent : 'transparent',
+                                    opacity: currentIndex === index ? 1 : 0.65,
+                                }"
+                                :aria-current="currentIndex === index ? 'true' : 'false'"
+                            >
+                                <img
+                                    :src="image"
+                                    :alt="title + ' thumbnail ' + (index + 1)"
+                                    class="absolute inset-0 w-full h-full object-cover"
+                                    draggable="false"
+                                >
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <template x-if="canSlideThumbs">
+                    <div>
+                        <button
+                            type="button"
+                            class="belanja-detail__thumb-nav belanja-detail__thumb-nav--prev"
+                            @click="slideThumbs(-1)"
+                            :disabled="thumbStart === 0"
+                            :style="{ color: accent }"
+                            :aria-label="'Thumbnail sebelumnya'"
                         >
-                    </button>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                        </button>
+                        <button
+                            type="button"
+                            class="belanja-detail__thumb-nav belanja-detail__thumb-nav--next"
+                            @click="slideThumbs(1)"
+                            :disabled="thumbStart >= maxThumbStart"
+                            :style="{ color: accent }"
+                            :aria-label="'Thumbnail berikutnya'"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                        </button>
+                    </div>
                 </template>
             </div>
         </div>

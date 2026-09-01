@@ -1875,10 +1875,63 @@ body.evomi-detail-seamless #evomi-footer-wrap.belanja-detail-footer-seam {
     display: block;
 }
 
-/* Deretan thumbnail slider: satu baris, lebar seragam berapa pun jumlah
-   gambarnya, dengan jarak dan sudut yang ikut mengecil di layar sempit. */
-.belanja-detail__thumbs {
-    gap: 6px;
+/* Deretan thumbnail: tiga terlihat sekaligus, sisanya dijangkau dengan
+   menggeser track di dalam viewport. Lebar tiap kotak dihitung dari lebar
+   viewport dikurangi jaraknya, jadi tetap pas berapa pun jumlah gambarnya. */
+.belanja-detail__thumbs-wrap {
+    --thumb-gap: 6px;
+}
+
+.belanja-detail__thumbs-viewport {
+    overflow: hidden;
+}
+
+.belanja-detail__thumbs-track {
+    display: flex;
+    gap: var(--thumb-gap);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+}
+
+.belanja-detail__thumbs-track > .belanja-detail__thumb {
+    flex: 0 0 calc(
+        (100% - (var(--thumb-per-view, 3) - 1) * var(--thumb-gap)) / var(--thumb-per-view, 3)
+    );
+}
+
+/* Panah geser: menumpang di tepi viewport supaya tidak memakan lebar kotak. */
+.belanja-detail__thumb-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.belanja-detail__thumb-nav--prev {
+    left: -6px;
+}
+
+.belanja-detail__thumb-nav--next {
+    right: -6px;
+}
+
+.belanja-detail__thumb-nav:hover:not(:disabled) {
+    transform: translateY(-50%) scale(1.08);
+}
+
+.belanja-detail__thumb-nav:disabled {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .belanja-detail__thumb {
@@ -1901,12 +1954,25 @@ body.evomi-detail-seamless #evomi-footer-wrap.belanja-detail-footer-seam {
 }
 
 @media (min-width: 640px) {
-    .belanja-detail__thumbs {
-        gap: 10px;
+    .belanja-detail__thumbs-wrap {
+        --thumb-gap: 10px;
     }
 
     .belanja-detail__thumb {
         border-radius: 14px;
+    }
+
+    .belanja-detail__thumb-nav {
+        width: 32px;
+        height: 32px;
+    }
+
+    .belanja-detail__thumb-nav--prev {
+        left: -10px;
+    }
+
+    .belanja-detail__thumb-nav--next {
+        right: -10px;
     }
 }
 

@@ -78,8 +78,11 @@
         </div>
     </div>
 
+    {{-- Panel biru dan gambar produk sengaja tidak beranimasi: hanya teks yang
+         bergerak. Parallax pada gambar juga dilepas supaya ia tetap menempel di
+         dasar section, bukan ikut bergeser naik-turun saat halaman digulir. --}}
     <div class="relative z-20 w-full max-w-[380px] mx-auto mt-8 md:hidden">
-        <div class="parallax-self relative w-full h-[294px] bg-[#1172BA] rounded-[24px] shadow-lg overflow-visible" data-reveal="right" data-parallax="0.14">
+        <div class="relative w-full h-[294px] bg-[#1172BA] rounded-[24px] shadow-lg overflow-visible">
             <div class="absolute bottom-0 right-0 w-[88%] overflow-visible">
                 <div class="relative w-full drop-shadow-2xl overflow-visible">
                     <img src="{{ $productImg }}" alt="Evomi" class="w-full h-auto object-contain">
@@ -104,7 +107,7 @@
     </div>
 
     <div class="hidden md:block absolute z-20 right-0 bottom-0 w-[50%] lg:w-[52%] max-w-[720px] overflow-visible">
-        <div class="parallax-self relative w-full drop-shadow-2xl overflow-visible" data-reveal="right" data-parallax="0.14">
+        <div class="relative w-full drop-shadow-2xl overflow-visible">
             <img src="{{ $productImg }}" alt="Evomi" class="w-full h-auto object-contain">
             @foreach ($badges as $badge)
                 <a
