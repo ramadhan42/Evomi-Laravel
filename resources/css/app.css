@@ -9274,3 +9274,105 @@ select.admin-field-input {
     caret-color: #111827;
     transition: background-color 9999s ease-in-out 0s;
 }
+
+/* Baris biodata: buka-tutup yang mengalir, bukan melompat.
+   height:auto tidak bisa dianimasikan, jadi tingginya digerakkan lewat
+   grid-template-rows 0fr -> 1fr; anaknya diberi overflow hidden supaya isinya
+   ikut terpotong rapi selama peralihan. */
+.biodata-reveal {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+        grid-template-rows 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.22s ease;
+}
+
+.biodata-reveal > * {
+    overflow: hidden;
+    min-height: 0;
+}
+
+.biodata-reveal.is-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .biodata-reveal {
+        transition: none;
+    }
+}
+
+/* Kolom isian biodata: satu gaya untuk semua baris supaya tinggi, sudut, dan
+   cincin fokusnya tidak berbeda-beda antar tipe kolom. */
+.biodata-input {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+    color: #111827;
+    outline: none;
+    transition:
+        border-color 0.16s ease,
+        box-shadow 0.16s ease;
+}
+
+.biodata-input::placeholder {
+    color: #9ca3af;
+}
+
+.biodata-input:hover {
+    border-color: #9ca3af;
+}
+
+.biodata-input:focus {
+    border-color: #1172ba;
+    box-shadow: 0 0 0 3px rgb(17 114 186 / 0.15);
+}
+
+/* Modal sukses biodata: centang digambar, bukan sekadar muncul. */
+@keyframes evomi-check-ring-draw {
+    from { stroke-dashoffset: 140; }
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes evomi-check-mark-draw {
+    from { stroke-dashoffset: 36; }
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes evomi-modal-timebar {
+    from { width: 100%; }
+    to { width: 0%; }
+}
+
+.evomi-check-ring {
+    stroke-dasharray: 140;
+    animation: evomi-check-ring-draw 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.evomi-check-mark {
+    stroke-dasharray: 36;
+    animation: evomi-check-mark-draw 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.32s both;
+}
+
+.evomi-modal-timebar {
+    animation: evomi-modal-timebar 6s linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .evomi-check-ring,
+    .evomi-check-mark,
+    .evomi-modal-timebar {
+        animation: none;
+    }
+
+    .evomi-check-ring,
+    .evomi-check-mark {
+        stroke-dashoffset: 0;
+    }
+}

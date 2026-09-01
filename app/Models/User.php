@@ -22,6 +22,7 @@ class User extends Authenticatable
         'avatar_profile',
         'last_login_at',
         'last_seen_at',
+        'password_changed_at',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -38,6 +39,7 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'last_login_at' => 'datetime',
             'last_seen_at' => 'datetime',
+            'password_changed_at' => 'datetime',
         ];
     }
 

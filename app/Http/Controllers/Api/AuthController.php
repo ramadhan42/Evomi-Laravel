@@ -41,6 +41,7 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => $request->password,
+            'password_changed_at' => $now,
             'is_admin' => false,
             'last_login_at' => $now,
             'last_seen_at' => $now,
@@ -152,7 +153,10 @@ class AuthController extends Controller
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user, string $password) {
-                $user->forceFill(['password' => $password])->save();
+                $user->forceFill([
+                    'password' => $password,
+                    'password_changed_at' => now(),
+                ])->save();
 
                 // Password berganti berarti sesi lama harus mati: kalau akun ini
                 // sempat dibajak, token Sanctum penyerang ikut hangus.

@@ -7175,6 +7175,12 @@ document.addEventListener('alpine:init', () => {
         avatarPreview: null,
         avatarFile: null,
         avatarPath: null,
+        passwordChangedAt: null,
+        // Nilai terakhir yang datang dari server, dipakai menghitung apa saja
+        // yang benar-benar berubah supaya modalnya bisa menyebutkannya.
+        snapshot: {},
+        successModal: { open: false, changes: [] },
+        _successTimer: null,
         lastLoginAt: null,
         lastSeenAt: null,
         lastLoginLabel: '',
@@ -7212,6 +7218,9 @@ document.addEventListener('alpine:init', () => {
                 window.removeEventListener('evomi-settings-reload', this._onReload);
             }
             if (this._toastTimer) window.clearTimeout(this._toastTimer);
+            if (this._successTimer) window.clearTimeout(this._successTimer);
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
         },
 
         isEditing(field) {
@@ -7228,6 +7237,69 @@ document.addEventListener('alpine:init', () => {
             if (nilai !== '') return nilai;
 
             return storefrontL('Belum diisi', 'Not set');
+        },
+
+        /**
+         * Keterangan pengganti kata sandi.
+         *
+         * Nilai aslinya tidak pernah bisa ditampilkan - yang tersimpan cuma hash
+         * bcrypt - jadi barisnya memberi kepastian lewat tanggal terakhir diubah.
+         * Akun lama belum punya catatan itu, dan menebaknya dari updated_at akan
+         * menampilkan tanggal keliru, jadi cukup ditulis "Tersimpan" saja.
+         */
+        get passwordStatusLabel() {
+            if (!this.passwordChangedAt) {
+                return storefrontL('Tersimpan', 'Saved');
+            }
+
+            const tanggal = this.formatPresence(this.passwordChangedAt);
+
+            return storefrontL('Tersimpan · terakhir diubah ', 'Saved · last changed ') + tanggal;
+        },
+
+        /** Daftar hal yang berubah, untuk ditulis di modal sukses. */
+        collectChanges() {
+            const label = {
+                name: storefrontL('Nama', 'Name'),
+                email: storefrontL('Email', 'Email'),
+                phone: storefrontL('Nomor telepon', 'Phone number'),
+                address: storefrontL('Alamat pengiriman', 'Shipping address'),
+            };
+
+            const out = Object.keys(label).filter(
+                (k) => String(this.form[k] ?? '').trim() !== String(this.snapshot[k] ?? '').trim(),
+            ).map((k) => label[k]);
+
+            if (this.form.password) out.push(storefrontL('Kata sandi', 'Password'));
+            if (this.avatarFile) out.push(storefrontL('Foto profil', 'Profile photo'));
+
+            return out;
+        },
+
+        openSuccessModal(changes) {
+            this.successModal = { open: true, changes };
+
+            // Mengunci scroll menghilangkan batang gulir, dan halaman di
+            // belakangnya melompat selebar batang itu. Lebarnya diganti dengan
+            // padding supaya tidak ada yang bergeser saat modal muncul.
+            const lebarBatangGulir = window.innerWidth - document.documentElement.clientWidth;
+            document.body.style.overflow = 'hidden';
+            if (lebarBatangGulir > 0) {
+                document.body.style.paddingRight = `${lebarBatangGulir}px`;
+            }
+
+            if (this._successTimer) window.clearTimeout(this._successTimer);
+            this._successTimer = window.setTimeout(() => this.closeSuccessModal(), 6000);
+        },
+
+        closeSuccessModal() {
+            if (this._successTimer) {
+                window.clearTimeout(this._successTimer);
+                this._successTimer = null;
+            }
+            this.successModal = { ...this.successModal, open: false };
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
         },
 
         showToast(message, ms = 2400) {
@@ -7295,6 +7367,8 @@ document.addEventListener('alpine:init', () => {
                 };
                 this.avatarPath = user.avatar_profile || user.avatar || null;
                 this.avatarPreview = avatarUrlFromUser(user);
+                this.snapshot = { ...this.form, password: '' };
+                this.passwordChangedAt = user.password_changed_at || null;
                 this.lastLoginAt = user.last_login_at || null;
                 this.lastSeenAt = user.last_seen_at || null;
                 this.lastLoginLabel = this.formatPresence(this.lastLoginAt);
@@ -7332,10 +7406,26 @@ document.addEventListener('alpine:init', () => {
 
         async save() {
             this.saving = true;
-            this.status = { type: 'processing', message: storefrontL('Menyimpan perubahan...', 'Saving changes...') };
+            // Tidak ada spanduk "menyimpan" di dalam kartu: memunculkannya
+            // mendorong seluruh isi biodata ke bawah, lalu isinya melompat balik
+            // saat spanduk itu hilang. Tombolnya sendiri sudah berubah menjadi
+            // "Menyimpan..." dan itu tidak menggeser apa pun.
+            this.status = { type: '', message: '' };
             try {
+                // Baris kata sandi yang dibuka berarti pemilik memang berniat
+                // menggantinya; menyimpannya dalam keadaan kosong hampir pasti
+                // tidak disengaja, jadi ditolak alih-alih diam-diam dilewati.
+                if (this.editing.password && !String(this.form.password || '').trim()) {
+                    throw new Error(
+                        storefrontL(
+                            'Kata sandi baru belum diisi. Isi kata sandinya, atau tutup baris itu bila tidak jadi mengubah.',
+                            'The new password is empty. Fill it in, or close that row if you are not changing it.',
+                        ),
+                    );
+                }
+
                 if (this.form.password && this.form.password.length < 8) {
-                    throw new Error('Password baru minimal 8 karakter.');
+                    throw new Error(storefrontL('Kata sandi baru minimal 8 karakter.', 'The new password must be at least 8 characters.'));
                 }
 
                 const fd = new FormData();
@@ -7373,8 +7463,16 @@ document.addEventListener('alpine:init', () => {
                 this.avatarPath = merged.avatar_profile || null;
                 this.avatarPreview = avatarUrlFromUser(merged);
                 syncNavbarAuth();
+                const changes = this.collectChanges();
+
                 this.status = { type: '', message: '' };
-                this.showToast(storefrontL('Profil berhasil diperbarui.', 'Profile updated successfully.'));
+                // Baris yang tadi dibuka dikembalikan ke tampilan teks: perubahannya
+                // sudah tersimpan, jadi membiarkannya terbuka hanya mengundang
+                // pengiriman ulang yang tidak perlu.
+                this.editing = {};
+                this.snapshot = { ...this.form, password: '' };
+                this.passwordChangedAt = user.password_changed_at || this.passwordChangedAt;
+                this.openSuccessModal(changes);
             } catch (err) {
                 this.status = {
                     type: 'error',

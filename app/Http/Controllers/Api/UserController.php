@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\LocaleResolver;
 use App\Support\ProductLocalizer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -61,7 +62,7 @@ class UserController extends Controller
         // Handle File Upload
         if ($request->hasFile('avatar_profile')) {
             if ($user->avatar_profile && ! str_starts_with((string) $user->avatar_profile, 'http')) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar_profile);
+                Storage::disk('public')->delete($user->avatar_profile);
             }
             $path = $request->file('avatar_profile')->store('avatars', 'public');
             $validated['avatar_profile'] = $path;
@@ -69,6 +70,7 @@ class UserController extends Controller
 
         if (! empty($validated['password'])) {
             $validated['password'] = bcrypt($validated['password']);
+            $validated['password_changed_at'] = now();
         } else {
             unset($validated['password']);
         }
@@ -135,6 +137,7 @@ class UserController extends Controller
 
         if (! empty($validated['password'])) {
             $validated['password'] = bcrypt($validated['password']);
+            $validated['password_changed_at'] = now();
         } else {
             unset($validated['password']);
         }
