@@ -904,7 +904,7 @@ function playBelanjaEntrance(root = document, { skipAsync = false } = {}) {
         requestAnimationFrame(() => {
             scope.classList.remove('is-belanja-resetting');
             void scope.offsetWidth;
-            requestAnimationFrame(() => {
+            nextFrame().then(() => {
                 scope.classList.add('is-belanja-ready');
                 scope._belanjaEnterTimer = window.setTimeout(() => {
                     scope.classList.add('is-belanja-settled');
@@ -2823,15 +2823,31 @@ function startSiteTrafficHeartbeat() {
     }, TRAFFIC_HEARTBEAT_MS);
 }
 
-function waitFrames(n = 2) {
+/**
+ * Satu frame, tetapi tidak pernah menggantung.
+ *
+ * Tab yang tersembunyi atau di-throttle berhenti memanggil
+ * requestAnimationFrame, dan janji yang menunggunya tidak pernah selesai.
+ * Apa pun yang berada setelahnya - membuka kelas transisi, melepas kunci
+ * navigasi - ikut tertinggal, jadi selalu ada timer sebagai penyelamat.
+ */
+function nextFrame() {
     return new Promise((resolve) => {
-        const step = () => {
-            if (n <= 0) return resolve();
-            n -= 1;
-            requestAnimationFrame(step);
+        let selesai = false;
+        const beres = () => {
+            if (selesai) return;
+            selesai = true;
+            resolve();
         };
-        step();
+        requestAnimationFrame(beres);
+        setTimeout(beres, 100);
     });
+}
+
+async function waitFrames(n = 2) {
+    for (let i = 0; i < n; i += 1) {
+        await nextFrame();
+    }
 }
 
 const GUEST_CART_KEY = 'evomi_guest_cart_v1';
@@ -10812,6 +10828,14 @@ async function softNavigate(href, { push = true, navIndex = null, force = false,
             }
             bindSoftLinks(content);
 
+            // Kartu pengaturan memakai .evomi-soft-enter, yang menahan isinya di
+            // opacity 0 sampai kelas siapnya dipasang. Tanpa panggilan ini,
+            // berpindah menu ke Pengaturan Profil menukar isinya dengan benar
+            // tetapi halamannya tetap kosong - dan kosong selamanya, bukan
+            // sekadar terlambat muncul. Halaman Pesan tidak memakai penanda itu,
+            // jadi hanya satu arah yang terlihat rusak.
+            playBelanjaEntrance(content);
+
             if (window.__evomiProfileShell) {
                 window.__evomiProfileShell.setActive(nextMenu, true);
             }
@@ -10826,9 +10850,8 @@ async function softNavigate(href, { push = true, navIndex = null, force = false,
             // Force reflow so enter transition always runs
             void content.offsetWidth;
             await waitFrames(2);
-            requestAnimationFrame(() => {
-                content.classList.remove('is-entering');
-            });
+            await nextFrame();
+            content.classList.remove('is-entering');
             await wait(360);
 
             // Release lock — CSS fixed frame takes over again
@@ -10976,10 +10999,9 @@ async function softNavigate(href, { push = true, navIndex = null, force = false,
         }
 
         await waitFrames(2);
-        requestAnimationFrame(() => {
-            main.classList.remove('is-entering');
-            if (isBelanjaFlowPath(toPath) || isKuisPath(toPath)) playBelanjaEntrance(main);
-        });
+        await nextFrame();
+        main.classList.remove('is-entering');
+        if (isBelanjaFlowPath(toPath) || isKuisPath(toPath)) playBelanjaEntrance(main);
         await wait(skipPageAnim ? 0 : belanjaFlow ? 560 : 420);
         // Re-measure pill after layout settles
         if (nav) {
@@ -11010,6 +11032,32 @@ async function softNavigate(href, { push = true, navIndex = null, force = false,
 }
 
 window.softNavigate = softNavigate;
+
+/**
+ * Jaring pengaman saat tab kembali terlihat.
+ *
+ * Transisi CSS dan requestAnimationFrame berhenti total di tab yang
+ * disembunyikan browser. Kalau pengguna berpindah tab tepat saat panel profil
+ * sedang bertransisi masuk, panel itu tertinggal pada opacity 0 - isinya ada di
+ * DOM tetapi tidak terlihat - dan kunci navigasinya ikut tertahan sehingga menu
+ * berikutnya tidak lagi berpindah. Begitu tab kembali terlihat, sisa kelas
+ * transisi dan kunci ukurannya dibereskan supaya keadaannya kembali waras.
+ */
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+
+    softNavBusy = false;
+
+    document.querySelectorAll('.profile-content-panel, #evomi-main, #admin-page').forEach((el) => {
+        el.classList.remove('is-leaving', 'is-entering');
+    });
+
+    document.querySelectorAll('.profile-content-panel').forEach((el) => {
+        el.style.height = '';
+        el.style.minHeight = '';
+        el.style.maxHeight = '';
+    });
+});
 
 function syncNavFromPath(pathname, hash = '') {
     const nav = window.__evomiNav;
@@ -11275,7 +11323,8 @@ async function adminSoftNavigate(href, { push = true, force = false } = {}) {
         window.scrollTo({ top: 0, left: 0 });
 
         await waitFrames(2);
-        requestAnimationFrame(() => page.classList.remove('is-entering'));
+        await nextFrame();
+        page.classList.remove('is-entering');
     } catch (err) {
         if (token !== adminNavToken) return;
         console.warn(err);
