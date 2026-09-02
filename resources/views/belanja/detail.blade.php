@@ -20,7 +20,6 @@
         'promo' => $promo,
         'checkoutPromo' => $checkoutPromo ?? null,
         'freeShipping' => (bool) ($freeShipping ?? false),
-        'freeShipping' => (bool) ($freeShipping ?? false),
         'loginUrl' => route('login'),
         'applyTheme' => $applyTheme ?? true,
         'shareImage' => $gallery[0] ?? ($product['img'] ?? ''),
