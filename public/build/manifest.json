@@ -9,7 +9,7 @@
     "isEntry": true
   },
   "resources/js/admin-crud.js": {
-    "file": "assets/admin-crud-Ba8cSM5P.js",
+    "file": "assets/admin-crud-dDiSyvrE.js",
     "name": "admin-crud",
     "src": "resources/js/admin-crud.js",
     "isDynamicEntry": true,
@@ -19,7 +19,7 @@
     ]
   },
   "resources/js/admin-i18n.js": {
-    "file": "assets/admin-i18n-J2ffuxU7.js",
+    "file": "assets/admin-i18n-KwtKxR6r.js",
     "name": "admin-i18n",
     "src": "resources/js/admin-i18n.js",
     "isDynamicEntry": true,
@@ -34,7 +34,7 @@
     "isDynamicEntry": true
   },
   "resources/js/app.js": {
-    "file": "assets/app-uRnOCd38.js",
+    "file": "assets/app-DMf7oPYv.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,

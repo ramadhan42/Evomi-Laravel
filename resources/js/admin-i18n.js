@@ -185,7 +185,7 @@ const DICT = {
             'The "Site default" row is used by every page you leave empty. Fill in a page row only when it should differ. Articles have their own fields in the Articles menu.',
         ],
         badge_default: ['Default', 'Default'],
-        badge_noindex: ['Noindex', 'Noindex'],
+        badge_noindex: ['Disembunyikan', 'Hidden'],
         meta_title: ['Judul (meta title)', 'Title (meta title)'],
         meta_title_ph: ['Judul yang muncul di hasil Google', 'Title shown in Google results'],
         meta_title_en: ['Judul (EN)', 'Title (EN)'],
@@ -200,6 +200,10 @@ const DICT = {
         meta_keywords_hint: ['Pisahkan dengan koma.', 'Separate with commas.'],
         translations: ['Terjemahan Inggris', 'English translation'],
         noindex: ['Sembunyikan halaman ini dari mesin pencari', 'Hide this page from search engines'],
+        noindex_hint: [
+            'Halaman tetap bisa dibuka lewat tautan langsung, tetapi diminta untuk tidak muncul di hasil pencarian dan dikeluarkan dari sitemap.',
+            'The page stays reachable by direct link, but asks search engines to keep it out of results and is dropped from the sitemap.',
+        ],
         og_image: ['Gambar share (thumbnail)', 'Share image (thumbnail)'],
         og_image_empty: ['Belum ada gambar', 'No image yet'],
         og_image_hint: [

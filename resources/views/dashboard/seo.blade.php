@@ -128,11 +128,26 @@
                                     </div>
                                 </div>
 
-                                <label class="flex items-center gap-3 cursor-pointer" x-show="row.page !== 'default'">
-                                    <input type="checkbox" x-model="row.noindex" class="sr-only peer">
-                                    <span class="doc-switch-track"><span class="doc-switch-thumb"></span></span>
-                                    <span class="text-sm text-gray-700" x-text="t('seo','noindex')"></span>
-                                </label>
+                                <div x-show="row.page !== 'default'">
+                                    {{-- Kelas doc-switch wajib ada di label: gaya "menyala"
+                                         dipasang lewat selector .doc-switch input:checked,
+                                         jadi tanpa kelas ini sakelarnya berubah nilai tetapi
+                                         tetap terlihat mati. --}}
+                                    <label class="doc-switch">
+                                        <input type="checkbox" x-model="row.noindex" class="sr-only peer">
+                                        <span class="doc-switch-track"><span class="doc-switch-thumb"></span></span>
+                                        <span class="text-sm text-gray-700" x-text="t('seo','noindex')"></span>
+                                    </label>
+                                    {{-- Akibatnya disebutkan saat toggle menyala, karena
+                                         mengeluarkan halaman dari hasil pencarian bukan
+                                         perubahan yang boleh terjadi tanpa disadari. --}}
+                                    <p
+                                        x-show="row.noindex"
+                                        x-cloak
+                                        class="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-[12px] leading-relaxed text-rose-800"
+                                        x-text="t('seo','noindex_hint')"
+                                    ></p>
+                                </div>
                             </div>
 
                             {{-- Share image + Google preview --}}
