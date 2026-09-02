@@ -35,9 +35,11 @@ class SitemapController extends Controller
     {
         $xml = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, fn () => $this->build());
 
+        // Jangan pasang `X-Robots-Tag: noindex` di sini: Google menolak memproses
+        // sitemap yang di-serve dengan noindex dan Search Console melaporkannya
+        // sebagai "Sitemap could not be read".
         return response($xml, 200, [
             'Content-Type' => 'application/xml; charset=UTF-8',
-            'X-Robots-Tag' => 'noindex',
         ]);
     }
 
