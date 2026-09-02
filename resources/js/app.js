@@ -2543,6 +2543,19 @@ function productImageFallback(product) {
     return fallbacks[personality] || '/src/images/section%205/purpose-prestige.webp';
 }
 
+// Botol tunggal bertutup glossy satu warna, latar transparan.
+function productBottleImage(product) {
+    const personality = String(product?.personality_type || '').toLowerCase();
+    const bottles = {
+        prestige: '/src/images/beranda/botol-purpose-prestige.webp',
+        purpose_prestige: '/src/images/beranda/botol-purpose-prestige.webp',
+        peaceful_calm: '/src/images/beranda/botol-peaceful-calm.webp',
+        rebel_brave: '/src/images/beranda/botol-rabel-brave.webp',
+        sweet_shy: '/src/images/beranda/botol-sweet-shy.webp',
+    };
+    return bottles[personality] || '/src/images/beranda/botol-purpose-prestige.webp';
+}
+
 function productImage(product, prefer = 'default') {
     let path = '';
     if (prefer === 'wishlist') {
@@ -3036,7 +3049,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         get imageUrl() {
-            return productImage(this.product, 'default');
+            // Modal beranda menampilkan botol saja, bukan foto kemasan katalog.
+            return productBottleImage(this.product);
         },
 
         get volumeLabel() {
