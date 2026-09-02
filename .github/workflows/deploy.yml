@@ -1,17 +1,24 @@
-name: Deploy evomi.shop + evomi.id
+name: Deploy evomi.id
 
 # Alur deploy:
 #   1. Build aset di CI, commit balik bila berubah - server tidak menjalankan
 #      Node, jadi hasil build harus sudah ada di repo saat server menariknya.
-#   2. Jalankan deploy/ssh-deploy.sh di server lewat SSH, sekali per domain.
+#   2. Jalankan deploy/ssh-deploy.sh di server lewat SSH untuk evomi.id.
 #      Server menarik sendiri rilisnya dari GitHub, menyalin kode/gambar/aset,
 #      mengonversi unggahan ke WebP, migrasi, lalu cache.
+#
+# HANYA evomi.id. Dulu run yang sama juga menerapkan rilis ke evomi.shop, tapi
+# docroot itu dipakai landing page tersendiri yang tidak berasal dari repo ini
+# - dan ssh-deploy.sh menimpa build/, src/, videos/, serta robots.txt di
+# docroot tujuan. Domainnya sengaja ditulis tetap di sini, bukan lewat `vars`,
+# supaya variabel repo yang tertinggal tidak bisa menghidupkannya lagi tanpa
+# sengaja.
 #
 # Dulu langkah 2 mengunggah satu berkas PHP ke docroot lewat FTP lalu
 # memanggilnya lewat HTTP. Cara itu ditinggalkan: unggahan FTP-nya timeout
 # sesekali (run #14 dan #16 gagal setelah menggantung ~134 detik, sementara run
 # yang sehat selesai dalam 3 detik), dan setiap kegagalan melewatkan deploy
-# kedua domain. Lewat SSH tidak ada berkas yang menginap di docroot, tidak ada
+# hari itu. Lewat SSH tidak ada berkas yang menginap di docroot, tidak ada
 # endpoint deploy yang sempat menganggur, dan keluarannya langsung terbaca di
 # log Actions. deploy/legacy-evomi-deploy.php ditinggal sebagai jalur
 # cadangan bila suatu saat SSH tidak tersedia.
@@ -24,9 +31,6 @@ name: Deploy evomi.shop + evomi.id
 #
 # Variabel opsional (tab Variables):
 #   SSH_PORT         default: 65002 (port SSH Hostinger)
-#   SITE_URL         default: https://evomi.shop
-#   SECOND_SITE      default: evomi.id  (kosongkan untuk mematikan)
-#   SECOND_SITE_URL  default: https://evomi.id
 #
 # Dua hal yang menentukan kapan workflow ini benar-benar jalan:
 #
@@ -46,8 +50,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # Menyerialkan deploy untuk KEDUA domain: satu run menyentuh dua docroot di
-  # akun yang sama, jadi dua run bersamaan bisa saling menimpa di tengah jalan.
+  # Menyerialkan deploy: dua run bersamaan menyentuh docroot yang sama, jadi
+  # bisa saling menimpa di tengah jalan.
   group: deploy-evomi
   cancel-in-progress: false
 
@@ -60,10 +64,8 @@ jobs:
 
     env:
       SSH_PORT: ${{ vars.SSH_PORT || '65002' }}
-      SITE_URL: ${{ vars.SITE_URL || 'https://evomi.shop' }}
-      FIRST_SITE: ${{ vars.FIRST_SITE || 'evomi.shop' }}
-      SECOND_SITE: ${{ vars.SECOND_SITE || 'evomi.id' }}
-      SECOND_SITE_URL: ${{ vars.SECOND_SITE_URL || 'https://evomi.id' }}
+      SITE: evomi.id
+      SITE_URL: https://evomi.id
       SCRIPT: deploy/ssh-deploy.sh
 
     steps:
@@ -221,20 +223,7 @@ jobs:
 
           ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key -o BatchMode=yes \
               "$SSH_USER@$SSH_HOST" \
-              "DEPLOY_REPO='$GITHUB_REPOSITORY' bash ~/ssh-deploy.sh '$RELEASE_SHA' '$FIRST_SITE'"
-
-      - name: Jalankan deploy di server (domain kedua)
-        id: run_second
-        if: steps.run.outcome == 'success' && env.SECOND_SITE != ''
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-        run: |
-          set -euo pipefail
-
-          ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key -o BatchMode=yes \
-              "$SSH_USER@$SSH_HOST" \
-              "DEPLOY_REPO='$GITHUB_REPOSITORY' bash ~/ssh-deploy.sh '$RELEASE_SHA' '$SECOND_SITE'"
+              "DEPLOY_REPO='$GITHUB_REPOSITORY' bash ~/ssh-deploy.sh '$RELEASE_SHA' '$SITE'"
 
       - name: Bersihkan kunci
         if: always()
@@ -290,8 +279,3 @@ jobs:
           }
 
           periksa "$SITE_URL" "$SITE_URL"
-
-          # Domain kedua hanya diperiksa bila langkah deploy-nya benar-benar jalan.
-          if [ "${{ steps.run_second.outcome }}" = "success" ]; then
-            periksa "$SECOND_SITE_URL" "$SECOND_SITE_URL"
-          fi
