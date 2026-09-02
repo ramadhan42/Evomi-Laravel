@@ -157,10 +157,28 @@ jobs:
 
           # Host key diambil sekali di sini, jadi ssh tidak perlu ditawari
           # StrictHostKeyChecking=no yang menerima host mana pun.
-          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/tmp/scanerr || true
+          #
+          # Dicoba beberapa kali: run #33587173831 gagal persis di sini padahal
+          # kunci yang sama berhasil dua menit kemudian, jadi yang meleset
+          # adalah jangkauan jaringan runner ke server - bukan kredensial.
+          # Sekali gagal berarti deploy batal diam-diam dan situs tertinggal
+          # sementara kodenya sudah di GitHub, sehingga satu percobaan saja
+          # terlalu rapuh untuk langkah yang menentukan seluruh rilis.
+          for attempt in 1 2 3; do
+            ssh-keyscan -T 10 -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/tmp/scanerr || true
+
+            if [ -s ~/.ssh/known_hosts ]; then
+              break
+            fi
+
+            if [ "$attempt" -lt 3 ]; then
+              echo "ssh-keyscan percobaan $attempt gagal, ulang dalam 5 detik: $(tail -1 /tmp/scanerr)"
+              sleep 5
+            fi
+          done
 
           if [ ! -s ~/.ssh/known_hosts ]; then
-            echo "::error::ssh-keyscan tidak mendapat host key dari $SSH_HOST:$SSH_PORT - $(tail -2 /tmp/scanerr)"
+            echo "::error::ssh-keyscan tidak mendapat host key dari $SSH_HOST:$SSH_PORT setelah 3 percobaan - $(tail -2 /tmp/scanerr)"
             exit 1
           fi
 
