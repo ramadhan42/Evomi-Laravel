@@ -20,6 +20,16 @@
         $shareImage = url('/share/product/'.$product['id'].'.jpg').'?v='.time();
     }
     $shareUrl = url()->current();
+
+    // Tanpa node Product ber-offers, Search Console menandai tiap halaman ini
+    // "Either 'offers', 'review', or 'aggregateRating' should be specified".
+    $productSchema = \App\Support\ProductSeo::schemaGraph($product, [
+        'url' => $shareUrl,
+        'title' => $shareTitle,
+        'description' => $shareDescriptionShort,
+        'image' => $shareImage,
+        'gallery' => $gallery,
+    ]);
 @endphp
 
 @section('title', $shareTitle.' | Evomi')
@@ -44,6 +54,7 @@
     <meta name="twitter:image" content="{{ $shareImage }}">
     <meta name="twitter:image:alt" content="{{ $shareTitle }}">
     <link rel="canonical" href="{{ $shareUrl }}">
+    <script type="application/ld+json">{!! json_encode($productSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
 @endpush
 
 @section('content')
