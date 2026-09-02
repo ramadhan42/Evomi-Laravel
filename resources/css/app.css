@@ -123,6 +123,19 @@
 
 html {
     scroll-behavior: smooth;
+
+    /* Modal mengunci halaman dengan overflow: hidden pada <html>. Tanpa gutter
+       yang tetap, scrollbar 11px itu hilang saat modal terbuka lalu muncul lagi
+       saat ditutup - viewport melebar dan menyempit, dan seluruh isi beranda
+       (termasuk elemen fixed, yang mengacu ke viewport, bukan ke padding html)
+       ikut bergeser dua kali per klik.
+
+       `stable` menahan gutter itu untuk overflow auto/scroll/hidden, jadi lebar
+       viewport tidak berubah saat kunci dipasang atau dilepas. Ditulis di html,
+       bukan body: overflow-x: hidden pada body merambat ke viewport sehingga
+       body sendiri memakai overflow visible - bukan scroll container - dan
+       properti ini tidak akan berpengaruh di sana. */
+    scrollbar-gutter: stable;
 }
 
 body {
@@ -6911,9 +6924,16 @@ select.admin-field-input {
 }
 
 .evomi-product-modal-panel-enter {
+  /* Yang beranimasi harus `translate` dan `scale`, bukan `transform`. Kelas
+     Tailwind v4 yang dipakai x-transition (`translate-y-4`, `scale-[0.97]`)
+     menulis ke properti terpisah itu, sedangkan `transform` panel ini tetap
+     `translateZ(0)` dan tidak pernah berubah. Menuliskan `transform` saja
+     berarti panelnya melompat ke posisi akhir seketika dan hanya opacity yang
+     benar-benar beranimasi - persis yang terbaca sebagai bukaan yang kasar. */
   transition:
     opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+    translate 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    scale 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .evomi-product-modal-panel-leave {
@@ -6934,7 +6954,7 @@ select.admin-field-input {
     0 0 0 1px rgba(15, 23, 42, 0.04);
   transform: translateZ(0);
   backface-visibility: hidden;
-  will-change: transform, opacity;
+  will-change: opacity, translate, scale;
 }
 
 .evomi-product-modal__image {
